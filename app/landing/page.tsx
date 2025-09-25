@@ -1,84 +1,87 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { FormEvent, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { useSupabase } from "@/components/supabase-provider"
-
+import fermLogo from "@/public/logo.png"
 const navigation = [
-  { name: "Product", href: "#product" },
-  { name: "Solutions", href: "#solutions" },
-  { name: "Resources", href: "#resources" },
+  { name: "Overview", href: "#overview" },
+  { name: "Features", href: "#features" },
+  { name: "Workflow", href: "#workflow" },
+  { name: "Tools", href: "#tools" },
   { name: "Pricing", href: "#pricing" },
 ]
 
 const featureHighlights = [
   {
-    title: "Unified application tracking",
+    title: "Track every application",
     description:
-      "Organize every role, recruiter, and interview in a single, structured workspace built for momentum.",
+      "Log roles, statuses, and compensation details while keeping everything organized by stage.",
   },
   {
-    title: "Real-time collaboration",
+    title: "Stay ready for interviews",
     description:
-      "Share progress with mentors and teammates while Ferm automatically keeps timelines, notes, and feedback aligned.",
+      "Prep with context from notes, attachments, and scheduled conversations in a single timeline.",
   },
   {
-    title: "Insights that inform decisions",
+    title: "See progress at a glance",
     description:
-      "Monitor conversion rates and spot bottlenecks instantly with dashboards designed for modern talent teams.",
+      "Dashboard metrics surface how many applications are active, paused, or waiting on you.",
   },
 ]
 
 const solutionDetails = [
   {
-    heading: "Launch campaigns with clarity",
+    heading: "Pipeline views that keep you focused",
     body:
-      "Plan sourcing sprints, manage outreach cadences, and keep every candidate conversation within reach. Ferm adapts to your process without getting in the way.",
+      "Filter and sort applications by stage, priority, or company so you always know where to spend your energy next.",
   },
   {
-    heading: "Streamline interviewer workflows",
+    heading: "Interview timelines with real context",
     body:
-      "Brief interviewers with context-rich packets, collect feedback automatically, and close loops faster with automations that respect your brand.",
+      "Upcoming interviews, recruiter touchpoints, and personal notes live together so you walk into every conversation prepared.",
   },
   {
-    heading: "Deliver an elevated candidate experience",
+    heading: "Quick updates when plans change",
     body:
-      "Guide candidates from first touch to offer letter with timely updates, tailored communication, and a polished portal that mirrors your company standards.",
+      "Bulk status changes, archived roles, and reminders help you reflect reality without diving into spreadsheets.",
   },
 ]
 
-const resources = [
+const includedTools = [
   {
-    title: "Guides",
-    description: "Playbooks for building an equitable, data-informed hiring process across every stage of growth.",
+    title: "Stats overview",
+    description: "Understand active applications, next steps, and recently won roles without building a custom tracker.",
   },
   {
-    title: "Webinars",
-    description: "Monthly conversations with talent leaders unpacking real-world strategies that deliver results.",
+    title: "Activity timeline",
+    description: "Capture interview feedback, outreach notes, and follow-ups so nothing slips through the cracks.",
   },
   {
-    title: "Templates",
-    description: "Interview scorecards, outreach sequences, and analytics dashboards ready for immediate use.",
+    title: "Bulk actions",
+    description: "Move groups of applications forward or close them out with a single update when decisions land at once.",
   },
 ]
 
 const pricingTiers = [
   {
-    name: "Starter",
+    name: "Personal beta",
     price: "Free",
-    details: ["Up to 3 active roles", "Email support", "Core analytics"],
+    description: "Everything you need to manage your search today.",
+    details: ["Unlimited application tracking", "Interview and reminder timeline", "Dashboard insights"],
+    cta: "Create an account",
+    available: true,
   },
   {
-    name: "Growth",
-    price: "$49",
-    details: ["Unlimited roles", "Team collaboration", "Advanced reporting"],
-  },
-  {
-    name: "Scale",
-    price: "Talk to us",
-    details: ["Custom onboarding", "Dedicated success manager", "Enterprise security"],
+    name: "Collaborative spaces",
+    price: "In development",
+    description: "Shared pipelines for mentors and coaches coming soon.",
+    details: ["Invite collaborators", "Shared notes and tasks", "Role-level permissions"],
+    cta: "Coming soon",
+    available: false,
   },
 ]
 
@@ -269,9 +272,9 @@ export default function LandingPage() {
     <div className="min-h-screen bg-black text-zinc-100">
       <header className="border-b border-zinc-800">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6">
-          <Link href="#" className="text-lg font-semibold tracking-tight">
-            Ferm
-          </Link>
+          <Link href="/landing" className="flex items-center gap-3 text-lg font-semibold tracking-tight text-white">
+            <Image src={fermLogo} alt="Ferm logo" width={36} height={36} className="h-9 w-9" />
+                     </Link>
           <nav className="hidden gap-8 text-sm font-medium text-zinc-300 md:flex">
             {navigation.map((item) => (
               <a key={item.name} href={item.href} className="transition hover:text-zinc-50">
@@ -300,15 +303,15 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden border-b border-zinc-800 bg-zinc-950">
+        <section id="overview" className="relative overflow-hidden border-b border-zinc-800 bg-zinc-950">
           <div className="mx-auto grid max-w-7xl gap-12 px-6 py-24 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">HIRING INTELLIGENCE FOR MODERN TEAMS</p>
+              <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">JOB SEARCH OPERATIONS</p>
               <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                The operating system for resilient recruiting teams.
+                Stay on top of every application without another spreadsheet.
               </h1>
               <p className="mt-6 max-w-xl text-lg text-zinc-400">
-                Ferm gives talent organizations one connected workspace to orchestrate every touchpoint, surface insights in real time, and deliver experiences candidates remember.
+                Ferm centralizes your applications, interview prep, and follow-ups so you always know what happened, what is next, and where to focus your time.
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
                 <a
@@ -318,10 +321,10 @@ export default function LandingPage() {
                   View pricing
                 </a>
                 <a
-                  href="#product"
+                  href="#features"
                   className="rounded-full border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:text-white"
                 >
-                  Explore product
+                  See features
                 </a>
               </div>
               <div className="mt-16 grid gap-8 sm:grid-cols-3">
@@ -337,7 +340,7 @@ export default function LandingPage() {
               <div className="space-y-6">
                 <h2 className="text-lg font-semibold text-white">Built for the details</h2>
                 <p className="text-sm text-zinc-400">
-                  Track applications, interview feedback, and offer decisions with precision. Ferm keeps every stakeholder aligned without the usual spreadsheets and status meetings.
+                  Track applications, interview feedback, and offer decisions with precision. Ferm keeps your search accurate without the back-and-forth of scattered docs.
                 </p>
                 <ul className="space-y-4 text-sm text-zinc-300">
                   <li className="flex items-start gap-3">
@@ -346,11 +349,11 @@ export default function LandingPage() {
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="mt-1 h-1.5 w-6 bg-zinc-500" aria-hidden />
-                    Analytics reveal conversion shifts the moment they happen.
+                    Analytics reveal how your outreach is performing as you update statuses.
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="mt-1 h-1.5 w-6 bg-zinc-500" aria-hidden />
-                    Candidate profiles aggregate notes, resumes, and communication.
+                    Application profiles aggregate notes, resumes, and communication threads.
                   </li>
                 </ul>
               </div>
@@ -358,16 +361,16 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="product" className="border-b border-zinc-800">
+        <section id="features" className="border-b border-zinc-800">
           <div className="mx-auto max-w-7xl px-6 py-24">
             <div className="grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
               <div className="space-y-8">
-                <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Product</p>
+                <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Features</p>
                 <h2 className="text-3xl font-semibold text-white sm:text-4xl">
-                  Every workflow connected. Every decision supported.
+                  Everything you need to manage an active job search.
                 </h2>
                 <p className="text-lg text-zinc-400">
-                  Ferm centralizes sourcing, pipeline management, and post-offer workflows so your team can focus on crafting candidate experiences that stand out.
+                  Ferm centralizes your sourcing notes, application progress, and interview prep so you can move quickly without losing context.
                 </p>
                 <div className="grid gap-8 sm:grid-cols-2">
                   {solutionDetails.map((solution) => (
@@ -383,14 +386,14 @@ export default function LandingPage() {
                   <div>
                     <h3 className="text-sm font-semibold text-white">Pipeline overview</h3>
                     <p className="mt-2 text-sm text-zinc-400">
-                      Visualize stages, forecast hiring velocity, and adjust priorities in minutes.
+                      Visualize stages, focus on aging applications, and adjust priorities in minutes.
                     </p>
                   </div>
                   <div className="space-y-4">
                     {[
-                      "Sourcing insights powered by enrichment data.",
-                      "Interviews aligned with collaborative scorecards.",
-                      "Offers tracked with customizable approval flows.",
+                      "Status breakdowns that surface what needs your attention.",
+                      "Saved filters for roles, companies, or locations you want to revisit.",
+                      "Notes, documents, and decisions pinned to every opportunity.",
                     ].map((item) => (
                       <div key={item} className="flex items-center gap-3">
                         <span className="h-2 w-2 rounded-full bg-zinc-500" aria-hidden />
@@ -404,39 +407,39 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="solutions" className="border-b border-zinc-800 bg-zinc-950">
+        <section id="workflow" className="border-b border-zinc-800 bg-zinc-950">
           <div className="mx-auto max-w-7xl px-6 py-24">
             <div className="flex flex-col gap-12 lg:flex-row lg:items-center">
               <div className="lg:w-2/5">
-                <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Solutions</p>
+                <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Workflow</p>
                 <h2 className="mt-6 text-3xl font-semibold text-white sm:text-4xl">
-                  Designed for teams scaling with intention.
+                  Designed around the way job seekers actually work.
                 </h2>
                 <p className="mt-4 text-lg text-zinc-400">
-                  Whether you are hiring your first ten employees or expanding globally, Ferm adapts to your structure and keeps your brand consistent.
+                  Ferm fits alongside whatever mix of outreach, referrals, and interview loops you are navigating today.
                 </p>
               </div>
               <div className="grid flex-1 gap-8 sm:grid-cols-2">
                 {[
                   {
-                    title: "Talent operations",
+                    title: "Active searchers",
                     description:
-                      "Establish repeatable processes, automate handoffs, and maintain compliance without slowing down momentum.",
+                      "Track dozens of open roles, attach resumes or notes, and know which conversations are still warm.",
                   },
                   {
-                    title: "People teams",
+                    title: "Career switchers",
                     description:
-                      "Align stakeholders with insights that connect talent planning to business outcomes in one view.",
+                      "Organize networking follow-ups and interview prep alongside applications as you pivot into something new.",
                   },
                   {
-                    title: "Recruiting agencies",
+                    title: "Mentored journeys",
                     description:
-                      "Deliver white-labeled candidate journeys and status updates for every client engagement.",
+                      "Share updates with mentors or career coaches by exporting progress, no custom spreadsheet formulas required.",
                   },
                   {
-                    title: "Hiring managers",
+                    title: "Offer tracking",
                     description:
-                      "Collaborate on job scopes, interview feedback, and final offers with clarity and accountability.",
+                      "Document compensation details and decisions so you can compare opportunities with confidence.",
                   },
                 ].map((item) => (
                   <div key={item.title} className="rounded-2xl border border-zinc-800 p-6">
@@ -449,29 +452,23 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="resources" className="border-b border-zinc-800">
+        <section id="tools" className="border-b border-zinc-800">
           <div className="mx-auto max-w-7xl px-6 py-24">
             <div className="flex flex-col gap-12 lg:flex-row lg:items-start">
               <div className="lg:w-1/3">
-                <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Resources</p>
+                <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Tools</p>
                 <h2 className="mt-6 text-3xl font-semibold text-white sm:text-4xl">
-                  Guidance for every hiring milestone.
+                  Practical tools that ship with Ferm today.
                 </h2>
                 <p className="mt-4 text-lg text-zinc-400">
-                  Access expert-backed frameworks and live conversations to help your team operate with confidence.
+                  Ferm focuses on the workflows that matter right now: keeping applications organized and making the next decision easy.
                 </p>
               </div>
               <div className="grid flex-1 gap-8 sm:grid-cols-3">
-                {resources.map((resource) => (
-                  <div key={resource.title} className="rounded-2xl border border-zinc-800 p-6">
-                    <h3 className="text-lg font-semibold text-white">{resource.title}</h3>
-                    <p className="mt-3 text-sm text-zinc-400">{resource.description}</p>
-                    <a
-                      href="#"
-                      className="mt-6 inline-block text-sm font-medium text-zinc-300 transition hover:text-white"
-                    >
-                      Explore {resource.title.toLowerCase()}
-                    </a>
+                {includedTools.map((tool) => (
+                  <div key={tool.title} className="rounded-2xl border border-zinc-800 p-6">
+                    <h3 className="text-lg font-semibold text-white">{tool.title}</h3>
+                    <p className="mt-3 text-sm text-zinc-400">{tool.description}</p>
                   </div>
                 ))}
               </div>
@@ -484,26 +481,36 @@ export default function LandingPage() {
             <div className="text-center">
               <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Pricing</p>
               <h2 className="mt-6 text-3xl font-semibold text-white sm:text-4xl">
-                Choose the plan that grows with your team.
+                Start free while we build alongside you.
               </h2>
               <p className="mt-4 text-lg text-zinc-400">
-                Start for free and add the capabilities you need as hiring accelerates.
+                Ferm is currently in open beta. Join today and help shape the roadmap.
               </p>
             </div>
-            <div className="mt-16 grid gap-8 sm:grid-cols-3">
+            <div className="mt-16 grid gap-8 sm:grid-cols-2">
               {pricingTiers.map((tier) => (
                 <div key={tier.name} className="flex flex-col justify-between rounded-2xl border border-zinc-800 p-8">
                   <div>
                     <h3 className="text-lg font-semibold text-white">{tier.name}</h3>
                     <p className="mt-2 text-2xl font-semibold text-white">{tier.price}</p>
+                    <p className="mt-3 text-sm text-zinc-400">{tier.description}</p>
                     <ul className="mt-6 space-y-3 text-sm text-zinc-400">
                       {tier.details.map((detail) => (
                         <li key={detail}>{detail}</li>
                       ))}
                     </ul>
                   </div>
-                  <button className="mt-10 rounded-full border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:text-white">
-                    Contact sales
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (tier.available) {
+                        openModal("signup")
+                      }
+                    }}
+                    disabled={!tier.available}
+                    className="mt-10 rounded-full border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:border-zinc-800 disabled:text-zinc-500"
+                  >
+                    {tier.cta}
                   </button>
                 </div>
               ))}
@@ -514,25 +521,25 @@ export default function LandingPage() {
         <section className="border-b border-zinc-800">
           <div className="mx-auto max-w-7xl px-6 py-24">
             <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-12 text-center">
-              <h2 className="text-3xl font-semibold text-white sm:text-4xl">
-                Ready to bring certainty to your hiring roadmap?
-              </h2>
+              <h2 className="text-3xl font-semibold text-white sm:text-4xl">Ready to run your search with confidence?</h2>
               <p className="mt-4 text-lg text-zinc-400">
-                Join companies that run their recruiting operations on Ferm.
+                Create a Ferm workspace to centralize applications, prepare for interviews, and make decisions with clarity.
               </p>
               <div className="mt-10 flex flex-wrap justify-center gap-4">
-                <a
-                  href="#"
+                <button
+                  type="button"
+                  onClick={() => openModal("signup")}
                   className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
                 >
-                  Request a demo
-                </a>
-                <a
-                  href="#"
+                  Create an account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openModal("signin")}
                   className="rounded-full border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:text-white"
                 >
-                  Talk to an expert
-                </a>
+                  Log in
+                </button>
               </div>
             </div>
           </div>
@@ -676,7 +683,7 @@ export default function LandingPage() {
               <div className="text-center text-sm text-zinc-400">
                 {modalView === "signin" && (
                   <p>
-                    Don't have an account?{" "}
+                    Don&apos;t have an account?{" "}
                     <button
                       type="button"
                       onClick={() => switchView("signup")}
