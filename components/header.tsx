@@ -122,10 +122,14 @@ export function Header() {
 
   const handleSignOut = useCallback(async () => {
     await supabase.auth.signOut()
-    await revalidateApplications()
+    await mutate(
+      (key) => typeof key === "string" && key.startsWith("/api/job-applications"),
+      undefined,
+      { revalidate: false },
+    )
     router.replace("/landing")
     router.refresh()
-  }, [revalidateApplications, router, supabase])
+  }, [mutate, router, supabase])
 
   const submitApplication = useCallback(async (application: CreateJobApplicationData) => {
     try {
