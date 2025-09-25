@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Download, X } from "lucide-react"
+import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 
 interface BulkActionsProps {
   selectedCount: number
   onBulkStatusUpdate: (status: string) => void
-  onBulkDelete: () => void
+  onBulkDelete: () => Promise<void>
   onBulkExport: () => void
   onClearSelection: () => void
 }
@@ -32,6 +33,7 @@ export function BulkActions({
 }: BulkActionsProps) {
   const [bulkStatus, setBulkStatus] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -100,7 +102,7 @@ export function BulkActions({
             Export
           </Button>
 
-          <Button variant="destructive" size="sm" onClick={onBulkDelete}>
+          <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
             <Trash2 className="mr-1 h-4 w-4" />
             Delete
           </Button>
@@ -110,6 +112,18 @@ export function BulkActions({
           </Button>
         </div>
       </div>
+      <DeleteConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete selected applications"
+        description={`Are you sure you want to delete ${selectedCount} selected application${
+          selectedCount === 1 ? "" : "s"
+        }? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          await onBulkDelete()
+        }}
+      />
     </div>
   )
 

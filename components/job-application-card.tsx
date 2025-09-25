@@ -1,4 +1,5 @@
 "use client"
+import { useState } from "react"
 import type { KeyboardEvent, MouseEvent } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +10,7 @@ import { StatusUpdateDialog } from "@/components/status-update-dialog"
 import { JobDetailsDialog } from "@/components/job-details-dialog"
 import { EditApplicationDialog } from "@/components/edit-application-dialog"
 import { AddNoteDialog } from "@/components/add-note-dialog"
+import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import type { JobApplication } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +31,8 @@ const statusColors = {
 }
 
 export function JobApplicationCard({ application, isSelected, onSelect, onUpdate }: JobApplicationCardProps) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
@@ -56,19 +60,22 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
     }
   }
 
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this application?")) return
-
+  const deleteApplication = async () => {
     try {
       const response = await fetch(`/api/job-applications/${application.id}`, {
         method: "DELETE",
       })
 
-      if (response.ok && onUpdate) {
+      if (!response.ok) {
+        throw new Error("Failed to delete application")
+      }
+
+      if (onUpdate) {
         onUpdate()
       }
     } catch (error) {
       console.error("Failed to delete application:", error)
+      throw error
     }
   }
 
@@ -105,9 +112,13 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
     if (!onSelect) return
 
     const target = event.target as HTMLElement
+    if (event.defaultPrevented) {
+      return
+    }
+
     if (
       target.closest(
-        "button, a, [role='button'], input, textarea, select, [data-prevent-card-toggle]",
+        "button, a, [role='button'], input, textarea, select, [data-prevent-card-toggle='true']",
       )
     ) {
       return
@@ -162,16 +173,49 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
                 <EditApplicationDialog
                   application={application}
                   onUpdate={onUpdate || (() => {})}
-                  trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>Edit Application</DropdownMenuItem>}
+                  trigger={
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }}
+                    >
+                      Edit Application
+                    </DropdownMenuItem>
+                  }
                 />
                 <AddNoteDialog
                   applicationId={application.id}
                   currentNotes={application.notes || ""}
                   onUpdate={onUpdate || (() => {})}
-                  trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>Add Note</DropdownMenuItem>}
+                  trigger={
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }}
+                    >
+                      Add Note
+                    </DropdownMenuItem>
+                  }
                 />
-                <DropdownMenuItem onClick={handleDuplicate}>Duplicate</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive" onClick={handleDelete}>
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    handleDuplicate()
+                  }}
+                >
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setIsDeleteDialogOpen(true)
+                  }}
+                >
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -230,6 +274,14 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
           <div className="text-xs text-muted-foreground sm:text-right">ID: {application.id.slice(0, 8)}</div>
         </div>
       </CardContent>
+      <DeleteConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete application"
+        description={`Are you sure you want to delete the application for ${application.position_title} at ${application.company_name}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={deleteApplication}
+      />
     </Card>
   )
 }

@@ -147,8 +147,6 @@ export default function Dashboard() {
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${selectedApplications.length} applications?`)) return
-
     try {
       const response = await fetch("/api/job-applications/bulk", {
         method: "DELETE",
@@ -158,12 +156,15 @@ export default function Dashboard() {
         }),
       })
 
-      if (response.ok) {
-        setSelectedApplications([])
-        mutate()
+      if (!response.ok) {
+        throw new Error("Failed to bulk delete applications")
       }
+
+      setSelectedApplications([])
+      mutate()
     } catch (error) {
       console.error("Failed to bulk delete applications:", error)
+      throw error
     }
   }
 
