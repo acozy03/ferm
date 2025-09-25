@@ -1,0 +1,23 @@
+# Node and Next.js build artifacts
+node_modules
+.next
+out
+
+# Local env files
+.env
+.env.*
+
+# Git
+.git
+.gitignore
+
+# Editor directories and files
+.vscode
+.idea
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
