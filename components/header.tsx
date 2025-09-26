@@ -21,6 +21,7 @@ import {
   Upload,
   LogOut,
   UserRound,
+  Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,6 +77,8 @@ export function Header() {
   const searchParams = useSearchParams()
   const { mutate } = useSWRConfig()
   const { supabase, user, isLoading: isAuthLoading } = useSupabase()
+
+  const isDashboard = pathname === "/"
 
   const currentFilters = useMemo(() => parseJobApplicationFilters(searchParams), [searchParams])
   const activeFilterCount = useMemo(() => countJobFilters(currentFilters), [currentFilters])
@@ -267,11 +270,11 @@ export function Header() {
 
   return (
     <header className="fixed top-4 left-0 right-0 z-50">
-      <div className="max-w-[83rem] mx-auto px-6">
+      <div className="max-w-[83rem] mx-auto px-3 sm:px-6">
         <div className="border border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 rounded-xl shadow-lg">
-          <div className="flex h-14 items-center justify-between px-6">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
+          <div className="flex h-12 sm:h-14 items-center justify-between px-3 sm:px-6">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -326,77 +329,158 @@ export function Header() {
                 })}
               </nav>
             </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "gap-2 bg-transparent",
-                  hasSearch && "border-primary text-primary shadow-sm",
-                )}
-                onClick={() => setIsSearchOpen(true)}
-              >
-                <Search className="h-4 w-4" />
-                Search
-                {hasSearch && <span className="inline-flex h-2 w-2 rounded-full bg-primary" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "gap-2 bg-transparent",
-                  activeFilterCount > 0 && "border-primary text-primary shadow-sm",
-                )}
-                onClick={() => setIsFilterOpen(true)}
-              >
-                <Filter className="h-4 w-4" />
-                Filter
-                {activeFilterCount > 0 && (
-                  <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full bg-primary/15 px-2 text-xs font-medium text-primary">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </Button>
-              <ImportApplicationsDialog
-                onImport={handleImportApplications}
-                trigger={
-                  <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                    <Upload className="h-4 w-4" />
-                    Import
-                  </Button>
-                }
-              />
-              <AddApplicationDialog onAdd={handleAddApplication} />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 bg-transparent"
-                    disabled={isAuthLoading}
-                  >
-                    <UserRound className="h-4 w-4" />
-                    <span className="truncate max-w-[8rem] text-left">
-                      {user?.email ?? "Account"}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className={cn("items-center gap-2 sm:gap-3", isDashboard ? "hidden sm:flex" : "flex")}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "gap-2 bg-transparent",
+                    hasSearch && "border-primary text-primary shadow-sm",
+                  )}
+                  onClick={() => setIsSearchOpen(true)}
+                >
+                  <Search className="h-4 w-4" />
+                  Search
+                  {hasSearch && <span className="inline-flex h-2 w-2 rounded-full bg-primary" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "gap-2 bg-transparent",
+                    activeFilterCount > 0 && "border-primary text-primary shadow-sm",
+                  )}
+                  onClick={() => setIsFilterOpen(true)}
+                >
+                  <Filter className="h-4 w-4" />
+                  Filter
+                  {activeFilterCount > 0 && (
+                    <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full bg-primary/15 px-2 text-xs font-medium text-primary">
+                      {activeFilterCount}
                     </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="truncate">{user?.email ?? "Signed in"}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled>Signed in with Google</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={(event) => {
-                      event.preventDefault()
-                      void handleSignOut()
-                    }}
+                  )}
+                </Button>
+                <ImportApplicationsDialog
+                  onImport={handleImportApplications}
+                  trigger={
+                    <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                      <Upload className="h-4 w-4" />
+                      Import
+                    </Button>
+                  }
+                />
+                <AddApplicationDialog onAdd={handleAddApplication} />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 bg-transparent"
+                      disabled={isAuthLoading}
+                    >
+                      <UserRound className="h-4 w-4" />
+                      <span className="truncate max-w-[8rem] text-left">
+                        {user?.email ?? "Account"}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="truncate">{user?.email ?? "Signed in"}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem disabled>Signed in with Google</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        void handleSignOut()
+                      }}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {isDashboard && (
+                <div className="flex items-center gap-1.5 sm:hidden">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("relative bg-transparent", hasSearch && "text-primary")}
+                    onClick={() => setIsSearchOpen(true)}
+                    aria-label="Open search"
                   >
-                    <LogOut className="h-4 w-4" />
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <Search className="h-5 w-5" />
+                    {hasSearch && (
+                      <span className="absolute top-1 right-1 inline-flex h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("relative bg-transparent", activeFilterCount > 0 && "text-primary")}
+                    onClick={() => setIsFilterOpen(true)}
+                    aria-label="Open filters"
+                  >
+                    <Filter className="h-5 w-5" />
+                    {activeFilterCount > 0 && (
+                      <span className="absolute -top-1 -right-1 inline-flex min-w-[1.25rem] justify-center rounded-full bg-primary px-1 text-[0.625rem] font-medium text-primary-foreground">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </Button>
+                  <AddApplicationDialog
+                    onAdd={handleAddApplication}
+                    trigger={
+                      <Button
+                        size="icon"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        aria-label="Add application"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-transparent"
+                        disabled={isAuthLoading}
+                        aria-label="Open account menu"
+                      >
+                        <UserRound className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel className="truncate">{user?.email ?? "Signed in"}</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <ImportApplicationsDialog
+                        onImport={handleImportApplications}
+                        trigger={
+                          <DropdownMenuItem className="gap-2">
+                            <Upload className="h-4 w-4" />
+                            Import applications
+                          </DropdownMenuItem>
+                        }
+                      />
+                      <DropdownMenuItem disabled>Signed in with Google</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={(event) => {
+                          event.preventDefault()
+                          void handleSignOut()
+                        }}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sign out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
           </div>
         </div>
