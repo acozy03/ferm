@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ActivityDetailsDialog } from "@/components/activity-details-dialog"
 import { ArrowRight } from "lucide-react"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -206,12 +207,29 @@ export default function ApplicationsPage() {
                   <p>No recent activity yet. Add an application to get started.</p>
                 ) : (
                   upcomingTasks.map((activity) => (
-                    <div key={activity.id} className="border rounded-lg p-3 space-y-1">
-                      <p className="text-foreground text-pretty">{activity.description}</p>
-                      <p className="text-xs">
-                        {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
-                      </p>
-                    </div>
+                    <ActivityDetailsDialog
+                      key={activity.id}
+                      activity={activity}
+                      trigger={
+                        <button
+                          type="button"
+                          className="w-full rounded-lg border p-3 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <p className="text-foreground text-pretty">{activity.description}</p>
+                          {activity.job_applications ? (
+                            <p className="text-xs font-medium text-foreground">
+                              {activity.job_applications.position_title}
+                              <span className="text-muted-foreground"> • {activity.job_applications.company_name}</span>
+                            </p>
+                          ) : (
+                            <p className="text-xs italic text-muted-foreground">Application removed</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                          </p>
+                        </button>
+                      }
+                    />
                   ))
                 )}
               </CardContent>

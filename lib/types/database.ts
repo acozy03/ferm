@@ -51,12 +51,19 @@ export interface InterviewWithApplication extends Interview {
 export interface ActivityLog {
   id: string
   user_id: string
-  job_application_id: string
+  job_application_id: string | null
+  job_application_reference?: string | null
+  job_company_snapshot?: string | null
+  job_position_snapshot?: string | null
   action_type: ActivityType
   description: string
-  old_value?: string
-  new_value?: string
+  old_value?: string | null
+  new_value?: string | null
   created_at: string
+}
+
+export interface ActivityLogWithApplication extends ActivityLog {
+  job_applications?: Pick<JobApplication, "company_name" | "position_title"> | null
 }
 
 // Extended types with relations
@@ -136,3 +143,4 @@ export interface JobApplicationSort {
   field: keyof JobApplication
   direction: "asc" | "desc"
 }
+
