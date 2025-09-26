@@ -6,66 +6,16 @@ import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent }
 import { cn } from "@/lib/utils"
 
 const KNOB_SIZE = 12
-const SCROLLABLE_OVERFLOW_VALUES = new Set(["auto", "scroll", "overlay"])
 
 const clamp = (value: number, min: number, max: number) => {
   if (Number.isNaN(value)) return min
   return Math.min(Math.max(value, min), max)
 }
 
-const isScrollableElement = (element: HTMLElement) => {
-  const style = window.getComputedStyle(element)
-  const overflowY = style.overflowY
-  const overflow = style.overflow
+const SCROLL_STEP = 0.05
 
-  const allowsScroll =
-    SCROLLABLE_OVERFLOW_VALUES.has(overflowY) || SCROLLABLE_OVERFLOW_VALUES.has(overflow)
-
-  return allowsScroll && element.scrollHeight > element.clientHeight + 1
-}
-
-const eventHasNativeScrollableTarget = (event: Event) => {
-  if (typeof window === "undefined") return false
-
-  const path = typeof event.composedPath === "function" ? event.composedPath() : []
-  const elements: HTMLElement[] = []
-
-  if (path.length > 0) {
-    for (const entry of path) {
-      if (entry instanceof HTMLElement) {
-        elements.push(entry)
-      }
-    }
-  } else {
-    const target = event.target
-    if (target instanceof HTMLElement) {
-      let current: HTMLElement | null = target
-      while (current) {
-        elements.push(current)
-        current = current.parentElement
-      }
-    }
-  }
-
-  for (const element of elements) {
-    if (element.dataset.scrollRail === "force") {
-      break
-    }
-
-    if (element.dataset.scrollRail === "ignore") {
-      return true
-    }
-
-    if (element === document.body || element === document.documentElement) {
-      break
-    }
-
-    if (isScrollableElement(element)) {
-      return true
-    }
-  }
-
-  return false
+interface ScrollToProgressOptions {
+  smooth?: boolean
 }
 
 export function MinimalScrollRail() {
@@ -74,7 +24,7 @@ export function MinimalScrollRail() {
   const trackRef = useRef<HTMLDivElement | null>(null)
 
   const getScrollMetrics = useCallback(() => {
-    const root = document.scrollingElement ?? document.documentElement
+    const root = (document.scrollingElement ?? document.documentElement) as HTMLElement
     const maxScroll = root.scrollHeight - root.clientHeight
 
     return { root, maxScroll }
@@ -90,144 +40,35 @@ export function MinimalScrollRail() {
     setProgress(root.scrollTop / maxScroll)
   }, [getScrollMetrics])
 
-  const scrollToProgress = useCallback((value: number) => {
-    const { root, maxScroll } = getScrollMetrics()
-    if (maxScroll <= 0) return
+  const scrollToProgress = useCallback(
+    (value: number, options: ScrollToProgressOptions = {}) => {
+      const { root, maxScroll } = getScrollMetrics()
+      if (maxScroll <= 0) return
 
-    const next = clamp(value, 0, 1) * maxScroll
-    root.scrollTo({ top: next })
-  }, [getScrollMetrics])
-
-  const applyDelta = useCallback((delta: number) => {
-    if (delta === 0) return
-
-    const { root, maxScroll } = getScrollMetrics()
-    if (maxScroll <= 0) return
-
-    const next = clamp(root.scrollTop + delta, 0, maxScroll)
-    root.scrollTo({ top: next })
-  }, [getScrollMetrics])
+      const next = clamp(value, 0, 1) * maxScroll
+      root.scrollTo({ top: next, behavior: options.smooth ? "smooth" : "auto" })
+    },
+    [getScrollMetrics],
+  )
 
   useEffect(() => {
     updateProgress()
   }, [updateProgress])
 
   useEffect(() => {
-    const handleScroll = () => updateProgress()
+    const handle = () => updateProgress()
 
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    window.addEventListener("resize", handleScroll)
+    window.addEventListener("scroll", handle, { passive: true })
+    window.addEventListener("resize", handle)
 
     return () => {
-      window.removeEventListener("scroll", handleScroll)
-      window.removeEventListener("resize", handleScroll)
+      window.removeEventListener("scroll", handle)
+      window.removeEventListener("resize", handle)
     }
   }, [updateProgress])
 
-  useEffect(() => {
-    const handleWheel = (event: WheelEvent) => {
-      if (eventHasNativeScrollableTarget(event)) {
-        return
-      }
-
-      event.preventDefault()
-      applyDelta(event.deltaY)
-    }
-
-    window.addEventListener("wheel", handleWheel, { passive: false })
-
-    return () => window.removeEventListener("wheel", handleWheel)
-  }, [applyDelta])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case "ArrowDown":
-        case "ArrowRight":
-          event.preventDefault()
-          applyDelta(window.innerHeight * 0.1)
-          break
-        case "ArrowUp":
-        case "ArrowLeft":
-          event.preventDefault()
-          applyDelta(-window.innerHeight * 0.1)
-          break
-        case "PageDown":
-          event.preventDefault()
-          applyDelta(window.innerHeight * 0.9)
-          break
-        case "PageUp":
-          event.preventDefault()
-          applyDelta(-window.innerHeight * 0.9)
-          break
-        case "Home":
-          event.preventDefault()
-          const { root } = getScrollMetrics()
-          root.scrollTo({ top: 0 })
-          break
-        case "End":
-          event.preventDefault()
-          {
-            const { root, maxScroll } = getScrollMetrics()
-            if (maxScroll <= 0) return
-            root.scrollTo({ top: maxScroll })
-          }
-          break
-        default:
-          break
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [applyDelta, getScrollMetrics])
-
-  useEffect(() => {
-    let lastTouchY: number | null = null
-
-    const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length === 0) return
-      lastTouchY = event.touches[0].clientY
-    }
-
-    const handleTouchMove = (event: TouchEvent) => {
-      if (lastTouchY === null) return
-      const currentY = event.touches[0]?.clientY
-      if (currentY === undefined) return
-
-      const delta = lastTouchY - currentY
-      if (Math.abs(delta) < 1) return
-
-      if (eventHasNativeScrollableTarget(event)) {
-        lastTouchY = currentY
-        return
-      }
-
-      event.preventDefault()
-      applyDelta(delta)
-      lastTouchY = currentY
-    }
-
-    const reset = () => {
-      lastTouchY = null
-    }
-
-    window.addEventListener("touchstart", handleTouchStart, { passive: false })
-    window.addEventListener("touchmove", handleTouchMove, { passive: false })
-    window.addEventListener("touchend", reset)
-    window.addEventListener("touchcancel", reset)
-
-    return () => {
-      window.removeEventListener("touchstart", handleTouchStart)
-      window.removeEventListener("touchmove", handleTouchMove)
-      window.removeEventListener("touchend", reset)
-      window.removeEventListener("touchcancel", reset)
-    }
-  }, [applyDelta])
-
   const pointerToProgress = useCallback(
-    (clientY: number) => {
+    (clientY: number, options: ScrollToProgressOptions = {}) => {
       const track = trackRef.current
       if (!track) return
 
@@ -235,7 +76,7 @@ export function MinimalScrollRail() {
       if (height === 0) return
 
       const relativeY = clamp((clientY - top) / height, 0, 1)
-      scrollToProgress(relativeY)
+      scrollToProgress(relativeY, options)
     },
     [scrollToProgress],
   )
@@ -244,7 +85,7 @@ export function MinimalScrollRail() {
     event.preventDefault()
     isDraggingRef.current = true
     event.currentTarget.setPointerCapture(event.pointerId)
-    pointerToProgress(event.clientY)
+    pointerToProgress(event.clientY, { smooth: true })
   }
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -261,8 +102,15 @@ export function MinimalScrollRail() {
   }
 
   const handleTrackClick = (event: ReactMouseEvent<HTMLDivElement>) => {
-    pointerToProgress(event.clientY)
+    pointerToProgress(event.clientY, { smooth: true })
   }
+
+  const bumpProgress = useCallback(
+    (delta: number) => {
+      scrollToProgress(progress + delta, { smooth: true })
+    },
+    [progress, scrollToProgress],
+  )
 
   return (
     <div className="pointer-events-none fixed bottom-0 right-6 top-0 hidden w-8 items-center sm:flex">
@@ -293,16 +141,16 @@ export function MinimalScrollRail() {
           onKeyDown={(event) => {
             if (event.key === "ArrowDown" || event.key === "ArrowRight") {
               event.preventDefault()
-              scrollToProgress(progress + 0.05)
+              bumpProgress(SCROLL_STEP)
             } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
               event.preventDefault()
-              scrollToProgress(progress - 0.05)
+              bumpProgress(-SCROLL_STEP)
             } else if (event.key === "Home") {
               event.preventDefault()
-              scrollToProgress(0)
+              scrollToProgress(0, { smooth: true })
             } else if (event.key === "End") {
               event.preventDefault()
-              scrollToProgress(1)
+              scrollToProgress(1, { smooth: true })
             }
           }}
         >

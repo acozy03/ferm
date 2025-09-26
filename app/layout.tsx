@@ -5,6 +5,7 @@ import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import "./globals.css"
+import { MinimalScrollRail } from "@/components/minimal-scroll-rail"
 import { Providers } from "./providers"
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ export default function RootLayout({
         <Providers>
           <Suspense fallback={null}>{children}</Suspense>
         </Providers>
+        <MinimalScrollRail />
         <Analytics />
       </body>
     </html>
