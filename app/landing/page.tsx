@@ -117,6 +117,10 @@ const submitLabels: Record<ModalView, { default: string; pending: string }> = {
   },
 }
 
+const PASSWORD_SPECIAL_CHAR_PATTERN = /[^A-Za-z0-9]/
+const PASSWORD_REQUIREMENT_MESSAGE = "Password must include at least one special character (e.g. !@#$%)."
+const DUPLICATE_EMAIL_MESSAGE = "An account with this email already exists. Try logging in or resetting your password."
+
 export default function LandingPage() {
   const router = useRouter()
   const { supabase, session, isLoading } = useSupabase()
@@ -130,6 +134,7 @@ export default function LandingPage() {
   const [authError, setAuthError] = useState<string | null>(null)
   const [formMessage, setFormMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const passwordHasRequiredSpecial = PASSWORD_SPECIAL_CHAR_PATTERN.test(password)
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -203,6 +208,7 @@ export default function LandingPage() {
 
     setIsSubmitting(true)
 
+    const sanitizedEmail = email.trim()
     const origin = typeof window === "undefined" ? "" : window.location.origin
     const next = redirectedFrom ? `?next=${encodeURIComponent(redirectedFrom)}` : ""
     const currentView = modalView
@@ -211,7 +217,7 @@ export default function LandingPage() {
     try {
       if (currentView === "signin") {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: sanitizedEmail,
           password,
         })
 
@@ -222,8 +228,45 @@ export default function LandingPage() {
 
         shouldCloseModal = true
       } else if (currentView === "signup") {
+        if (!passwordHasRequiredSpecial) {
+          setAuthError(PASSWORD_REQUIREMENT_MESSAGE)
+          return
+        }
+
+        let emailExists = false
+
+        try {
+          console.log("[signup] Checking email availability", sanitizedEmail)
+          const response = await fetch("/api/auth/check-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email: sanitizedEmail }),
+          })
+
+          if (response.ok) {
+            const data = (await response.json()) as { exists?: boolean }
+            console.log("[signup] Availability response", data)
+            emailExists = Boolean(data.exists)
+          } else {
+            console.warn("[signup] Availability request failed", response.status)
+            const errorPayload = (await response.json().catch(() => ({}))) as { error?: string }
+            if (errorPayload?.error) {
+              console.error("Email availability check failed:", errorPayload.error)
+            }
+          }
+        } catch (error) {
+          console.error("Email availability check failed:", error)
+        }
+
+        if (emailExists) {
+          setAuthError(DUPLICATE_EMAIL_MESSAGE)
+          return
+        }
+
         const { error } = await supabase.auth.signUp({
-          email,
+          email: sanitizedEmail,
           password,
           options: {
             emailRedirectTo: `${origin}/auth/callback${next}`,
@@ -231,14 +274,21 @@ export default function LandingPage() {
         })
 
         if (error) {
-          setAuthError(error.message)
+          const message = error.message ?? ""
+          if (message.toLowerCase().includes("already")) {
+            setAuthError(DUPLICATE_EMAIL_MESSAGE)
+          } else if (message) {
+            setAuthError(message)
+          } else {
+            setAuthError("We couldn't create your account. Please try again.")
+          }
           return
         }
 
         setFormMessage("Check your email for a verification link to finish setting up your account.")
         setModalView("signin")
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
           redirectTo: `${origin}/auth/update-password`,
         })
 
@@ -642,20 +692,25 @@ export default function LandingPage() {
                     </div>
                   )}
                   {modalView === "signup" && (
-                    <div className="space-y-2">
-                      <label htmlFor="login-confirm-password" className="block text-sm font-medium text-zinc-200">
-                        Confirm password
-                      </label>
-                      <input
-                        id="login-confirm-password"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(event) => setConfirmPassword(event.target.value)}
-                        required
-                        autoComplete="new-password"
-                        className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-500 focus:ring-0"
-                      />
-                    </div>
+                    <>
+                      <p className={`text-xs ${passwordHasRequiredSpecial ? "text-emerald-400" : "text-zinc-400"}`}>
+                        {PASSWORD_REQUIREMENT_MESSAGE}
+                      </p>
+                      <div className="space-y-2">
+                        <label htmlFor="login-confirm-password" className="block text-sm font-medium text-zinc-200">
+                          Confirm password
+                        </label>
+                        <input
+                          id="login-confirm-password"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(event) => setConfirmPassword(event.target.value)}
+                          required
+                          autoComplete="new-password"
+                          className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-500 focus:ring-0"
+                        />
+                      </div>
+                    </>
                   )}
                   {modalView === "signin" && (
                     <div className="flex justify-end">

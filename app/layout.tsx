@@ -14,8 +14,7 @@ export const runtime = 'nodejs';
 
 export const metadata: Metadata = {
   title: "ferm.dev - Job Application Tracker",
-  description: "Minimalistic job application tracking platform",
-  generator: "v0.app",
+  description: "Minimalistic job application tracking platform"
 }
 
 export default function RootLayout({

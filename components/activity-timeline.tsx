@@ -25,10 +25,25 @@ export function ActivityTimeline() {
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
-    const now = new Date()
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
 
-    if (diffInHours < 1) return "Just now"
+    if (Number.isNaN(date.getTime())) {
+      return "Just now"
+    }
+
+    const now = new Date()
+    let diffMs = now.getTime() - date.getTime()
+
+    if (diffMs < 0) {
+      diffMs = Math.abs(diffMs)
+    }
+
+    const diffInMinutes = Math.floor(diffMs / (1000 * 60))
+
+    if (diffInMinutes < 1) return "Just now"
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+
+    const diffInHours = Math.floor(diffInMinutes / 60)
+
     if (diffInHours < 24) return `${diffInHours}h ago`
     if (diffInHours < 48) return "Yesterday"
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
