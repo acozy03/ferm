@@ -6,7 +6,7 @@
 # next.js
 /.next/
 /out/
-
+ferm_extension
 # production
 /build
 

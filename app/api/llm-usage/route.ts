@@ -1,0 +1,84 @@
+// app/api/llm-usage/route.ts
+import { NextResponse } from "next/server"
+import { headers } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
+
+const DAILY_LIMIT = 20
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+
+// Simple CORS for the extension + dev
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*", // or echo the Origin header if you want stricter
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders })
+}
+
+export async function GET() {
+  try {
+    const hdrs = headers()
+    const authHeader = hdrs.get("authorization") || ""
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
+
+    if (!token) {
+      return NextResponse.json({ error: "Missing token" }, { status: 401, headers: corsHeaders })
+    }
+
+    // 1) Validate token with Supabase Auth
+    const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    })
+
+    if (!userResp.ok) {
+      const detail = await userResp.text()
+      return NextResponse.json({ error: "Invalid token", detail }, { status: 401, headers: corsHeaders })
+    }
+
+    const user = await userResp.json() as { id: string }
+    if (!user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders })
+    }
+
+    // 2) Create a Supabase client bound to THIS token so RLS works
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      }
+    )
+
+    // 3) Do the query as the authed user
+    const today = new Date().toISOString().split("T")[0]
+    const { data, error } = await supabase
+      .from("llm_usage")
+      .select("count")
+      .eq("user_id", user.id)
+      .eq("date", today)
+      .single()
+
+    // PGRST116 = no rows
+    if (error && (error as any).code !== "PGRST116") {
+      console.error("Database error fetching LLM usage:", error)
+      return NextResponse.json({ error: "Database error" }, { status: 500, headers: corsHeaders })
+    }
+
+    const count = data?.count ?? 0
+    const remaining = Math.max(0, DAILY_LIMIT - count)
+
+    return NextResponse.json({ count, limit: DAILY_LIMIT, remaining }, { headers: corsHeaders })
+  } catch (e: any) {
+    console.error("llm-usage handler error:", e)
+    return NextResponse.json({ error: "Server error" }, { status: 500, headers: corsHeaders })
+  }
+}
