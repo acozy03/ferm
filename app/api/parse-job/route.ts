@@ -1,7 +1,8 @@
 // app/api/parse-job/route.ts
 import { NextResponse } from "next/server"
 import { z } from "zod"
-
+import { headers } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
 const RequestBodySchema = z.object({
   raw_text: z.string().min(1, "raw_text required"),
   job_url: z.string().url(),
@@ -40,8 +41,31 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: Request) {
+  const hdrs = headers()
+  const authHeader = hdrs.get("authorization") || ""
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
 
-    
+  if (!token) {
+    return NextResponse.json({ error: "Missing token" }, { status: 401 })
+  }
+
+  // validate token against Supabase
+  const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  })
+
+  if (!userResp.ok) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const user = await userResp.json() as { id: string }
+  if (!user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
   // 1) Parse input
   let body: unknown
   try {
