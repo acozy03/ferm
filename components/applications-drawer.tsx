@@ -3,7 +3,14 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, Filter, Search, X } from "lucide-react"
 
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -241,11 +248,22 @@ export function ApplicationsDrawer({
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent position="right" className="sm:max-w-4xl">
-        <DrawerHeader className="pb-2">
+        <DrawerHeader className="relative pb-2 pr-12 sm:pr-16">
           <DrawerTitle>Application library</DrawerTitle>
           <DrawerDescription>
             Browse, search, and update any application without leaving your dashboard.
           </DrawerDescription>
+          <DrawerClose asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close applications drawer</span>
+            </Button>
+          </DrawerClose>
         </DrawerHeader>
 
         <div className="border-t">
@@ -271,11 +289,9 @@ export function ApplicationsDrawer({
                 ) : null}
               </div>
 
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span>{count} total applications</span>
-                <span aria-hidden>�</span>
+              <div className="text-sm text-muted-foreground">
                 <span>
-                  Page {page} of {totalPages}
+                  {count} applications · Page {page}/{totalPages}
                 </span>
               </div>
             </div>
@@ -430,10 +446,7 @@ export function ApplicationsDrawer({
               </div>
             </ScrollArea>
 
-            <div className="flex items-center justify-between">
-              <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-                Close
-              </Button>
+            <div className="flex justify-end">
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
