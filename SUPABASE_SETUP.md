@@ -150,6 +150,44 @@ If you encounter issues:
 2. Review the Supabase dashboard logs
 3. Ensure all environment variables are set correctly
 4. Verify the database schema matches the expected structure
+
+## Resume Storage Bucket Setup
+
+Follow these steps to configure Supabase Storage so each authenticated user can upload and manage a single resume file. The application expects a private bucket named `resumes` with row-level security policies that scope access to the owning user.
+
+1. In the Supabase dashboard, open **Storage → Buckets** and click **Create a new bucket**.
+   - Name the bucket `resumes`.
+   - Leave the bucket **Private** so files require authenticated access.
+   - Click **Create bucket**.
+2. With the new bucket selected, go to the **Policies** tab and add the following policies on the `storage.objects` table (replace `resumes` with your bucket name if you choose something different):
+
+   ```sql
+   -- Allow users to view files they own
+   create policy "Allow users to view their resume"
+     on storage.objects for select
+     using (bucket_id = 'resumes' and auth.uid() = owner);
+
+   -- Allow users to upload a resume into their folder
+   create policy "Allow users to upload their resume"
+     on storage.objects for insert
+     with check (bucket_id = 'resumes' and auth.uid() = owner);
+
+   -- Allow users to replace an existing resume
+   create policy "Allow users to update their resume"
+     on storage.objects for update
+     using (bucket_id = 'resumes' and auth.uid() = owner)
+     with check (bucket_id = 'resumes' and auth.uid() = owner);
+
+   -- Allow users to remove their resume entirely
+   create policy "Allow users to delete their resume"
+     on storage.objects for delete using (bucket_id = 'resumes' and auth.uid() = owner);
+   ```
+
+   These policies ensure users can list, upload, and delete only the files where they are marked as the owner. Supabase automatically sets the `owner` column to the authenticated user's ID when they upload through the client SDK.
+3. (Optional) In the **Settings → Usage limits** tab for the bucket, you can adjust the maximum file size if you want to allow larger resumes. The UI currently enforces a 5 MB limit.
+4. Restart your development server after creating the bucket to make sure environment variables and policies are picked up by the app.
+
+With the bucket and policies in place, the `/resume` page in the app will let users view their existing resume and upload a replacement file.
 \`\`\`
 
 ```json file="" isHidden

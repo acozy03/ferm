@@ -600,9 +600,9 @@ export default function LandingPage() {
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-10 text-sm text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
           <p>&copy; {new Date().getFullYear()} Ferm. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="#" className="transition hover:text-zinc-300">
+            <Link href="/privacy" className="transition hover:text-zinc-300">
               Privacy
-            </a>
+            </Link>
             <a href="#" className="transition hover:text-zinc-300">
               Terms
             </a>

@@ -22,6 +22,7 @@ import {
   LogOut,
   UserRound,
   Plus,
+  FileText,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -69,6 +70,7 @@ const NAV_ITEMS = [
   { label: "Applications", href: "/applications", icon: Briefcase },
   { label: "Companies", href: "/companies", icon: Building2 },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
+  { label: "Resume", href: "/resume", icon: FileText },
 ] as const
 
 export function Header() {
