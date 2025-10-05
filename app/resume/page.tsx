@@ -18,6 +18,7 @@ import { useSupabase } from "@/components/supabase-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
@@ -104,6 +105,8 @@ export default function ResumePage() {
   const [resume, setResume] = useState<ResumeInfo | null>(null)
   const [isFetching, setIsFetching] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const fileInputId = useId()
@@ -280,6 +283,53 @@ export default function ResumePage() {
     [fetchResume, supabase, user],
   )
 
+  const handleRemove = useCallback(async () => {
+    if (isRemoving) {
+      return
+    }
+
+    if (!resume) {
+      toast({ title: "Nothing to remove", description: "You don't have a resume uploaded yet." })
+      setIsRemoveDialogOpen(false)
+      return
+    }
+
+    if (!user) {
+      const message = "You need to be signed in to remove your resume."
+      setErrorMessage(message)
+      toast({ title: "Removal unavailable", description: message, variant: "destructive" })
+      setIsRemoveDialogOpen(false)
+      return
+    }
+
+    setIsRemoving(true)
+    setErrorMessage(null)
+
+    try {
+      const { error } = await supabase.storage.from(RESUME_BUCKET).remove([resume.path])
+
+      if (error) {
+        throw error
+      }
+
+      setResume(null)
+      await fetchResume()
+      toast({ title: "Resume removed", description: "Your resume has been deleted." })
+      setIsRemoveDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to remove resume:", error)
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Something went wrong while removing your resume. Please try again."
+      setErrorMessage(message)
+      toast({ title: "Removal failed", description: message, variant: "destructive" })
+      throw error instanceof Error ? error : new Error(String(error))
+    } finally {
+      setIsRemoving(false)
+    }
+  }, [fetchResume, isRemoving, resume, supabase, user])
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -325,7 +375,7 @@ export default function ResumePage() {
                   </AlertDescription>
                 </Alert>
               ) : resume ? (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-medium text-base">{resume.name}</p>
@@ -336,15 +386,46 @@ export default function ResumePage() {
                         {resume.size ? ` • ${formatFileSize(resume.size)}` : null}
                       </p>
                     </div>
-                    <Button asChild variant="outline">
-                      <a href={resume.signedUrl} target="_blank" rel="noopener noreferrer">
-                        Download resume
-                      </a>
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button asChild variant="outline">
+                        <a href={resume.signedUrl} target="_blank" rel="noopener noreferrer">
+                          Download resume
+                        </a>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="gap-2"
+                        onClick={() => setIsRemoveDialogOpen(true)}
+                        disabled={isUploading || isRemoving}
+                      >
+                        {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Remove resume
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     The download link is temporary for security and will refresh automatically when you revisit this page.
                   </p>
+                  {resume.name.toLowerCase().endsWith(".pdf") ? (
+                    <div className="overflow-hidden rounded-md border bg-muted/20">
+                      <iframe
+                        key={resume.signedUrl}
+                        src={`${resume.signedUrl}#toolbar=0&navpanes=0`}
+                        title="Resume preview"
+                        className="h-[720px] w-full"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+                      <p className="font-medium text-foreground">Preview unavailable</p>
+                      <p>
+                        Resume previews are currently limited to PDF files. Download the file above to view or upload a PDF to see
+                        it inline.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -365,13 +446,13 @@ export default function ResumePage() {
                   accept=".pdf,.doc,.docx"
                   className="sr-only"
                   onChange={handleUpload}
-                  disabled={isUploading}
+                  disabled={isUploading || isRemoving}
                 />
                 <Button
                   type="button"
                   variant="default"
                   onClick={promptForFile}
-                  disabled={isUploading}
+                  disabled={isUploading || isRemoving}
                   className="gap-2"
                 >
                   {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
@@ -382,6 +463,14 @@ export default function ResumePage() {
           </Card>
         </div>
       </main>
+      <DeleteConfirmationDialog
+        open={isRemoveDialogOpen}
+        onOpenChange={setIsRemoveDialogOpen}
+        title="Remove resume"
+        description="Are you sure you want to delete your saved resume? You can upload a new file at any time."
+        confirmLabel="Delete"
+        onConfirm={handleRemove}
+      />
     </div>
   )
 }

@@ -134,21 +134,11 @@ export function ApplicationsDrawer({
     const value = event.target.value
     setSearchTerm(value)
 
-    const nextFilters: JobApplicationFilters = {
-      ...filters,
-      search: value.trim().length > 0 ? value.trim() : undefined,
-    }
-
-    onFiltersChange(nextFilters)
     setPage(1)
   }
 
   const clearSearch = () => {
     setSearchTerm("")
-    onFiltersChange({
-      ...filters,
-      search: undefined,
-    })
     setPage(1)
   }
 
@@ -233,10 +223,6 @@ export function ApplicationsDrawer({
       })
     } else if (chip.type === "search") {
       setSearchTerm("")
-      onFiltersChange({
-        ...filters,
-        search: undefined,
-      })
     }
 
     setPage(1)
