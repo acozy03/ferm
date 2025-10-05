@@ -23,11 +23,9 @@ function normalizeEmploymentType(v: unknown) {
 }
 
 const LLMResponseSchema = z.object({
-  // classification
   is_valid_job_posting: z.boolean(),
   reason: z.string().nullable().optional(),
 
-  // fields (nullable if not present)
   company_name: z.string().nullable(),
   position_title: z.string().nullable(),
   location: z.string().nullable(),
@@ -38,6 +36,9 @@ const LLMResponseSchema = z.object({
   ),
   contact_person: z.string().nullable(),
   contact_email: z.string().email().nullable(),
+  job_description: z.string().nullable(),
+  qualifications: z.string().nullable(),
+  job_responsibilities: z.string().nullable(),
 });
 
 export const runtime = "nodejs";
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
   }
 
   // --- Call OpenAI ---
-  const prompt = `
+const prompt = `
 You are a strict job-posting classifier and parser.
 
 Task A (classify):
@@ -107,6 +108,13 @@ If valid, extract the following fields when possible. Use null if not found.
 - contact_person (string | null)
 - contact_email (string | null; must be a valid email if present)
 
+Additionally, extract the content into these 3 sections (use null if not present):
+- job_description (short paragraph summarizing the role, responsibilities & context)
+- qualifications (bulleted or newline-separated list synthesized from "Qualifications", "Requirements", or similar)
+- job_responsibilities (bulleted or newline-separated list synthesized from "Responsibilities", "What you'll do", or similar)
+
+If you found lists (bullets), preserve them as lines separated by "\\n". Avoid markdown symbols like "•" and "- " at the start of lines; use plain text.
+
 Return a single JSON object with EXACTLY these keys:
 {
   "is_valid_job_posting": boolean,
@@ -117,7 +125,10 @@ Return a single JSON object with EXACTLY these keys:
   "salary_range": string | null,
   "employment_type": "Full-time" | "Part-time" | "Contract" | "Internship" | null,
   "contact_person": string | null,
-  "contact_email": string | null
+  "contact_email": string | null,
+  "job_description": string | null,
+  "qualifications": string | null,
+  "job_responsibilities": string | null
 }
 
 Here is the raw text to analyze:
@@ -126,6 +137,7 @@ ${raw_text}
 ---
 URL: ${job_url}
 `
+
 
   try {
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
