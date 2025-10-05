@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils"
 
 function Drawer({
   shouldScaleBackground = false,
+  direction = "bottom",
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
   return (
     <DrawerPrimitive.Root
       data-slot="drawer"
       shouldScaleBackground={shouldScaleBackground}
+      direction={direction}
       {...props}
     />
   )
@@ -54,29 +56,42 @@ const DrawerOverlay = React.forwardRef<
 ))
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 
+type DrawerContentProps = React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & {
+  position?: "bottom" | "right"
+}
+
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DrawerPortal>
-    <DrawerOverlay />
-    <DrawerPrimitive.Content
-      ref={ref}
-      data-slot="drawer-content"
-      className={cn(
-        "fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-3xl border-x border-t border-border bg-background shadow-lg outline-none",
-        "data-[state=open]:animate-in data-[state=closed]:animate-out",
-        "data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
-        "data-[state=closed]:duration-300 data-[state=open]:duration-500",
-        className,
-      )}
-      {...props}
-    >
-      <div className="mx-auto mb-4 mt-2 h-2 w-12 rounded-full bg-muted" />
-      {children}
-    </DrawerPrimitive.Content>
-  </DrawerPortal>
-))
+  DrawerContentProps
+>(({ className, children, position = "bottom", ...props }, ref) => {
+  const isBottom = position === "bottom"
+
+  return (
+    <DrawerPortal>
+      <DrawerOverlay />
+      <DrawerPrimitive.Content
+        ref={ref}
+        data-slot="drawer-content"
+        className={cn(
+          "z-50 flex bg-background shadow-lg outline-none",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=closed]:duration-300 data-[state=open]:duration-500",
+          isBottom
+            ? "fixed inset-x-0 bottom-0 max-h-[90vh] flex-col rounded-t-3xl border-x border-t border-border"
+            : "fixed inset-y-0 right-0 h-full w-full max-w-full flex-col border-l border-border sm:max-w-[28rem] lg:max-w-[36rem]",
+          isBottom
+            ? "data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
+            : "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
+          className,
+        )}
+        {...props}
+      >
+        {isBottom ? <div className="mx-auto mb-4 mt-2 h-2 w-12 rounded-full bg-muted" /> : null}
+        {children}
+      </DrawerPrimitive.Content>
+    </DrawerPortal>
+  )
+})
 DrawerContent.displayName = DrawerPrimitive.Content.displayName
 
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {

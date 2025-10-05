@@ -19,125 +19,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
-
-const STORAGE_KEY = "ferm.settings"
-
-const timezoneOptions = [
-  { label: "Pacific Time (PT)", value: "America/Los_Angeles" },
-  { label: "Mountain Time (MT)", value: "America/Denver" },
-  { label: "Central Time (CT)", value: "America/Chicago" },
-  { label: "Eastern Time (ET)", value: "America/New_York" },
-  { label: "Greenwich Mean Time (GMT)", value: "Europe/London" },
-  { label: "Central European Time (CET)", value: "Europe/Berlin" },
-  { label: "India Standard Time (IST)", value: "Asia/Kolkata" },
-  { label: "Singapore Time (SGT)", value: "Asia/Singapore" },
-]
-
-const themeOptions = [
-  { label: "System", value: "system" },
-  { label: "Light", value: "light" },
-  { label: "Dark", value: "dark" },
-] as const
-
-const defaultViewOptions = [
-  { label: "Pipeline", value: "pipeline" },
-  { label: "Table", value: "table" },
-  { label: "Timeline", value: "timeline" },
-]
-
-const defaultSortOptions = [
-  { label: "Most recent", value: "recent" },
-  { label: "Upcoming interviews", value: "upcoming" },
-  { label: "Highest priority", value: "priority" },
-]
-
-const digestFrequencyOptions = [
-  { label: "Off", value: "off" },
-  { label: "Daily", value: "daily" },
-  { label: "Weekly", value: "weekly" },
-  { label: "Monthly", value: "monthly" },
-] as const
-
-type ThemePreference = (typeof themeOptions)[number]["value"]
-
-type DigestFrequency = (typeof digestFrequencyOptions)[number]["value"]
-
-type SettingsState = {
-  displayName: string
-  email: string
-  jobFocus: string
-  theme: ThemePreference
-  timezone: string
-  defaultView: string
-  defaultSort: string
-  digestFrequency: DigestFrequency
-  applicationReminders: boolean
-  interviewPrepReminders: boolean
-  weeklySummary: boolean
-  productUpdates: boolean
-  autoArchiveRejected: boolean
-  showArchived: boolean
-  shareAnalytics: boolean
-  interviewPrepChecklist: boolean
-  notesTemplate: string
-}
-
-const defaultSettings: SettingsState = {
-  displayName: "",
-  email: "",
-  jobFocus: "",
-  theme: "system",
-  timezone: "America/Los_Angeles",
-  defaultView: "pipeline",
-  defaultSort: "recent",
-  digestFrequency: "weekly",
-  applicationReminders: true,
-  interviewPrepReminders: true,
-  weeklySummary: true,
-  productUpdates: false,
-  autoArchiveRejected: false,
-  showArchived: false,
-  shareAnalytics: true,
-  interviewPrepChecklist: true,
-  notesTemplate:
-    "Hi {contact_name},\n\nThank you for taking the time to meet. I enjoyed learning more about {company_name} and the {role_name} opportunity.\n\nBest,\n{your_name}",
-}
+import {
+  defaultSettings,
+  defaultSortOptions,
+  defaultViewOptions,
+  digestFrequencyOptions,
+  themeOptions,
+  timezoneOptions,
+  type DigestFrequency,
+  type SettingsState,
+  type ThemePreference,
+} from "@/lib/settings"
+import { useSettings } from "@/components/settings-provider"
 
 interface SettingsDialogProps {
   trigger?: ReactNode
 }
 
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
+  const { settings, hasHydrated, updateSettings: saveSettings, resetSettings: restoreSettings } = useSettings()
   const [open, setOpen] = useState(false)
-  const [settings, setSettings] = useState<SettingsState>(defaultSettings)
-  const [draft, setDraft] = useState<SettingsState>(defaultSettings)
+  const [draft, setDraft] = useState<SettingsState>(settings)
   const [activeTab, setActiveTab] = useState("general")
-  const [hasHydrated, setHasHydrated] = useState(false)
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (!hasHydrated) {
       return
     }
 
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored) as Partial<SettingsState>
-        const merged = { ...defaultSettings, ...parsed }
-        setSettings(merged)
-        setDraft(merged)
-      } else {
-        setSettings(defaultSettings)
-        setDraft(defaultSettings)
-      }
-    } catch (error) {
-      console.error("Failed to load settings from localStorage", error)
-      setSettings(defaultSettings)
-      setDraft(defaultSettings)
-    } finally {
-      setHasHydrated(true)
-    }
-  }, [])
+    setDraft(settings)
+  }, [settings, hasHydrated])
 
   useEffect(() => {
     if (open) {
@@ -158,21 +69,8 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
 
-  const persistSettings = (nextSettings: SettingsState) => {
-    if (typeof window === "undefined") {
-      return
-    }
-
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSettings))
-    } catch (error) {
-      console.error("Failed to save settings to localStorage", error)
-    }
-  }
-
   const handleSave = () => {
-    setSettings(draft)
-    persistSettings(draft)
+    saveSettings(draft)
     toast({
       title: "Settings saved",
       description: "Your workspace preferences have been updated.",
@@ -181,11 +79,8 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   }
 
   const handleReset = () => {
+    restoreSettings()
     setDraft(defaultSettings)
-    setSettings(defaultSettings)
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY)
-    }
     toast({
       title: "Settings restored",
       description: "All preferences have been reset to their defaults.",

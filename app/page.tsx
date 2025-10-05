@@ -16,30 +16,47 @@ import { ApplicationsDrawer } from "@/components/applications-drawer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { createSearchParamsWithFilters, parseJobApplicationFilters } from "@/lib/job-filters"
 import type { JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
+import { useSettings } from "@/components/settings-provider"
 
 const serializeFilters = (filters: JobApplicationFilters) =>
   createSearchParamsWithFilters(new URLSearchParams(), filters).toString()
 
-const defaultSort: JobApplicationSort = { field: "created_at", direction: "desc" }
+const FALLBACK_SORT: JobApplicationSort = { field: "created_at", direction: "desc" }
+const sortPreferenceMap: Record<string, JobApplicationSort> = {
+  recent: FALLBACK_SORT,
+  upcoming: { field: "application_date", direction: "asc" },
+  priority: { field: "priority", direction: "asc" },
+}
 const DASHBOARD_PAGE_SIZE = 5
 
 export default function Dashboard() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const { settings } = useSettings()
 
   const filtersFromParams = useMemo(() => parseJobApplicationFilters(searchParams), [searchParams])
+
+  const preferredSort = useMemo<JobApplicationSort>(() => {
+    return sortPreferenceMap[settings.defaultSort] ?? FALLBACK_SORT
+  }, [settings.defaultSort])
 
   const sortFromParams = useMemo<JobApplicationSort>(() => {
     const fieldParam = searchParams.get("sort_field") as JobApplicationSort["field"] | null
     const directionParam = searchParams.get("sort_direction")
-    const direction: JobApplicationSort["direction"] = directionParam === "asc" ? "asc" : "desc"
+    const hasSortParams = Boolean(fieldParam) || Boolean(directionParam)
 
-    return {
-      field: fieldParam ?? defaultSort.field,
-      direction,
+    if (hasSortParams) {
+      const direction: JobApplicationSort["direction"] = directionParam === "asc" ? "asc" : "desc"
+
+      return {
+        field: fieldParam ?? preferredSort.field,
+        direction,
+      }
     }
-  }, [searchParams])
+
+    return preferredSort
+  }, [preferredSort, searchParams])
 
   const pageFromParams = useMemo(() => {
     const value = Number.parseInt(searchParams.get("page") ?? "1", 10)
@@ -90,10 +107,13 @@ export default function Dashboard() {
       params.delete("sort_direction")
       params.delete("page")
 
-      if (nextSort.field && nextSort.field !== defaultSort.field) {
+      const isSortFieldDefault = nextSort.field === preferredSort.field
+      const isSortDirectionDefault = nextSort.direction === preferredSort.direction
+
+      if (!isSortFieldDefault) {
         params.set("sort_field", nextSort.field)
       }
-      if (nextSort.direction && nextSort.direction !== defaultSort.direction) {
+      if (!isSortDirectionDefault || !isSortFieldDefault) {
         params.set("sort_direction", nextSort.direction)
       }
       if (nextPage > 1) {
@@ -103,7 +123,7 @@ export default function Dashboard() {
       const query = params.toString()
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
     },
-    [filters, sort, page, pathname, router, searchParams],
+    [filters, sort, page, pathname, preferredSort, router, searchParams],
   )
 
   const { applications, isLoading, error, mutate, count, total_pages: totalPagesFromResponse } = useJobApplications({

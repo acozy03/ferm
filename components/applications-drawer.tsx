@@ -239,8 +239,8 @@ export function ApplicationsDrawer({
   const hasActiveFilters = activeFilters.length > 0
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="sm:max-w-4xl sm:w-full">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent position="right" className="sm:max-w-4xl">
         <DrawerHeader className="pb-2">
           <DrawerTitle>Application library</DrawerTitle>
           <DrawerDescription>

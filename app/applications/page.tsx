@@ -13,13 +13,27 @@ import { ArrowRight } from "lucide-react"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useActivityLog } from "@/lib/hooks/use-activity-log"
+import { useSettings } from "@/components/settings-provider"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 export default function ApplicationsPage() {
+  const { settings } = useSettings()
   const { applications, isLoading, error } = useJobApplications({ limit: 100, include_interviews: true })
   const { interviews: upcomingInterviews, isLoading: isLoadingInterviews } = useInterviews({ upcoming_only: true })
   const { activities, isLoading: isLoadingActivity } = useActivityLog()
+
+  const interviewDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: settings.timezone,
+      }),
+    [settings.timezone],
+  )
 
   const pipelineSummary = useMemo(() => {
     const now = Date.now()
@@ -55,12 +69,7 @@ export default function ApplicationsPage() {
         label: "Interviews scheduled",
         value: upcomingInterviews.length,
         helper: nextInterview
-          ? `Next: ${new Date(nextInterview.scheduled_date).toLocaleString(undefined, {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}`
+          ? `Next: ${interviewDateFormatter.format(new Date(nextInterview.scheduled_date))}`
           : "No interviews scheduled",
       },
       {
@@ -70,7 +79,7 @@ export default function ApplicationsPage() {
           followUpsDue > 0 ? `${followUpsDue} ready for follow-up` : "All follow-ups are up to date",
       },
     ]
-  }, [applications, upcomingInterviews])
+  }, [applications, upcomingInterviews, interviewDateFormatter])
 
   const highlightedApplications = useMemo(() => {
     return [...applications]
@@ -174,12 +183,7 @@ export default function ApplicationsPage() {
                         {interview.job_applications?.company_name ?? "Unknown company"}
                       </p>
                       <p className="text-xs">
-                        {new Date(interview.scheduled_date).toLocaleString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
+                        {interviewDateFormatter.format(new Date(interview.scheduled_date))}
                       </p>
                       <p className="text-xs">
                         {interview.job_applications?.position_title ?? "Interview"} • {interview.interview_type}

@@ -1,9 +1,11 @@
 "use client"
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, MapPin, Video, Phone } from "lucide-react"
 import { useInterviews } from "@/lib/hooks/use-interviews"
+import { useSettings } from "@/components/settings-provider"
 
 const typeIcons = {
   Phone: Phone,
@@ -22,7 +24,40 @@ const typeColors = {
 }
 
 export function UpcomingInterviews() {
+  const { settings } = useSettings()
   const { interviews, isLoading, error } = useInterviews({ upcoming_only: true })
+
+  const calendarDayFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        timeZone: settings.timezone,
+      }),
+    [settings.timezone],
+  )
+
+  const dateLabelFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: settings.timezone,
+      }),
+    [settings.timezone],
+  )
+
+  const timeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: settings.timezone,
+      }),
+    [settings.timezone],
+  )
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -30,17 +65,17 @@ export function UpcomingInterviews() {
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    if (date.toDateString() === today.toDateString()) return "Today"
-    if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow"
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    const targetDay = calendarDayFormatter.format(date)
+    const todayDay = calendarDayFormatter.format(today)
+    const tomorrowDay = calendarDayFormatter.format(tomorrow)
+
+    if (targetDay === todayDay) return "Today"
+    if (targetDay === tomorrowDay) return "Tomorrow"
+    return dateLabelFormatter.format(date)
   }
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
+    return timeFormatter.format(new Date(dateString))
   }
 
   return (

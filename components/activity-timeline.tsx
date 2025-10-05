@@ -32,7 +32,8 @@ export function ActivityTimeline() {
   const { activities, isLoading, error } = useActivityLog()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const hasSearchFilter = searchTerm.trim().length > 0
+  const trimmedSearch = searchTerm.trim().toLowerCase()
+  const hasSearchFilter = trimmedSearch.length > 0
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
@@ -61,11 +62,9 @@ export function ActivityTimeline() {
   }
 
   const filteredActivities = useMemo(() => {
-    if (!searchTerm.trim()) {
+    if (!trimmedSearch) {
       return activities
     }
-
-    const query = searchTerm.trim().toLowerCase()
 
     return activities.filter((activity) => {
       const jobTitle = activity.job_applications?.position_title ?? activity.job_position_snapshot ?? ""
@@ -79,12 +78,12 @@ export function ActivityTimeline() {
       ]
         .join(" ")
         .toLowerCase()
-        .includes(query)
+        .includes(trimmedSearch)
     })
-  }, [activities, searchTerm])
+  }, [activities, trimmedSearch])
 
-  const limitedActivities = filteredActivities.slice(0, 6)
-  const hasMoreActivity = filteredActivities.length > limitedActivities.length
+  const limitedActivities = activities.slice(0, 6)
+  const hasMoreActivity = activities.length > limitedActivities.length
 
   const renderActivityItem = (item: ActivityLogWithApplication) => {
     const Icon = activityIcons[item.action_type] || Clock
@@ -155,14 +154,9 @@ export function ActivityTimeline() {
             </div>
           ) : error ? (
             <p className="text-sm text-destructive">Error loading activity</p>
-          ) : filteredActivities.length === 0 ? (
+          ) : activities.length === 0 ? (
             <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-              <span>{hasSearchFilter ? "No activity matches your search." : "No recent activity"}</span>
-              {hasSearchFilter ? (
-                <Button variant="link" size="sm" className="h-auto px-0" onClick={() => setSearchTerm("")}>
-                  Clear search
-                </Button>
-              ) : null}
+              <span>No recent activity</span>
             </div>
           ) : (
             <div className="relative space-y-3">
@@ -173,23 +167,21 @@ export function ActivityTimeline() {
             </div>
           )}
 
-          {filteredActivities.length > 0 ? (
+          {activities.length > 0 ? (
             <div className="mt-4 flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
-                Showing {Math.min(limitedActivities.length, filteredActivities.length)} of {filteredActivities.length} updates
+                Showing {Math.min(limitedActivities.length, activities.length)} of {activities.length} updates
               </p>
-              {filteredActivities.length > limitedActivities.length ? (
-                <Button variant="ghost" size="sm" onClick={() => setIsDrawerOpen(true)}>
-                  View all activity
-                </Button>
-              ) : null}
+              <Button variant="ghost" size="sm" onClick={() => setIsDrawerOpen(true)}>
+                View all activity
+              </Button>
             </div>
           ) : null}
         </CardContent>
       </Card>
 
-      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <DrawerContent className="sm:max-w-3xl">
+      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} direction="right">
+        <DrawerContent position="right" className="sm:max-w-3xl">
           <DrawerHeader>
             <DrawerTitle>Activity history</DrawerTitle>
             <DrawerDescription>Search every update tracked for your applications.</DrawerDescription>

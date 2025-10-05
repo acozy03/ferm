@@ -1,7 +1,12 @@
+"use client"
+
+import { useMemo } from "react"
 import useSWR from "swr"
 import type { JobApplication, JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
 import type { PaginatedResponse } from "@/lib/types/api"
 import { apiFetcher } from "@/lib/fetcher"
+import { useSettings } from "@/components/settings-provider"
+import { ACTIVE_STATUSES } from "@/lib/settings"
 
 interface UseJobApplicationsParams {
   page?: number
@@ -10,30 +15,58 @@ interface UseJobApplicationsParams {
   sort?: JobApplicationSort
   include_interviews?: boolean
   include_activity?: boolean
+  ignoreArchivePreference?: boolean
 }
 
 export function useJobApplications(params: UseJobApplicationsParams = {}) {
-  const searchParams = new URLSearchParams()
+  const { settings } = useSettings()
 
-  if (params.page) searchParams.set("page", params.page.toString())
-  if (params.limit) searchParams.set("limit", params.limit.toString())
-  if (params.include_interviews) searchParams.set("include_interviews", "true")
-  if (params.include_activity) searchParams.set("include_activity", "true")
+  const effectiveFilters = useMemo<JobApplicationFilters>(() => {
+    const baseFilters = params.filters ?? {}
 
-  // Add filters
-  if (params.filters?.status) searchParams.set("status", params.filters.status.join(","))
-  if (params.filters?.priority) searchParams.set("priority", params.filters.priority.join(","))
-  if (params.filters?.company_name) searchParams.set("company_name", params.filters.company_name)
-  if (params.filters?.search) searchParams.set("search", params.filters.search)
-  if (params.filters?.date_from) searchParams.set("date_from", params.filters.date_from)
-  if (params.filters?.date_to) searchParams.set("date_to", params.filters.date_to)
+    if (params.ignoreArchivePreference || settings.showArchived) {
+      return baseFilters
+    }
 
-  // Add sort
-  if (params.sort?.field) searchParams.set("sort_field", params.sort.field)
-  if (params.sort?.direction) searchParams.set("sort_direction", params.sort.direction)
+    if (baseFilters.status?.length) {
+      return baseFilters
+    }
+
+    return { ...baseFilters, status: ACTIVE_STATUSES }
+  }, [params.filters, params.ignoreArchivePreference, settings.showArchived])
+
+  const requestUrl = useMemo(() => {
+    const searchParams = new URLSearchParams()
+
+    if (params.page) searchParams.set("page", params.page.toString())
+    if (params.limit) searchParams.set("limit", params.limit.toString())
+    if (params.include_interviews) searchParams.set("include_interviews", "true")
+    if (params.include_activity) searchParams.set("include_activity", "true")
+
+    if (effectiveFilters.status) searchParams.set("status", effectiveFilters.status.join(","))
+    if (effectiveFilters.priority) searchParams.set("priority", effectiveFilters.priority.join(","))
+    if (effectiveFilters.company_name) searchParams.set("company_name", effectiveFilters.company_name)
+    if (effectiveFilters.search) searchParams.set("search", effectiveFilters.search)
+    if (effectiveFilters.date_from) searchParams.set("date_from", effectiveFilters.date_from)
+    if (effectiveFilters.date_to) searchParams.set("date_to", effectiveFilters.date_to)
+
+    if (params.sort?.field) searchParams.set("sort_field", params.sort.field)
+    if (params.sort?.direction) searchParams.set("sort_direction", params.sort.direction)
+
+    const query = searchParams.toString()
+    return query.length > 0 ? `/api/job-applications?${query}` : "/api/job-applications"
+  }, [
+    effectiveFilters,
+    params.include_activity,
+    params.include_interviews,
+    params.limit,
+    params.page,
+    params.sort?.direction,
+    params.sort?.field,
+  ])
 
   const { data, error, isLoading, mutate } = useSWR<PaginatedResponse<JobApplication>>(
-    `/api/job-applications?${searchParams.toString()}`,
+    requestUrl,
     (url) => apiFetcher<PaginatedResponse<JobApplication>>(url),
   )
 
