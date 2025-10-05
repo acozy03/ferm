@@ -1,22 +1,25 @@
 // app/api/parse-job/route.ts
-import { NextResponse } from "next/server"
-import { z } from "zod"
-import { headers } from "next/headers"
-import { createClient } from "@supabase/supabase-js"
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { headers } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
+
+const DAILY_LIMIT = 20;
+
 const RequestBodySchema = z.object({
   raw_text: z.string().min(1, "raw_text required"),
   job_url: z.string().url(),
-})
+});
 
 /** Normalize Employment Type coming from LLM (robust to variants) */
 function normalizeEmploymentType(v: unknown) {
-  if (typeof v !== "string") return null
-  const s = v.toLowerCase().replace(/\s+/g, "")
-  if (s.includes("full")) return "Full-time"
-  if (s.includes("part")) return "Part-time"
-  if (s.includes("contract") || s.includes("temp")) return "Contract"
-  if (s.includes("intern")) return "Internship"
-  return null
+  if (typeof v !== "string") return null;
+  const s = v.toLowerCase().replace(/\s+/g, "");
+  if (s.includes("full")) return "Full-time";
+  if (s.includes("part")) return "Part-time";
+  if (s.includes("contract") || s.includes("temp")) return "Contract";
+  if (s.includes("intern")) return "Internship";
+  return null;
 }
 
 const LLMResponseSchema = z.object({
@@ -35,62 +38,58 @@ const LLMResponseSchema = z.object({
   ),
   contact_person: z.string().nullable(),
   contact_email: z.string().email().nullable(),
-})
+});
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const hdrs = headers()
-  const authHeader = hdrs.get("authorization") || ""
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
-
+  // --- Auth (Supabase) ---
+  const hdrs = headers();
+  const authHeader = hdrs.get("authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!token) {
-    return NextResponse.json({ error: "Missing token" }, { status: 401 })
+    return NextResponse.json({ error: "Missing token" }, { status: 401 });
   }
 
-  // validate token against Supabase
   const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
     headers: {
       apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       Authorization: `Bearer ${token}`,
     },
     cache: "no-store",
-  })
-
+  });
   if (!userResp.ok) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const user = await userResp.json() as { id: string }
+  const user = (await userResp.json()) as { id: string };
   if (!user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // 1) Parse input
-  let body: unknown
+
+  // --- Parse input ---
+  let bodyUnknown: unknown;
   try {
-    body = await request.json()
+    bodyUnknown = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
-
-  const parsed = RequestBodySchema.safeParse(body)
-  if (!parsed.success) {
+  const parsedBody = RequestBodySchema.safeParse(bodyUnknown);
+  if (!parsedBody.success) {
     return NextResponse.json(
-      { error: "Invalid input data", details: parsed.error.flatten() },
+      { error: "Invalid input data", details: parsedBody.error.flatten() },
       { status: 400 }
-    )
+    );
   }
-  const { raw_text, job_url } = parsed.data
+  const { raw_text, job_url } = parsedBody.data;
 
-
-  // 2) Env
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+  // --- Env ---
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   if (!OPENAI_API_KEY) {
-    return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
+    return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 });
   }
 
-  // 3) Prompt: classify + extract in one JSON return
+  // --- Call OpenAI ---
   const prompt = `
 You are a strict job-posting classifier and parser.
 
@@ -141,46 +140,91 @@ URL: ${job_url}
         response_format: { type: "json_object" },
         temperature: 0.1,
       }),
-    })
+    });
 
     if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text()
-      return NextResponse.json({ error: "LLM API call failed", details: errorText }, { status: openaiResponse.status })
+      const errorText = await openaiResponse.text();
+      return NextResponse.json(
+        { error: "LLM API call failed", details: errorText },
+        { status: openaiResponse.status }
+      );
     }
 
-    const llmJson = await openaiResponse.json()
-    const messageContent = llmJson?.choices?.[0]?.message?.content
-    const usage = llmJson?.usage ?? null
-
+    const llmJson = await openaiResponse.json();
+    const messageContent = llmJson?.choices?.[0]?.message?.content;
+    const usage = llmJson?.usage ?? null;
     if (!messageContent) {
-      return NextResponse.json({ error: "LLM response format is invalid" }, { status: 500 })
+      return NextResponse.json({ error: "LLM response format is invalid" }, { status: 500 });
     }
 
-    // 4) Validate + normalize
-    let raw
+    let raw;
     try {
-      raw = JSON.parse(messageContent)
+      raw = JSON.parse(messageContent);
     } catch {
-      return NextResponse.json({ error: "LLM did not return valid JSON" }, { status: 500 })
+      return NextResponse.json({ error: "LLM did not return valid JSON" }, { status: 500 });
     }
 
-    const validated = LLMResponseSchema.safeParse(raw)
+    const validated = LLMResponseSchema.safeParse(raw);
     if (!validated.success) {
       // If LLM messed up the shape, treat as invalid posting with reason
-      return NextResponse.json(
-        {
-          is_valid_job_posting: false,
-          reason: "LLM returned malformed data",
-          usage,
-        },
+      const resMalformed = NextResponse.json(
+        { is_valid_job_posting: false, reason: "LLM returned malformed data", usage },
         { status: 200 }
-      )
+      );
+      resMalformed.headers.set("Cache-Control", "no-store");
+      resMalformed.headers.set("Vary", "Authorization");
+      return resMalformed;
     }
 
-    // 5) Always include is_valid_job_posting (client relies on it)
-    return NextResponse.json({ ...validated.data, usage }, { status: 200 })
+    // --- Supabase client bound to user token (for RPC/RLS) ---
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
+
+    // ✅ Increment usage AFTER successful parse
+    // Recommended SQL (in your function):
+    // ... DO UPDATE SET count = least(llm_usage.count + 1, 20) RETURNING count;
+    const { data: incCount, error: incErr } = await supabase.rpc("increment_llm_usage");
+    if (incErr) {
+      console.error("increment_llm_usage error:", incErr);
+      return NextResponse.json({ error: "Usage update failed" }, { status: 500 });
+    }
+
+    // Determine new count/remaining
+    let usedNow: number | null =
+      typeof incCount === "number" ? incCount : null;
+
+    if (usedNow === null) {
+      // fallback: read today's count if function didn't RETURNING count
+      const today = new Date().toISOString().split("T")[0];
+      const { data: afterRow } = await supabase
+        .from("llm_usage")
+        .select("count")
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .maybeSingle();
+      usedNow = afterRow?.count ?? null;
+    }
+
+    const remainingNow =
+      usedNow == null ? null : Math.max(0, DAILY_LIMIT - usedNow);
+
+    // Respond with parsed data + usage headers for instant UI update
+    const res = NextResponse.json(
+      { ...validated.data, usage },
+      { status: 200 }
+    );
+    res.headers.set("Cache-Control", "no-store");
+    res.headers.set("Vary", "Authorization");
+    res.headers.set("X-Usage-Limit", String(DAILY_LIMIT));
+    if (remainingNow != null) {
+      res.headers.set("X-Usage-Remaining", String(remainingNow));
+    }
+    return res;
   } catch (error) {
-    console.error("parse-job error:", error)
-    return NextResponse.json({ error: "Internal server error during parsing" }, { status: 500 })
+    console.error("parse-job error:", error);
+    return NextResponse.json({ error: "Internal server error during parsing" }, { status: 500 });
   }
 }
