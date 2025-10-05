@@ -68,6 +68,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const updates: Partial<UpdateJobApplicationData> = { ...body }
     delete (updates as { id?: string }).id
     delete (updates as { user_id?: string }).user_id
+    delete (updates as { resume_match_score?: number | null }).resume_match_score
+    delete (updates as { resume_match_summary?: string | null }).resume_match_summary
 
     const nullableFields: (keyof UpdateJobApplicationData)[] = [
       "location",

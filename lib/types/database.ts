@@ -28,6 +28,8 @@ export interface JobApplication {
   job_description?: string | null
   qualifications?: string | null
   job_responsibilities?: string | null
+  resume_match_score?: number | null
+  resume_match_summary?: string | null
   created_at: string
   updated_at: string
 }

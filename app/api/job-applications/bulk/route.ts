@@ -48,6 +48,8 @@ export async function PUT(request: NextRequest) {
       }
     }
     delete (sanitizedUpdates as { user_id?: string }).user_id
+    delete (sanitizedUpdates as { resume_match_score?: number | null }).resume_match_score
+    delete (sanitizedUpdates as { resume_match_summary?: string | null }).resume_match_summary
 
     const { data, error } = await supabase
       .from("job_applications")

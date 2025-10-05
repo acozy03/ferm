@@ -1,7 +1,14 @@
 "use client"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { ChevronLeft, ChevronRight, ListChecks } from "lucide-react"
+import {
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  LayoutPanelLeft,
+  ListChecks,
+  Table2,
+} from "lucide-react"
 
 import { Header } from "@/components/header"
 import { JobApplicationCard } from "@/components/job-application-card"
@@ -12,11 +19,18 @@ import { QuickActions } from "@/components/quick-actions"
 import { UpcomingInterviews } from "@/components/upcoming-interviews"
 import { BulkActions } from "@/components/bulk-actions"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { ApplicationsDrawer } from "@/components/applications-drawer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { createSearchParamsWithFilters, parseJobApplicationFilters } from "@/lib/job-filters"
-import type { JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
+import type { JobApplication, JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
 import { useSettings } from "@/components/settings-provider"
+import { JobDetailsDialog } from "@/components/job-details-dialog"
+import { StatusUpdateDialog } from "@/components/status-update-dialog"
+import { defaultViewOptions } from "@/lib/settings"
 
 const serializeFilters = (filters: JobApplicationFilters) =>
   createSearchParamsWithFilters(new URLSearchParams(), filters).toString()
@@ -29,17 +43,41 @@ const sortPreferenceMap: Record<string, JobApplicationSort> = {
 }
 const DASHBOARD_PAGE_SIZE = 5
 
+type DashboardView = (typeof defaultViewOptions)[number]["value"]
+
+const isDashboardView = (value: string | null): value is DashboardView =>
+  defaultViewOptions.some((option) => option.value === value)
+
+const statusBadges: Record<JobApplication["status"], string> = {
+  Applied: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  Interview: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  Offer: "bg-green-500/10 text-green-500 border-green-500/20",
+  Rejected: "bg-red-500/10 text-red-500 border-red-500/20",
+  Withdrawn: "bg-gray-500/10 text-gray-500 border-gray-500/20",
+  Accepted: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+}
+
 export default function Dashboard() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const { settings } = useSettings()
 
+  const preferredView = useMemo<DashboardView>(() => settings.defaultView as DashboardView, [settings.defaultView])
+
   const filtersFromParams = useMemo(() => parseJobApplicationFilters(searchParams), [searchParams])
 
   const preferredSort = useMemo<JobApplicationSort>(() => {
     return sortPreferenceMap[settings.defaultSort] ?? FALLBACK_SORT
   }, [settings.defaultSort])
+
+  const viewFromParams = useMemo<DashboardView>(() => {
+    const viewParam = searchParams.get("view")
+    if (isDashboardView(viewParam)) {
+      return viewParam
+    }
+    return preferredView
+  }, [preferredView, searchParams])
 
   const sortFromParams = useMemo<JobApplicationSort>(() => {
     const fieldParam = searchParams.get("sort_field") as JobApplicationSort["field"] | null
@@ -68,6 +106,7 @@ export default function Dashboard() {
   const [page, setPage] = useState(pageFromParams)
   const [selectedApplications, setSelectedApplications] = useState<string[]>([])
   const [isApplicationsDrawerOpen, setIsApplicationsDrawerOpen] = useState(false)
+  const [view, setView] = useState<DashboardView>(viewFromParams)
 
   useEffect(() => {
     setFilters((previous) => {
@@ -77,6 +116,10 @@ export default function Dashboard() {
       return filtersFromParams
     })
   }, [filtersFromParams])
+
+  useEffect(() => {
+    setView((previous) => (previous === viewFromParams ? previous : viewFromParams))
+  }, [viewFromParams])
 
   useEffect(() => {
     setSort((previous) => {
@@ -96,19 +139,23 @@ export default function Dashboard() {
       filters?: JobApplicationFilters
       sort?: JobApplicationSort
       page?: number
+      view?: DashboardView
     }) => {
       const nextFilters = next?.filters ?? filters
       const nextSort = next?.sort ?? sort
       const nextPage = next?.page ?? page
+      const nextView = next?.view ?? view
 
       const params = createSearchParamsWithFilters(searchParams, nextFilters)
 
       params.delete("sort_field")
       params.delete("sort_direction")
       params.delete("page")
+      params.delete("view")
 
       const isSortFieldDefault = nextSort.field === preferredSort.field
       const isSortDirectionDefault = nextSort.direction === preferredSort.direction
+      const isViewDefault = nextView === preferredView
 
       if (!isSortFieldDefault) {
         params.set("sort_field", nextSort.field)
@@ -119,11 +166,14 @@ export default function Dashboard() {
       if (nextPage > 1) {
         params.set("page", nextPage.toString())
       }
+      if (!isViewDefault) {
+        params.set("view", nextView)
+      }
 
       const query = params.toString()
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
     },
-    [filters, sort, page, pathname, preferredSort, router, searchParams],
+    [filters, sort, page, view, pathname, preferredSort, preferredView, router, searchParams],
   )
 
   const { applications, isLoading, error, mutate, count, total_pages: totalPagesFromResponse } = useJobApplications({
@@ -134,14 +184,62 @@ export default function Dashboard() {
     include_interviews: true,
   })
 
+  const timelineDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: settings.timezone,
+      }),
+    [settings.timezone],
+  )
+
+  const timelineItems = useMemo(() => {
+    return [...applications].sort(
+      (a, b) => new Date(a.application_date).getTime() - new Date(b.application_date).getTime(),
+    )
+  }, [applications])
+
+  const relativeDayFormatter = useMemo(() => new Intl.RelativeTimeFormat("en", { numeric: "auto" }), [])
+
+  const formatDaysSinceApplied = useCallback(
+    (dateString: string) => {
+      const appliedDate = new Date(dateString)
+      const now = new Date()
+      const millisecondsInDay = 1000 * 60 * 60 * 24
+      const diff = Math.round((appliedDate.getTime() - now.getTime()) / millisecondsInDay)
+
+      if (diff === 0) {
+        return "Today"
+      }
+
+      return relativeDayFormatter.format(diff, "day")
+    },
+    [relativeDayFormatter],
+  )
+
   const totalPages = Math.max(1, totalPagesFromResponse || 1)
   const canGoPrevious = page > 1
   const canGoNext = page < totalPages
+  const allSelected = applications.length > 0 && applications.every((application) => selectedApplications.includes(application.id))
+  const someSelected = applications.some((application) => selectedApplications.includes(application.id)) && !allSelected
 
   const handleFilterChange = (newFilters: JobApplicationFilters) => {
     setFilters(newFilters)
     setPage(1)
     commitState({ filters: newFilters, page: 1 })
+  }
+
+  const handleViewChange = (nextView: DashboardView) => {
+    if (nextView === view) {
+      return
+    }
+
+    setView(nextView)
+    setPage(1)
+    setSelectedApplications([])
+    commitState({ view: nextView, page: 1 })
   }
 
   const handleApplicationUpdate = () => {
@@ -195,6 +293,35 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Failed to bulk delete applications:", error)
       throw error
+    }
+  }
+
+  const handleStatusChange = async (applicationId: string, status: string, note?: string) => {
+    try {
+      const response = await fetch(`/api/job-applications/${applicationId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          ...(note && { notes: note }),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update application status")
+      }
+
+      mutate()
+    } catch (error) {
+      console.error("Failed to update application status:", error)
+    }
+  }
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedApplications(applications.map((application) => application.id))
+    } else {
+      setSelectedApplications([])
     }
   }
 
@@ -277,40 +404,242 @@ export default function Dashboard() {
                 </aside>
 
                 <div className="flex-1 space-y-4 pb-24">
-                  <BulkActions
-                    selectedCount={selectedApplications.length}
-                    onBulkStatusUpdate={handleBulkStatusUpdate}
-                    onBulkDelete={handleBulkDelete}
-                    onBulkExport={handleBulkExport}
-                    onClearSelection={() => setSelectedApplications([])}
-                  />
-
-                  {isLoading ? (
-                    <div className="grid gap-4">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-48 bg-muted animate-pulse rounded-lg" />
-                      ))}
+                  <Tabs
+                    value={view}
+                    onValueChange={(next) => {
+                      if (isDashboardView(next)) {
+                        handleViewChange(next)
+                      }
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <TabsList>
+                        <TabsTrigger value="pipeline" className="gap-2">
+                          <LayoutPanelLeft className="h-4 w-4" />
+                          Pipeline
+                        </TabsTrigger>
+                        <TabsTrigger value="table" className="gap-2">
+                          <Table2 className="h-4 w-4" />
+                          Table
+                        </TabsTrigger>
+                        <TabsTrigger value="timeline" className="gap-2">
+                          <CalendarClock className="h-4 w-4" />
+                          Timeline
+                        </TabsTrigger>
+                      </TabsList>
+                      <p className="text-sm text-muted-foreground">
+                        Choose how you want to review your applications.
+                      </p>
                     </div>
-                  ) : (
-                    <div className="grid gap-4">
-                      {applications.map((application) => (
-                        <JobApplicationCard
-                          key={application.id}
-                          application={application}
-                          isSelected={selectedApplications.includes(application.id)}
-                          onSelect={(selected) => handleSelectApplication(application.id, selected)}
-                          onUpdate={handleApplicationUpdate}
-                        />
-                      ))}
-                      {applications.length === 0 && (
-                        <div className="text-center py-12">
-                          <p className="text-muted-foreground">
-                            No applications found. Add your first application to get started!
-                          </p>
+
+                    <TabsContent value="pipeline" className="space-y-4">
+                      <BulkActions
+                        selectedCount={selectedApplications.length}
+                        onBulkStatusUpdate={handleBulkStatusUpdate}
+                        onBulkDelete={handleBulkDelete}
+                        onBulkExport={handleBulkExport}
+                        onClearSelection={() => setSelectedApplications([])}
+                      />
+
+                      {isLoading ? (
+                        <div className="grid gap-4">
+                          {[...Array(3)].map((_, i) => (
+                            <div key={i} className="h-48 bg-muted animate-pulse rounded-lg" />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid gap-4">
+                          {applications.map((application) => (
+                            <JobApplicationCard
+                              key={application.id}
+                              application={application}
+                              isSelected={selectedApplications.includes(application.id)}
+                              onSelect={(selected) => handleSelectApplication(application.id, selected)}
+                              onUpdate={handleApplicationUpdate}
+                            />
+                          ))}
+                          {applications.length === 0 && (
+                            <div className="text-center py-12">
+                              <p className="text-muted-foreground">
+                                No applications found. Add your first application to get started!
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
+                    </TabsContent>
+
+                    <TabsContent value="table" className="space-y-4">
+                      <BulkActions
+                        selectedCount={selectedApplications.length}
+                        onBulkStatusUpdate={handleBulkStatusUpdate}
+                        onBulkDelete={handleBulkDelete}
+                        onBulkExport={handleBulkExport}
+                        onClearSelection={() => setSelectedApplications([])}
+                      />
+
+                      {isLoading ? (
+                        <div className="space-y-2">
+                          {[...Array(4)].map((_, index) => (
+                            <div key={index} className="h-12 rounded-md border bg-muted animate-pulse" />
+                          ))}
+                        </div>
+                      ) : applications.length === 0 ? (
+                        <div className="text-center py-12">
+                          <p className="text-muted-foreground">
+                            No applications found. Adjust your filters or add a new application.
+                          </p>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12">
+                                <Checkbox
+                                  aria-label="Select all applications"
+                                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                                  onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                                />
+                              </TableHead>
+                              <TableHead>Role</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Priority</TableHead>
+                              <TableHead>Applied</TableHead>
+                              <TableHead className="hidden lg:table-cell">Location</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {applications.map((application) => {
+                              const isSelected = selectedApplications.includes(application.id)
+                              return (
+                                <TableRow key={application.id} data-state={isSelected ? "selected" : undefined}>
+                                  <TableCell className="w-12">
+                                    <Checkbox
+                                      aria-label={`Select ${application.position_title}`}
+                                      checked={isSelected}
+                                      onCheckedChange={(checked) =>
+                                        handleSelectApplication(application.id, checked === true)
+                                      }
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="space-y-1">
+                                      <p className="font-medium leading-tight text-sm text-balance">
+                                        {application.position_title}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">{application.company_name}</p>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className={statusBadges[application.status]}>
+                                      {application.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>{application.priority}</TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">
+                                        {timelineDateFormatter.format(new Date(application.application_date))}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {formatDaysSinceApplied(application.application_date)}
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="hidden lg:table-cell">
+                                    {application.location ? (
+                                      <span className="text-sm">{application.location}</span>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">—</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <StatusUpdateDialog
+                                        currentStatus={application.status}
+                                        onStatusUpdate={(status, note) =>
+                                          handleStatusChange(application.id, status, note)
+                                        }
+                                        trigger={
+                                          <Button variant="ghost" size="sm" className="h-8 px-2">
+                                            Update
+                                          </Button>
+                                        }
+                                      />
+                                      <JobDetailsDialog
+                                        application={application}
+                                        onUpdate={handleApplicationUpdate}
+                                        trigger={
+                                          <Button variant="outline" size="sm" className="h-8 px-2">
+                                            Details
+                                          </Button>
+                                        }
+                                      />
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="timeline" className="space-y-6">
+                      {isLoading ? (
+                        <div className="space-y-4">
+                          {[...Array(4)].map((_, index) => (
+                            <div key={index} className="h-20 rounded-md border bg-muted animate-pulse" />
+                          ))}
+                        </div>
+                      ) : timelineItems.length === 0 ? (
+                        <div className="text-center py-12">
+                          <p className="text-muted-foreground">
+                            No applications to display yet. Apply to a role to start your timeline.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="relative space-y-6">
+                          <div className="absolute left-1.5 top-0 h-full w-px bg-border" aria-hidden />
+                          {timelineItems.map((application) => (
+                            <div key={application.id} className="relative pl-6">
+                              <span className="absolute left-0 top-2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-primary" />
+                              <div className="flex flex-col gap-2 rounded-lg border bg-card/50 p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <div>
+                                    <p className="font-medium leading-tight text-balance">
+                                      {application.position_title}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground text-pretty">
+                                      {application.company_name}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline" className={statusBadges[application.status]}>
+                                    {application.status}
+                                  </Badge>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                  <span>
+                                    Applied {timelineDateFormatter.format(new Date(application.application_date))}
+                                  </span>
+                                  <span>•</span>
+                                  <span>{formatDaysSinceApplied(application.application_date)}</span>
+                                  {application.location && <span>• {application.location}</span>}
+                                </div>
+                                {application.notes && (
+                                  <p className="text-sm text-muted-foreground line-clamp-3">
+                                    {application.notes}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
 
                   <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-muted-foreground">

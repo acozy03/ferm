@@ -2,7 +2,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { createClient } from "@supabase/supabase-js"
+import { z } from "zod"
+
 import type { CreateJobApplicationData } from "@/lib/types/database"
+import { getLatestResumeText } from "@/lib/resume/server"
 import { toNullableString } from "@/lib/utils"
 
 export const runtime = "nodejs"
@@ -12,6 +15,112 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*", // tighten to your extension origin if you want
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, content-type",
+}
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+const RESUME_SCORING_TIMEOUT_MS = 15_000
+
+const ResumeScoreSchema = z.object({
+  score: z.number(),
+  summary: z.string().optional().nullable(),
+})
+
+interface ResumeScoringPayload {
+  job: {
+    company_name: string
+    position_title: string
+    job_description?: string | null
+    qualifications?: string | null
+    job_responsibilities?: string | null
+    notes?: string | null
+  }
+  resumeText: string
+}
+
+async function generateResumeMatchScore({ job, resumeText }: ResumeScoringPayload) {
+  if (!OPENAI_API_KEY) {
+    return null
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, RESUME_SCORING_TIMEOUT_MS)
+
+  const systemPrompt =
+    "You are an expert career coach. Compare the candidate's resume against the job listing and respond with strict JSON. " +
+    "Return keys `score` (0-10 with one decimal) and `summary` (<=75 words).";
+
+  const userPrompt = `Job application details:\n${JSON.stringify(job, null, 2)}\n\nCandidate resume:\n"""\n${resumeText}\n"""`
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Resume scoring OpenAI error:", errorText)
+      return null
+    }
+
+    const json = await response.json()
+    const content = json?.choices?.[0]?.message?.content
+
+    if (!content) {
+      console.error("Resume scoring response missing content", json)
+      return null
+    }
+
+    let parsed: unknown
+
+    try {
+      parsed = JSON.parse(content)
+    } catch (error) {
+      console.error("Resume scoring JSON parse error", error, content)
+      return null
+    }
+
+    const validation = ResumeScoreSchema.safeParse(parsed)
+
+    if (!validation.success) {
+      console.error("Resume scoring schema validation failed", validation.error)
+      return null
+    }
+
+    const rawScore = validation.data.score
+    const clampedScore = Math.min(10, Math.max(0, rawScore))
+    const roundedScore = Math.round(clampedScore * 10) / 10
+
+    return {
+      score: roundedScore,
+      summary: validation.data.summary?.trim() || null,
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("Resume scoring request timed out")
+      return null
+    }
+
+    console.error("Resume scoring request failed", error)
+    return null
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 export async function OPTIONS() {
@@ -164,6 +273,35 @@ export async function POST(request: NextRequest) {
     const { supabase, userId } = auth
     const body: CreateJobApplicationData = await request.json()
 
+    let resumeMatchScore: number | null = null
+    let resumeMatchSummary: string | null = null
+
+    if (OPENAI_API_KEY) {
+      try {
+        const resume = await getLatestResumeText(userId)
+
+        if (resume?.text) {
+          const jobContext = {
+            company_name: body.company_name,
+            position_title: body.position_title,
+            job_description: body.job_description ?? null,
+            qualifications: body.qualifications ?? null,
+            job_responsibilities: body.job_responsibilities ?? null,
+            notes: body.notes ?? null,
+          }
+
+          const scoringResult = await generateResumeMatchScore({ job: jobContext, resumeText: resume.text })
+
+          if (scoringResult) {
+            resumeMatchScore = scoringResult.score
+            resumeMatchSummary = scoringResult.summary
+          }
+        }
+      } catch (error) {
+        console.error("Failed to generate resume match score", error)
+      }
+    }
+
     // Force user_id from server (never trust client)
     const insertData = {
       ...body,
@@ -177,6 +315,8 @@ export async function POST(request: NextRequest) {
       job_description: toNullableString(body.job_description ?? null),
       qualifications: toNullableString(body.qualifications ?? null),
       job_responsibilities: toNullableString(body.job_responsibilities ?? null),
+      resume_match_score: resumeMatchScore,
+      resume_match_summary: toNullableString(resumeMatchSummary ?? null),
     }
 
     const { data, error } = await supabase.from("job_applications").insert([insertData]).select().single()
