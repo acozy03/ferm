@@ -150,7 +150,7 @@ URL: ${job_url}
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
-        temperature: 0.1,
+        temperature: 0.3,
       }),
     });
 
