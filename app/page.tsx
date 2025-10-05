@@ -1,6 +1,8 @@
 "use client"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { ChevronLeft, ChevronRight, ListChecks } from "lucide-react"
+
 import { Header } from "@/components/header"
 import { JobApplicationCard } from "@/components/job-application-card"
 import { StatsOverview } from "@/components/stats-overview"
@@ -9,6 +11,8 @@ import { ActivityTimeline } from "@/components/activity-timeline"
 import { QuickActions } from "@/components/quick-actions"
 import { UpcomingInterviews } from "@/components/upcoming-interviews"
 import { BulkActions } from "@/components/bulk-actions"
+import { Button } from "@/components/ui/button"
+import { ApplicationsDrawer } from "@/components/applications-drawer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { createSearchParamsWithFilters, parseJobApplicationFilters } from "@/lib/job-filters"
 import type { JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
@@ -17,6 +21,7 @@ const serializeFilters = (filters: JobApplicationFilters) =>
   createSearchParamsWithFilters(new URLSearchParams(), filters).toString()
 
 const defaultSort: JobApplicationSort = { field: "created_at", direction: "desc" }
+const DASHBOARD_PAGE_SIZE = 5
 
 export default function Dashboard() {
   const searchParams = useSearchParams()
@@ -45,6 +50,7 @@ export default function Dashboard() {
   const [sort, setSort] = useState<JobApplicationSort>(sortFromParams)
   const [page, setPage] = useState(pageFromParams)
   const [selectedApplications, setSelectedApplications] = useState<string[]>([])
+  const [isApplicationsDrawerOpen, setIsApplicationsDrawerOpen] = useState(false)
 
   useEffect(() => {
     setFilters((previous) => {
@@ -100,13 +106,17 @@ export default function Dashboard() {
     [filters, sort, page, pathname, router, searchParams],
   )
 
-  const { applications, isLoading, error, mutate } = useJobApplications({
+  const { applications, isLoading, error, mutate, count, total_pages: totalPagesFromResponse } = useJobApplications({
     page,
-    limit: 10,
+    limit: DASHBOARD_PAGE_SIZE,
     filters,
     sort,
     include_interviews: true,
   })
+
+  const totalPages = Math.max(1, totalPagesFromResponse || 1)
+  const canGoPrevious = page > 1
+  const canGoNext = page < totalPages
 
   const handleFilterChange = (newFilters: JobApplicationFilters) => {
     setFilters(newFilters)
@@ -194,6 +204,16 @@ export default function Dashboard() {
     URL.revokeObjectURL(url)
   }
 
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages) {
+      return
+    }
+
+    setPage(nextPage)
+    setSelectedApplications([])
+    commitState({ page: nextPage })
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-background">
@@ -271,12 +291,70 @@ export default function Dashboard() {
                       )}
                     </div>
                   )}
+
+                  <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {isLoading
+                        ? "Loading applications..."
+                        : `Showing ${applications.length > 0 ? (page - 1) * DASHBOARD_PAGE_SIZE + 1 : 0}-${
+                            (page - 1) * DASHBOARD_PAGE_SIZE + applications.length
+                          } of ${count} applications`}
+                    </p>
+
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:gap-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handlePageChange(page - 1)}
+                          disabled={!canGoPrevious || isLoading}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          <span className="sr-only">Previous page</span>
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          Page {totalPages === 0 ? 1 : page} of {totalPages || 1}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handlePageChange(page + 1)}
+                          disabled={!canGoNext || isLoading}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                          <span className="sr-only">Next page</span>
+                        </Button>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setIsApplicationsDrawerOpen(true)}
+                      >
+                        <ListChecks className="h-4 w-4" />
+                        Open application library
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </main>
+
+      <ApplicationsDrawer
+        open={isApplicationsDrawerOpen}
+        onOpenChange={setIsApplicationsDrawerOpen}
+        filters={filters}
+        sort={sort}
+        onApplicationUpdate={handleApplicationUpdate}
+        onFiltersChange={handleFilterChange}
+      />
     </div>
   )
 }

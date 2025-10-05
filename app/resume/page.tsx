@@ -1,6 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { FileText, Loader2, UploadCloud, ShieldAlert } from "lucide-react"
@@ -13,9 +21,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_EXTENSIONS = ["pdf", "doc", "docx"] as const
+const RESUME_BUCKET = "resumes" as const
+
+type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number]
 
 interface ResumeInfo {
   name: string
@@ -23,6 +35,50 @@ interface ResumeInfo {
   signedUrl: string
   updatedAt?: string
   size?: number
+}
+
+async function getLatestResume(
+  client: SupabaseClient,
+  userId: string,
+): Promise<ResumeInfo | null> {
+  const {
+    data: files,
+    error: listError,
+  } = await client.storage.from(RESUME_BUCKET).list(userId, {
+    limit: 1,
+    sortBy: { column: "updated_at", order: "desc" },
+  })
+
+  if (listError) {
+    throw listError
+  }
+
+  const file = files?.[0]
+
+  if (!file) {
+    return null
+  }
+
+  const path = `${userId}/${file.name}`
+  const { data: signedUrlData, error: signedUrlError } = await client.storage
+    .from(RESUME_BUCKET)
+    .createSignedUrl(path, 60 * 60)
+
+  if (signedUrlError) {
+    throw signedUrlError
+  }
+
+  if (!signedUrlData?.signedUrl) {
+    throw new Error("Unable to generate a download link for your resume.")
+  }
+
+  return {
+    name: file.name,
+    path,
+    signedUrl: signedUrlData.signedUrl,
+    updatedAt: file.updated_at ?? file.created_at,
+    size: typeof file.metadata?.size === "number" ? file.metadata.size : undefined,
+  }
 }
 
 function formatFileSize(bytes?: number) {
@@ -50,6 +106,7 @@ export default function ResumePage() {
   const [isUploading, setIsUploading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const fileInputId = useId()
 
   const acceptedTypesDescription = useMemo(
     () => `Accepted formats: ${ALLOWED_EXTENSIONS.map((ext) => ext.toUpperCase()).join(", ")} • Max size ${Math.round(MAX_FILE_SIZE / (1024 * 1024))} MB`,
@@ -66,45 +123,14 @@ export default function ResumePage() {
     setErrorMessage(null)
 
     try {
-      const { data: files, error: listError } = await supabase.storage
-        .from("resumes")
-        .list(user.id, {
-          limit: 1,
-          sortBy: { column: "updated_at", order: "desc" },
-          includeMetadata: true,
-        })
+      const latestResume = await getLatestResume(supabase, user.id)
 
-      if (listError) {
-        throw listError
-      }
-
-      const file = files?.[0]
-
-      if (!file) {
+      if (!latestResume) {
         setResume(null)
         return
       }
 
-      const path = `${user.id}/${file.name}`
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-        .from("resumes")
-        .createSignedUrl(path, 60 * 60)
-
-      if (signedUrlError) {
-        throw signedUrlError
-      }
-
-      if (!signedUrlData?.signedUrl) {
-        throw new Error("Unable to generate a download link for your resume.")
-      }
-
-      setResume({
-        name: file.name,
-        path,
-        signedUrl: signedUrlData.signedUrl,
-        updatedAt: file.updated_at ?? file.created_at,
-        size: typeof file.metadata?.size === "number" ? file.metadata.size : undefined,
-      })
+      setResume(latestResume)
     } catch (error) {
       console.error("Failed to fetch resume:", error)
       setResume(null)
@@ -125,6 +151,45 @@ export default function ResumePage() {
     void fetchResume()
   }, [fetchResume, isAuthLoading, user])
 
+  const promptForFile = useCallback(() => {
+    const input = fileInputRef.current
+
+    if (!input) {
+      const message = "The file picker isn't ready yet. Please refresh and try again."
+      setErrorMessage(message)
+      toast({ title: "Upload unavailable", description: message, variant: "destructive" })
+      return
+    }
+
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Log in to upload or replace your resume.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (isUploading) {
+      toast({
+        title: "Upload in progress",
+        description: "Please wait for the current upload to finish.",
+      })
+      return
+    }
+
+    try {
+      if (typeof input.showPicker === "function") {
+        input.showPicker()
+        return
+      }
+    } catch (error) {
+      console.warn("Falling back to click() for file picker:", error)
+    }
+
+    input.click()
+  }, [isUploading, user])
+
   const handleUpload = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const input = event.target
@@ -144,7 +209,9 @@ export default function ResumePage() {
       }
 
       const extension = file.name.split(".").pop()?.toLowerCase() ?? ""
-      if (!ALLOWED_EXTENSIONS.includes(extension as (typeof ALLOWED_EXTENSIONS)[number])) {
+      const isAllowedExtension = ALLOWED_EXTENSIONS.includes(extension as AllowedExtension)
+
+      if (!isAllowedExtension) {
         const message = "Please upload a PDF, DOC, or DOCX file."
         setErrorMessage(message)
         toast({ title: "Invalid file type", description: message, variant: "destructive" })
@@ -162,7 +229,7 @@ export default function ResumePage() {
       setErrorMessage(null)
 
       try {
-        const { data: existingFiles, error: listError } = await supabase.storage.from("resumes").list(user.id)
+        const { data: existingFiles, error: listError } = await supabase.storage.from(RESUME_BUCKET).list(user.id)
 
         if (listError) {
           throw listError
@@ -170,7 +237,7 @@ export default function ResumePage() {
 
         if (existingFiles && existingFiles.length > 0) {
           const { error: removeError } = await supabase.storage
-            .from("resumes")
+            .from(RESUME_BUCKET)
             .remove(existingFiles.map((item) => `${user.id}/${item.name}`))
 
           if (removeError) {
@@ -178,11 +245,11 @@ export default function ResumePage() {
           }
         }
 
-        const sanitizedExtension = extension || "pdf"
+        const sanitizedExtension = isAllowedExtension ? (extension as AllowedExtension) : "pdf"
         const path = `${user.id}/resume.${sanitizedExtension}`
 
         const { error: uploadError } = await supabase.storage
-          .from("resumes")
+          .from(RESUME_BUCKET)
           .upload(path, file, {
             cacheControl: "3600",
             upsert: true,
@@ -293,17 +360,18 @@ export default function ResumePage() {
               <div className="flex items-center gap-3">
                 <Input
                   ref={fileInputRef}
+                  id={fileInputId}
                   type="file"
                   accept=".pdf,.doc,.docx"
-                  className="hidden"
+                  className="sr-only"
                   onChange={handleUpload}
-                  disabled={isUploading || !user}
+                  disabled={isUploading}
                 />
                 <Button
                   type="button"
                   variant="default"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading || !user}
+                  onClick={promptForFile}
+                  disabled={isUploading}
                   className="gap-2"
                 >
                   {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}

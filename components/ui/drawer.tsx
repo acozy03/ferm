@@ -59,6 +59,7 @@ function DrawerContent({
           'group/drawer-content bg-background fixed z-50 flex h-auto flex-col',
           'data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-lg data-[vaul-drawer-direction=top]:border-b',
           'data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[80vh] data-[vaul-drawer-direction=bottom]:rounded-t-lg data-[vaul-drawer-direction=bottom]:border-t',
+          'data-[vaul-drawer-direction=bottom]:sm:left-1/2 data-[vaul-drawer-direction=bottom]:sm:top-1/2 data-[vaul-drawer-direction=bottom]:sm:bottom-auto data-[vaul-drawer-direction=bottom]:sm:inset-x-auto data-[vaul-drawer-direction=bottom]:sm:mt-0 data-[vaul-drawer-direction=bottom]:sm:h-auto data-[vaul-drawer-direction=bottom]:sm:max-h-[85vh] data-[vaul-drawer-direction=bottom]:sm:w-full data-[vaul-drawer-direction=bottom]:sm:max-w-4xl data-[vaul-drawer-direction=bottom]:sm:-translate-x-1/2 data-[vaul-drawer-direction=bottom]:sm:-translate-y-1/2 data-[vaul-drawer-direction=bottom]:sm:rounded-lg data-[vaul-drawer-direction=bottom]:sm:border data-[vaul-drawer-direction=bottom]:sm:shadow-xl',
           'data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-3/4 data-[vaul-drawer-direction=right]:border-l data-[vaul-drawer-direction=right]:sm:max-w-sm',
           'data-[vaul-drawer-direction=left]:inset-y-0 data-[vaul-drawer-direction=left]:left-0 data-[vaul-drawer-direction=left]:w-3/4 data-[vaul-drawer-direction=left]:border-r data-[vaul-drawer-direction=left]:sm:max-w-sm',
           className,
@@ -133,3 +134,4 @@ export {
   DrawerTitle,
   DrawerDescription,
 }
+
