@@ -40,6 +40,9 @@ export function EditApplicationDialog({ application, onUpdate, trigger }: EditAp
     contact_person: application.contact_person || "",
     contact_email: application.contact_email || "",
     notes: application.notes || "",
+    job_description: application.job_description || "",
+    qualifications: application.qualifications || "",
+    job_responsibilities: application.job_responsibilities || "",
   })
 
   useEffect(() => {
@@ -55,6 +58,9 @@ export function EditApplicationDialog({ application, onUpdate, trigger }: EditAp
         contact_person: application.contact_person || "",
         contact_email: application.contact_email || "",
         notes: application.notes || "",
+        job_description: application.job_description || "",
+        qualifications: application.qualifications || "",
+        job_responsibilities: application.job_responsibilities || "",
       })
     }
   }, [open, application])
@@ -64,10 +70,28 @@ export function EditApplicationDialog({ application, onUpdate, trigger }: EditAp
     setIsLoading(true)
 
     try {
+      const toNullable = (value: string) => {
+        const trimmed = value.trim()
+        return trimmed === "" ? null : trimmed
+      }
+
+      const payload = {
+        ...formData,
+        location: toNullable(formData.location),
+        salary_range: toNullable(formData.salary_range),
+        job_url: toNullable(formData.job_url),
+        contact_person: toNullable(formData.contact_person),
+        contact_email: toNullable(formData.contact_email),
+        notes: toNullable(formData.notes),
+        job_description: toNullable(formData.job_description),
+        qualifications: toNullable(formData.qualifications),
+        job_responsibilities: toNullable(formData.job_responsibilities),
+      }
+
       const response = await fetch(`/api/job-applications/${application.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       if (response.ok) {
@@ -190,6 +214,40 @@ export function EditApplicationDialog({ application, onUpdate, trigger }: EditAp
                 value={formData.contact_email}
                 onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                 placeholder="recruiter@company.com"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="job_description">Job Description</Label>
+            <Textarea
+              id="job_description"
+              value={formData.job_description}
+              onChange={(e) => setFormData({ ...formData, job_description: e.target.value })}
+              placeholder="Summary of the role, responsibilities, and context..."
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="qualifications">Qualifications</Label>
+              <Textarea
+                id="qualifications"
+                value={formData.qualifications}
+                onChange={(e) => setFormData({ ...formData, qualifications: e.target.value })}
+                placeholder="Required skills, experience, or qualifications..."
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="job_responsibilities">Job Responsibilities</Label>
+              <Textarea
+                id="job_responsibilities"
+                value={formData.job_responsibilities}
+                onChange={(e) => setFormData({ ...formData, job_responsibilities: e.target.value })}
+                placeholder="Key responsibilities or day-to-day expectations..."
+                rows={4}
               />
             </div>
           </div>

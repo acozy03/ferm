@@ -31,6 +31,20 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState<string>(application.notes ?? "")
 
+  const jobDescription = application.job_description?.trim() ? application.job_description : null
+  const qualifications = application.qualifications?.trim() ? application.qualifications : null
+  const responsibilities = application.job_responsibilities?.trim()
+    ? application.job_responsibilities
+    : null
+
+  const qualificationLines = qualifications
+    ? qualifications.split("\n").map((line) => line.trim()).filter(Boolean)
+    : []
+  const responsibilityLines = responsibilities
+    ? responsibilities.split("\n").map((line) => line.trim()).filter(Boolean)
+    : []
+  const hasStructuredSections = Boolean(jobDescription || qualificationLines.length > 0 || responsibilityLines.length > 0)
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -42,11 +56,14 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
 
   const handleSaveNotes = async () => {
     try {
+      const payload = {
+        notes: editedNotes.trim() === "" ? null : editedNotes,
+      }
       // update notes on the server so parent can refetch
       const resp = await fetch(`/api/job-applications/${application.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: editedNotes }),
+        body: JSON.stringify(payload),
       })
       if (!resp.ok) throw new Error("Failed to save notes")
       onUpdate() // parent will reload data
@@ -116,6 +133,41 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
           </div>
 
           <Separator />
+
+          {hasStructuredSections ? (
+            <>
+              <div className="space-y-6">
+                {jobDescription ? (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-foreground">Job Description</h3>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{jobDescription}</p>
+                  </div>
+                ) : null}
+                {qualificationLines.length > 0 ? (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-foreground">Qualifications</h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      {qualificationLines.map((line, index) => (
+                        <li key={`${line}-${index}`}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {responsibilityLines.length > 0 ? (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-foreground">Responsibilities</h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      {responsibilityLines.map((line, index) => (
+                        <li key={`${line}-${index}`}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+
+              <Separator />
+            </>
+          ) : null}
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import type { BulkUpdateJobApplicationsData } from "@/lib/types/api"
 import type { CreateJobApplicationData } from "@/lib/types/database"
+import { toNullableString } from "@/lib/utils"
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,23 @@ export async function PUT(request: NextRequest) {
     }
 
     const sanitizedUpdates: Partial<CreateJobApplicationData> = { ...updates }
+    const nullableFields: (keyof CreateJobApplicationData)[] = [
+      "location",
+      "salary_range",
+      "job_url",
+      "contact_person",
+      "contact_email",
+      "notes",
+      "job_description",
+      "qualifications",
+      "job_responsibilities",
+    ]
+    const mutableUpdates = sanitizedUpdates as Record<string, string | null | undefined>
+    for (const field of nullableFields) {
+      if (field in mutableUpdates) {
+        mutableUpdates[field as string] = toNullableString(mutableUpdates[field as string])
+      }
+    }
     delete (sanitizedUpdates as { user_id?: string }).user_id
 
     const { data, error } = await supabase

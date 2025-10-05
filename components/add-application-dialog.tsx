@@ -56,24 +56,36 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
     job_url: "",
     contact_email: "",
     contact_person: "",
+    job_description: "",
+    qualifications: "",
+    job_responsibilities: "",
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    const toNullable = (value: string) => {
+      const trimmed = value.trim()
+      return trimmed === "" ? null : trimmed
+    }
+
     if (formData.company_name && formData.position_title && formData.appliedDate) {
       const applicationData: CreateJobApplicationData = {
         company_name: formData.company_name,
         position_title: formData.position_title,
         status: formData.status,
         application_date: formData.appliedDate.toISOString().split("T")[0],
-        location: formData.location || undefined,
-        salary_range: formData.salary_range || undefined,
+        location: toNullable(formData.location),
+        salary_range: toNullable(formData.salary_range),
         employment_type: formData.employment_type,
         priority: formData.priority,
-        notes: formData.notes || undefined,
-        job_url: formData.job_url || undefined,
-        contact_email: formData.contact_email || undefined,
-        contact_person: formData.contact_person || undefined,
+        notes: toNullable(formData.notes),
+        job_url: toNullable(formData.job_url),
+        contact_email: toNullable(formData.contact_email),
+        contact_person: toNullable(formData.contact_person),
+        job_description: toNullable(formData.job_description),
+        qualifications: toNullable(formData.qualifications),
+        job_responsibilities: toNullable(formData.job_responsibilities),
       }
 
       onAdd(applicationData)
@@ -90,6 +102,9 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
         job_url: "",
         contact_email: "",
         contact_person: "",
+        job_description: "",
+        qualifications: "",
+        job_responsibilities: "",
       })
       setOpen(false)
     }
@@ -259,6 +274,40 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 value={formData.contact_email}
                 onChange={(e) => updateFormData("contact_email", e.target.value)}
                 placeholder="recruiter@company.com"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="job_description">Job Description</Label>
+            <Textarea
+              id="job_description"
+              value={formData.job_description}
+              onChange={(e) => updateFormData("job_description", e.target.value)}
+              placeholder="Summary of the role, responsibilities, and context..."
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="qualifications">Qualifications</Label>
+              <Textarea
+                id="qualifications"
+                value={formData.qualifications}
+                onChange={(e) => updateFormData("qualifications", e.target.value)}
+                placeholder="Required skills, experience, or qualifications..."
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="job_responsibilities">Job Responsibilities</Label>
+              <Textarea
+                id="job_responsibilities"
+                value={formData.job_responsibilities}
+                onChange={(e) => updateFormData("job_responsibilities", e.target.value)}
+                placeholder="Key responsibilities or day-to-day expectations..."
+                rows={4}
               />
             </div>
           </div>

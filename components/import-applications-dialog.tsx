@@ -22,9 +22,9 @@ export function ImportApplicationsDialog({ trigger, onImport }: ImportApplicatio
   const [error, setError] = useState("")
   const [preview, setPreview] = useState<CreateJobApplicationData[]>([])
 
-  const sampleCsv = `Company,Position,Status,Applied Date,Location,Salary Range,Employment Type,Priority,Notes,Job URL,Contact Person,Contact Email
-Vercel,Frontend Engineer,Applied,2024-01-15,Remote,$120k - $160k,Full-time,High,Applied through careers page,https://vercel.com/careers,Sarah Johnson,sarah@vercel.com
-Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,Full-time,Medium,Phone screen scheduled,https://linear.app/careers,Mike Chen,mike@linear.app`
+  const sampleCsv = `Company,Position,Status,Applied Date,Location,Salary Range,Employment Type,Priority,Job Description,Qualifications,Job Responsibilities,Notes,Job URL,Contact Person,Contact Email
+Vercel,Frontend Engineer,Applied,2024-01-15,Remote,$120k - $160k,Full-time,High,"Work with the DX team to ship developer tooling.","5+ years frontend experience\nReact expertise","Own features end-to-end\nCollaborate with design",Applied through careers page,https://vercel.com/careers,Sarah Johnson,sarah@vercel.com
+Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,Full-time,Medium,"Build workflow automation experiences.","TypeScript\nGraphQL","Improve product performance\nPartner with product",Phone screen scheduled,https://linear.app/careers,Mike Chen,mike@linear.app`
 
   const parseCsv = (csvText: string) => {
     try {
@@ -55,19 +55,27 @@ Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,
           throw new Error(`Row ${index + 2}: Company and Position are required`)
         }
 
+        const toNullable = (value: string | undefined) => {
+          const trimmed = value?.trim()
+          return trimmed ? trimmed : null
+        }
+
         const applicationData: CreateJobApplicationData = {
           company_name: record.company,
           position_title: record.position,
           status: record.status || "Applied",
           application_date: record.applied_date || new Date().toISOString().split("T")[0],
-          location: record.location || undefined,
-          salary_range: record.salary_range || record.salary || undefined,
+          location: toNullable(record.location),
+          salary_range: toNullable(record.salary_range || record.salary),
           employment_type: (record.employment_type as CreateJobApplicationData["employment_type"]) || "Full-time",
           priority: (record.priority as CreateJobApplicationData["priority"]) || "Medium",
-          notes: record.notes || undefined,
-          job_url: record.job_url || undefined,
-          contact_person: record.contact_person || undefined,
-          contact_email: record.contact_email || undefined,
+          job_description: toNullable(record.job_description),
+          qualifications: toNullable(record.qualifications),
+          job_responsibilities: toNullable(record.job_responsibilities),
+          notes: toNullable(record.notes),
+          job_url: toNullable(record.job_url),
+          contact_person: toNullable(record.contact_person),
+          contact_email: toNullable(record.contact_email),
         }
 
         return applicationData
@@ -119,8 +127,8 @@ Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,
             <FileText className="h-4 w-4" />
             <AlertDescription>
               Upload a CSV file with columns: Company, Position, Status, Applied Date, Location, Salary Range,
-              Employment Type, Priority, Notes, Job URL, Contact Person, Contact Email. Company, Position, and Applied
-              Date are required.
+              Employment Type, Priority, Job Description, Qualifications, Job Responsibilities, Notes, Job URL,
+              Contact Person, Contact Email. Company, Position, and Applied Date are required.
             </AlertDescription>
           </Alert>
 

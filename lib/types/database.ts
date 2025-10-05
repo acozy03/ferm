@@ -15,16 +15,19 @@ export interface JobApplication {
   user_id: string
   company_name: string
   position_title: string
-  job_url?: string
-  location?: string
-  salary_range?: string
+  job_url?: string | null
+  location?: string | null
+  salary_range?: string | null
   employment_type: EmploymentType
   status: JobApplicationStatus
   priority: Priority
   application_date: string
-  notes?: string
-  contact_person?: string
-  contact_email?: string
+  notes?: string | null
+  contact_person?: string | null
+  contact_email?: string | null
+  job_description?: string | null
+  qualifications?: string | null
+  job_responsibilities?: string | null
   created_at: string
   updated_at: string
 }
@@ -84,16 +87,19 @@ export interface JobApplicationFull extends JobApplication {
 export interface CreateJobApplicationData {
   company_name: string
   position_title: string
-  job_url?: string
-  location?: string
-  salary_range?: string
+  job_url?: string | null
+  location?: string | null
+  salary_range?: string | null
   employment_type?: EmploymentType
   status?: JobApplicationStatus
   priority?: Priority
   application_date?: string
-  notes?: string
-  contact_person?: string
-  contact_email?: string
+  notes?: string | null
+  contact_person?: string | null
+  contact_email?: string | null
+  job_description?: string | null
+  qualifications?: string | null
+  job_responsibilities?: string | null
 }
 
 export interface UpdateJobApplicationData extends Partial<CreateJobApplicationData> {

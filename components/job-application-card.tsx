@@ -91,7 +91,10 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
         job_url: application.job_url,
         contact_person: application.contact_person,
         contact_email: application.contact_email,
-        notes: application.notes,
+        notes: application.notes ?? null,
+        job_description: application.job_description ?? null,
+        qualifications: application.qualifications ?? null,
+        job_responsibilities: application.job_responsibilities ?? null,
       }
 
       const response = await fetch("/api/job-applications", {

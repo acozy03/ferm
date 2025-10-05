@@ -25,10 +25,11 @@ export function AddNoteDialog({ applicationId, currentNotes = "", onUpdate, trig
     setIsLoading(true)
 
     try {
+      const payload = { notes: notes.trim() === "" ? null : notes }
       const response = await fetch(`/api/job-applications/${applicationId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify(payload),
       })
 
       if (response.ok) {

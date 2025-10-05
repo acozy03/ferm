@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { createClient } from "@supabase/supabase-js"
 import type { CreateJobApplicationData } from "@/lib/types/database"
+import { toNullableString } from "@/lib/utils"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -167,6 +168,15 @@ export async function POST(request: NextRequest) {
     const insertData = {
       ...body,
       user_id: userId,
+      location: toNullableString(body.location ?? null),
+      salary_range: toNullableString(body.salary_range ?? null),
+      notes: toNullableString(body.notes ?? null),
+      job_url: toNullableString(body.job_url ?? null),
+      contact_email: toNullableString(body.contact_email ?? null),
+      contact_person: toNullableString(body.contact_person ?? null),
+      job_description: toNullableString(body.job_description ?? null),
+      qualifications: toNullableString(body.qualifications ?? null),
+      job_responsibilities: toNullableString(body.job_responsibilities ?? null),
     }
 
     const { data, error } = await supabase.from("job_applications").insert([insertData]).select().single()
