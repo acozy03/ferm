@@ -20,7 +20,6 @@ import { UpcomingInterviews } from "@/components/upcoming-interviews"
 import { BulkActions } from "@/components/bulk-actions"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { ApplicationsDrawer } from "@/components/applications-drawer"
@@ -31,6 +30,7 @@ import { useSettings } from "@/components/settings-provider"
 import { JobDetailsDialog } from "@/components/job-details-dialog"
 import { StatusUpdateDialog } from "@/components/status-update-dialog"
 import { defaultViewOptions } from "@/lib/settings"
+import { cn } from "@/lib/utils"
 
 const serializeFilters = (filters: JobApplicationFilters) =>
   createSearchParamsWithFilters(new URLSearchParams(), filters).toString()
@@ -56,6 +56,9 @@ const statusBadges: Record<JobApplication["status"], string> = {
   Withdrawn: "bg-gray-500/10 text-gray-500 border-gray-500/20",
   Accepted: "bg-purple-500/10 text-purple-500 border-purple-500/20",
 }
+
+const INTERACTIVE_ELEMENT_SELECTOR =
+  "button, a, [role='button'], input, textarea, select, [data-prevent-selection-toggle='true']"
 
 export default function Dashboard() {
   const searchParams = useSearchParams()
@@ -222,8 +225,6 @@ export default function Dashboard() {
   const totalPages = Math.max(1, totalPagesFromResponse || 1)
   const canGoPrevious = page > 1
   const canGoNext = page < totalPages
-  const allSelected = applications.length > 0 && applications.every((application) => selectedApplications.includes(application.id))
-  const someSelected = applications.some((application) => selectedApplications.includes(application.id)) && !allSelected
 
   const handleFilterChange = (newFilters: JobApplicationFilters) => {
     setFilters(newFilters)
@@ -314,14 +315,6 @@ export default function Dashboard() {
       mutate()
     } catch (error) {
       console.error("Failed to update application status:", error)
-    }
-  }
-
-  const handleSelectAll = (selected: boolean) => {
-    if (selected) {
-      setSelectedApplications(applications.map((application) => application.id))
-    } else {
-      setSelectedApplications([])
     }
   }
 
@@ -495,13 +488,6 @@ export default function Dashboard() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="w-12">
-                                <Checkbox
-                                  aria-label="Select all applications"
-                                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                                  onCheckedChange={(checked) => handleSelectAll(checked === true)}
-                                />
-                              </TableHead>
                               <TableHead>Role</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Priority</TableHead>
@@ -514,16 +500,24 @@ export default function Dashboard() {
                             {applications.map((application) => {
                               const isSelected = selectedApplications.includes(application.id)
                               return (
-                                <TableRow key={application.id} data-state={isSelected ? "selected" : undefined}>
-                                  <TableCell className="w-12">
-                                    <Checkbox
-                                      aria-label={`Select ${application.position_title}`}
-                                      checked={isSelected}
-                                      onCheckedChange={(checked) =>
-                                        handleSelectApplication(application.id, checked === true)
-                                      }
-                                    />
-                                  </TableCell>
+                                <TableRow
+                                  key={application.id}
+                                  data-state={isSelected ? "selected" : undefined}
+                                  className={cn(
+                                    "cursor-pointer transition-colors hover:bg-accent/50",
+                                    isSelected && "bg-muted",
+                                  )}
+                                  onClick={(event) => {
+                                    if (event.defaultPrevented) return
+
+                                    const target = event.target as HTMLElement
+                                    if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
+                                      return
+                                    }
+
+                                    handleSelectApplication(application.id, !isSelected)
+                                  }}
+                                >
                                   <TableCell>
                                     <div className="space-y-1">
                                       <p className="font-medium leading-tight text-sm text-balance">
@@ -563,7 +557,7 @@ export default function Dashboard() {
                                           handleStatusChange(application.id, status, note)
                                         }
                                         trigger={
-                                          <Button variant="ghost" size="sm" className="h-8 px-2">
+                                          <Button variant="secondary" size="sm" className="h-8 px-3">
                                             Update
                                           </Button>
                                         }
@@ -572,7 +566,11 @@ export default function Dashboard() {
                                         application={application}
                                         onUpdate={handleApplicationUpdate}
                                         trigger={
-                                          <Button variant="outline" size="sm" className="h-8 px-2">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 px-3 border-primary/50 text-primary"
+                                          >
                                             Details
                                           </Button>
                                         }
@@ -588,6 +586,14 @@ export default function Dashboard() {
                     </TabsContent>
 
                     <TabsContent value="timeline" className="space-y-6">
+                      <BulkActions
+                        selectedCount={selectedApplications.length}
+                        onBulkStatusUpdate={handleBulkStatusUpdate}
+                        onBulkDelete={handleBulkDelete}
+                        onBulkExport={handleBulkExport}
+                        onClearSelection={() => setSelectedApplications([])}
+                      />
+
                       {isLoading ? (
                         <div className="space-y-4">
                           {[...Array(4)].map((_, index) => (
@@ -603,14 +609,32 @@ export default function Dashboard() {
                       ) : (
                         <div className="relative space-y-6">
                           <div className="absolute left-1.5 top-0 h-full w-px bg-border" aria-hidden />
-                          {timelineItems.map((application) => (
-                            <div key={application.id} className="relative pl-6">
-                              <span className="absolute left-0 top-2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-primary" />
-                              <div className="flex flex-col gap-2 rounded-lg border bg-card/50 p-4">
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                  <div>
-                                    <p className="font-medium leading-tight text-balance">
-                                      {application.position_title}
+                          {timelineItems.map((application) => {
+                            const isSelected = selectedApplications.includes(application.id)
+
+                            return (
+                              <div key={application.id} className="relative pl-6">
+                                <span className="absolute left-0 top-2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-primary" />
+                                <div
+                                  className={cn(
+                                    "flex flex-col gap-2 rounded-lg border bg-card/50 p-4 transition-colors hover:bg-accent/50",
+                                    isSelected && "border-primary/40 bg-muted",
+                                  )}
+                                  onClick={(event) => {
+                                    if (event.defaultPrevented) return
+
+                                    const target = event.target as HTMLElement
+                                    if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
+                                      return
+                                    }
+
+                                    handleSelectApplication(application.id, !isSelected)
+                                  }}
+                                >
+                                  <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                      <p className="font-medium leading-tight text-balance">
+                                        {application.position_title}
                                     </p>
                                     <p className="text-sm text-muted-foreground text-pretty">
                                       {application.company_name}
@@ -628,14 +652,15 @@ export default function Dashboard() {
                                   <span>{formatDaysSinceApplied(application.application_date)}</span>
                                   {application.location && <span>• {application.location}</span>}
                                 </div>
-                                {application.notes && (
-                                  <p className="text-sm text-muted-foreground line-clamp-3">
-                                    {application.notes}
-                                  </p>
-                                )}
+                                  {application.notes && (
+                                    <p className="text-sm text-muted-foreground line-clamp-3">
+                                      {application.notes}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </TabsContent>

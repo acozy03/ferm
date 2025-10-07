@@ -44,35 +44,43 @@ export function StatusUpdateDialog({ currentStatus, onStatusUpdate, trigger }: S
         <DialogHeader>
           <DialogTitle>Update Application Status</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="status">Current Status</Label>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={selectedOption?.color}>
-                {currentStatus}
-              </Badge>
-              <span className="text-sm text-muted-foreground">→</span>
+        <div className="space-y-6">
+          <div className="rounded-lg border bg-muted/10 p-4">
+            <p className="text-sm font-medium text-muted-foreground">Status Progress</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-md border bg-background/80 p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current</p>
+                <div className="mt-3">
+                  <Badge variant="outline" className={selectedOption?.color}>
+                    {currentStatus}
+                  </Badge>
+                </div>
+              </div>
+              <div className="rounded-md border bg-background/80 p-4 shadow-sm">
+                <Label
+                  htmlFor="new-status"
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  Update To
+                </Label>
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger id="new-status" className="mt-3">
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={option.color}>
+                            {option.label}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="new-status">New Status</Label>
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={option.color}>
-                        {option.label}
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2">
