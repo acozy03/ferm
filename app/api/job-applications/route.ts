@@ -281,6 +281,10 @@ export async function POST(request: NextRequest) {
         const resume = await getLatestResumeText(userId)
 
         if (resume?.text) {
+          console.info(
+            "Resume match scoring: found resume text for user, initiating scoring",
+            { userId }
+          )
           const jobContext = {
             company_name: body.company_name,
             position_title: body.position_title,
@@ -292,14 +296,31 @@ export async function POST(request: NextRequest) {
 
           const scoringResult = await generateResumeMatchScore({ job: jobContext, resumeText: resume.text })
 
+          if (!scoringResult) {
+            console.info("Resume match scoring: no score returned", {
+              userId,
+              company: jobContext.company_name,
+              position: jobContext.position_title,
+            })
+          }
+
           if (scoringResult) {
             resumeMatchScore = scoringResult.score
             resumeMatchSummary = scoringResult.summary
+            console.info("Resume match scoring: score computed", {
+              userId,
+              resumeMatchScore,
+              hasSummary: Boolean(resumeMatchSummary),
+            })
           }
+        } else {
+          console.info("Resume match scoring: no resume text available", { userId })
         }
       } catch (error) {
         console.error("Failed to generate resume match score", error)
       }
+    } else {
+      console.info("Resume match scoring: skipped, missing OPENAI_API_KEY")
     }
 
     // Force user_id from server (never trust client)
