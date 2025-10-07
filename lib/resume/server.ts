@@ -1,13 +1,13 @@
-// REMOVE: import pdfParse from "pdf-parse"
+import "server-only"
 import mammoth from "mammoth"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
 let _pdfParse: any | null = null
 async function getPdfParse() {
   if (_pdfParse) return _pdfParse
-  const { createRequire } = await import("module")
-  const require = createRequire(import.meta.url)
-  _pdfParse = require("pdf-parse") 
+  // Import our local CJS bridge; this guarantees the CJS build is used.
+  const mod: any = await import("./pdf-parse.cjs")
+  _pdfParse = mod?.default ?? mod
   return _pdfParse
 }
 
@@ -22,7 +22,6 @@ export interface ResumeTextResult {
 function sanitizeText(input: string) {
   return input.replace(/\u0000/g, "").trim()
 }
-
 function truncateText(input: string, maxLength: number) {
   if (input.length <= maxLength) return input
   return `${input.slice(0, maxLength)}\n...[truncated]`
@@ -34,12 +33,12 @@ async function extractResumeText(buffer: Buffer, fileName: string) {
   if (extension === "pdf") {
     const pdfParse = await getPdfParse()
     const result = await pdfParse(buffer)
-    return sanitizeText(result.text)
+    return sanitizeText(result.text || "")
   }
 
   if (extension === "docx") {
     const { value } = await mammoth.extractRawText({ buffer })
-    return sanitizeText(value)
+    return sanitizeText(value || "")
   }
 
   try {
@@ -53,10 +52,9 @@ async function extractResumeText(buffer: Buffer, fileName: string) {
 export async function getLatestResumeText(userId: string): Promise<ResumeTextResult | null> {
   const adminClient = createAdminSupabaseClient()
 
-  const { data: files, error: listError } = await adminClient.storage.from(RESUME_BUCKET).list(userId, {
-    limit: 1,
-    sortBy: { column: "updated_at", order: "desc" },
-  })
+  const { data: files, error: listError } = await adminClient.storage
+    .from(RESUME_BUCKET)
+    .list(userId, { limit: 1, sortBy: { column: "updated_at", order: "desc" } })
   if (listError) throw listError
 
   const file = files?.[0]
@@ -71,8 +69,5 @@ export async function getLatestResumeText(userId: string): Promise<ResumeTextRes
   const rawText = await extractResumeText(buffer, file.name)
   if (!rawText) return null
 
-  return {
-    fileName: file.name,
-    text: truncateText(rawText, MAX_RESUME_CHARACTERS),
-  }
+  return { fileName: file.name, text: truncateText(rawText, MAX_RESUME_CHARACTERS) }
 }

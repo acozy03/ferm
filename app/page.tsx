@@ -29,6 +29,7 @@ import type { JobApplication, JobApplicationFilters, JobApplicationSort } from "
 import { useSettings } from "@/components/settings-provider"
 import { JobDetailsDialog } from "@/components/job-details-dialog"
 import { StatusUpdateDialog } from "@/components/status-update-dialog"
+import { EditApplicationDialog } from "@/components/edit-application-dialog"
 import { defaultViewOptions } from "@/lib/settings"
 import { cn } from "@/lib/utils"
 
@@ -110,6 +111,8 @@ export default function Dashboard() {
   const [selectedApplications, setSelectedApplications] = useState<string[]>([])
   const [isApplicationsDrawerOpen, setIsApplicationsDrawerOpen] = useState(false)
   const [view, setView] = useState<DashboardView>(viewFromParams)
+  const [bulkEditApplication, setBulkEditApplication] = useState<JobApplication | null>(null)
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
 
   useEffect(() => {
     setFilters((previous) => {
@@ -255,6 +258,24 @@ export default function Dashboard() {
     }
   }
 
+  useEffect(() => {
+    if (!bulkEditApplication || !isBulkEditOpen) {
+      return
+    }
+
+    const updatedApplication = applications.find((app) => app.id === bulkEditApplication.id)
+    if (updatedApplication && updatedApplication !== bulkEditApplication) {
+      setBulkEditApplication(updatedApplication)
+    }
+  }, [applications, bulkEditApplication, isBulkEditOpen])
+
+  useEffect(() => {
+    if (selectedApplications.length === 0) {
+      setIsBulkEditOpen(false)
+      setBulkEditApplication(null)
+    }
+  }, [selectedApplications.length])
+
   const handleBulkStatusUpdate = async (status: string) => {
     try {
       const response = await fetch("/api/job-applications/bulk", {
@@ -318,30 +339,19 @@ export default function Dashboard() {
     }
   }
 
-  const handleBulkExport = () => {
-    const selectedApps = applications.filter((app) => selectedApplications.includes(app.id))
-    const csvContent = [
-      ["Company", "Position", "Status", "Application Date", "Location", "Salary Range", "Notes"].join(","),
-      ...selectedApps.map((app) =>
-        [
-          app.company_name,
-          app.position_title,
-          app.status,
-          app.application_date,
-          app.location || "",
-          app.salary_range || "",
-          (app.notes || "").replace(/,/g, ";"),
-        ].join(","),
-      ),
-    ].join("\n")
+  const handleBulkEdit = () => {
+    const firstSelectedId = selectedApplications[0]
+    if (!firstSelectedId) {
+      return
+    }
 
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `job-applications-${new Date().toISOString().split("T")[0]}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const applicationToEdit = applications.find((app) => app.id === firstSelectedId)
+    if (!applicationToEdit) {
+      return
+    }
+
+    setBulkEditApplication(applicationToEdit)
+    setIsBulkEditOpen(true)
   }
 
   const handlePageChange = (nextPage: number) => {
@@ -438,7 +448,7 @@ export default function Dashboard() {
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
                         onBulkDelete={handleBulkDelete}
-                        onBulkExport={handleBulkExport}
+                        onBulkEdit={handleBulkEdit}
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
@@ -475,7 +485,7 @@ export default function Dashboard() {
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
                         onBulkDelete={handleBulkDelete}
-                        onBulkExport={handleBulkExport}
+                        onBulkEdit={handleBulkEdit}
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
@@ -525,12 +535,20 @@ export default function Dashboard() {
                                     handleSelectApplication(application.id, !isSelected)
                                   }}
                                 >
-                                  <TableCell>
-                                    <div className="space-y-1">
-                                      <p className="font-medium leading-tight text-sm text-balance">
+                                  <TableCell className="w-[32%] max-w-[18rem]">
+                                    <div className="space-y-1 min-w-0">
+                                      <p
+                                        className="font-medium leading-tight text-sm truncate"
+                                        title={application.position_title}
+                                      >
                                         {application.position_title}
                                       </p>
-                                      <p className="text-xs text-muted-foreground">{application.company_name}</p>
+                                      <p
+                                        className="text-xs text-muted-foreground truncate"
+                                        title={application.company_name}
+                                      >
+                                        {application.company_name}
+                                      </p>
                                     </div>
                                   </TableCell>
                                   <TableCell>
@@ -549,9 +567,14 @@ export default function Dashboard() {
                                       </span>
                                     </div>
                                   </TableCell>
-                                  <TableCell className="hidden lg:table-cell">
+                                  <TableCell className="hidden lg:table-cell max-w-[14rem]">
                                     {application.location ? (
-                                      <span className="text-sm">{application.location}</span>
+                                      <span
+                                        className="block text-sm truncate"
+                                        title={application.location}
+                                      >
+                                        {application.location}
+                                      </span>
                                     ) : (
                                       <span className="text-xs text-muted-foreground">—</span>
                                     )}
@@ -597,7 +620,7 @@ export default function Dashboard() {
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
                         onBulkDelete={handleBulkDelete}
-                        onBulkExport={handleBulkExport}
+                        onBulkEdit={handleBulkEdit}
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
@@ -639,31 +662,41 @@ export default function Dashboard() {
                                   }}
                                 >
                                   <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div>
-                                      <p className="font-medium leading-tight text-balance">
+                                    <div className="min-w-0">
+                                      <p className="font-medium leading-tight line-clamp-2 break-words">
                                         {application.position_title}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground text-pretty">
-                                      {application.company_name}
-                                    </p>
+                                      </p>
+                                      <p
+                                        className="text-sm text-muted-foreground line-clamp-1 break-words"
+                                        title={application.company_name}
+                                      >
+                                        {application.company_name}
+                                      </p>
+                                    </div>
+                                    <Badge variant="outline" className={statusBadges[application.status]}>
+                                      {application.status}
+                                    </Badge>
                                   </div>
-                                  <Badge variant="outline" className={statusBadges[application.status]}>
-                                    {application.status}
-                                  </Badge>
-                                </div>
                                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                   <span>
                                     Applied {timelineDateFormatter.format(new Date(application.application_date))}
                                   </span>
                                   <span>•</span>
                                   <span>{formatDaysSinceApplied(application.application_date)}</span>
-                                  {application.location && <span>• {application.location}</span>}
-                                </div>
-                                  {application.notes && (
-                                    <p className="text-sm text-muted-foreground line-clamp-3">
-                                      {application.notes}
-                                    </p>
+                                  {application.location && (
+                                    <span className="flex min-w-0 items-center gap-1 max-w-[14rem]">
+                                      <span>•</span>
+                                      <span className="truncate" title={application.location}>
+                                        {application.location}
+                                      </span>
+                                    </span>
                                   )}
+                                </div>
+                                {application.notes && (
+                                  <p className="text-sm text-muted-foreground line-clamp-3 break-words">
+                                    {application.notes}
+                                  </p>
+                                )}
                                 </div>
                               </div>
                             )
@@ -717,6 +750,20 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {bulkEditApplication && (
+        <EditApplicationDialog
+          application={bulkEditApplication}
+          onUpdate={handleApplicationUpdate}
+          open={isBulkEditOpen}
+          onOpenChange={(open) => {
+            setIsBulkEditOpen(open)
+            if (!open) {
+              setBulkEditApplication(null)
+            }
+          }}
+        />
+      )}
 
       <ApplicationsDrawer
         open={isApplicationsDrawerOpen}

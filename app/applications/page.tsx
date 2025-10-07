@@ -148,10 +148,20 @@ export default function ApplicationsPage() {
                 ) : (
                   highlightedApplications.map((application) => (
                     <div key={application.id} className="rounded-lg border p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-base text-balance">{application.company_name}</p>
-                          <p className="text-sm text-muted-foreground text-pretty">{application.position_title}</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p
+                            className="font-semibold text-base line-clamp-1 break-words"
+                            title={application.company_name}
+                          >
+                            {application.company_name}
+                          </p>
+                          <p
+                            className="text-sm text-muted-foreground line-clamp-2 break-words"
+                            title={application.position_title}
+                          >
+                            {application.position_title}
+                          </p>
                         </div>
                         <Badge>{application.status}</Badge>
                       </div>
@@ -159,7 +169,9 @@ export default function ApplicationsPage() {
                         Updated {formatDistanceToNow(new Date(application.updated_at), { addSuffix: true })}
                       </p>
                       {application.notes && (
-                        <p className="mt-2 text-sm text-muted-foreground text-pretty">{application.notes}</p>
+                        <p className="mt-2 text-sm text-muted-foreground line-clamp-3 break-words">
+                          {application.notes}
+                        </p>
                       )}
                     </div>
                   ))
@@ -179,13 +191,16 @@ export default function ApplicationsPage() {
                 ) : (
                   upcomingInterviews.slice(0, 3).map((interview) => (
                     <div key={interview.id} className="rounded-lg border p-3 space-y-1">
-                      <p className="font-medium text-foreground">
+                      <p
+                        className="font-medium text-foreground line-clamp-1 break-words"
+                        title={interview.job_applications?.company_name ?? undefined}
+                      >
                         {interview.job_applications?.company_name ?? "Unknown company"}
                       </p>
                       <p className="text-xs">
                         {interviewDateFormatter.format(new Date(interview.scheduled_date))}
                       </p>
-                      <p className="text-xs">
+                      <p className="text-xs line-clamp-2 break-words">
                         {interview.job_applications?.position_title ?? "Interview"} • {interview.interview_type}
                       </p>
                     </div>
@@ -219,11 +234,16 @@ export default function ApplicationsPage() {
                           type="button"
                           className="w-full rounded-lg border p-3 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          <p className="text-foreground text-pretty">{activity.description}</p>
+                          <p className="text-foreground line-clamp-2 break-words">{activity.description}</p>
                           {activity.job_applications ? (
-                            <p className="text-xs font-medium text-foreground">
+                            <p
+                              className="text-xs font-medium text-foreground line-clamp-2 break-words"
+                              title={activity.job_applications.position_title ?? undefined}
+                            >
                               {activity.job_applications.position_title}
-                              <span className="text-muted-foreground"> • {activity.job_applications.company_name}</span>
+                              <span className="text-muted-foreground">
+                                {" "}• {activity.job_applications.company_name}
+                              </span>
                             </p>
                           ) : (
                             <p className="text-xs italic text-muted-foreground">Application removed</p>

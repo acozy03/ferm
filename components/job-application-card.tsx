@@ -156,11 +156,13 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
     >
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1 flex-col gap-1">
-            <h3 className="text-lg font-semibold leading-tight text-balance">
+          <div className="flex flex-1 min-w-0 flex-col gap-1">
+            <h3 className="text-lg font-semibold leading-tight line-clamp-2 break-words">
               {application.position_title}
             </h3>
-            <p className="font-medium text-muted-foreground">{application.company_name}</p>
+            <p className="font-medium text-muted-foreground line-clamp-1 break-words" title={application.company_name}>
+              {application.company_name}
+            </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <Badge variant="outline" className={statusColors[application.status]}>
@@ -235,13 +237,17 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
           {application.location && (
             <div className="inline-flex min-w-[140px] items-center gap-2">
               <MapPin className="h-4 w-4" />
-              <span className="whitespace-normal sm:whitespace-nowrap">{application.location}</span>
+              <span className="max-w-[12rem] truncate" title={application.location}>
+                {application.location}
+              </span>
             </div>
           )}
           {application.salary_range && (
             <div className="inline-flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              <span>{application.salary_range}</span>
+              <span className="max-w-[10rem] truncate" title={application.salary_range}>
+                {application.salary_range}
+              </span>
             </div>
           )}
         </div>
@@ -249,7 +255,9 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
         {application.notes && (
           <div className="flex items-start gap-2 text-sm">
             <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-muted-foreground text-pretty">{application.notes}</p>
+            <p className="text-muted-foreground text-pretty line-clamp-3 break-words">
+              {application.notes}
+            </p>
           </div>
         )}
 

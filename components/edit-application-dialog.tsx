@@ -14,7 +14,9 @@ import type { JobApplication, JobApplicationStatus } from "@/lib/types/database"
 interface EditApplicationDialogProps {
   application: JobApplication
   onUpdate: () => void
-  trigger: React.ReactNode
+  trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const statusOptions = [
@@ -26,7 +28,13 @@ const statusOptions = [
   { value: "Withdrawn", label: "Withdrawn" },
 ] as const
 
-export function EditApplicationDialog({ application, onUpdate, trigger }: EditApplicationDialogProps) {
+export function EditApplicationDialog({
+  application,
+  onUpdate,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: EditApplicationDialogProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -45,8 +53,18 @@ export function EditApplicationDialog({ application, onUpdate, trigger }: EditAp
     job_responsibilities: application.job_responsibilities || "",
   })
 
+  const isControlled = typeof controlledOpen === "boolean" && typeof onOpenChange === "function"
+  const dialogOpen = isControlled ? controlledOpen : open
+  const setDialogOpen = (nextOpen: boolean) => {
+    if (isControlled) {
+      onOpenChange(nextOpen)
+    } else {
+      setOpen(nextOpen)
+    }
+  }
+
   useEffect(() => {
-    if (open) {
+    if (dialogOpen) {
       setFormData({
         company_name: application.company_name,
         position_title: application.position_title,
@@ -63,7 +81,7 @@ export function EditApplicationDialog({ application, onUpdate, trigger }: EditAp
         job_responsibilities: application.job_responsibilities || "",
       })
     }
-  }, [open, application])
+  }, [dialogOpen, application])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -96,7 +114,7 @@ export function EditApplicationDialog({ application, onUpdate, trigger }: EditAp
 
       if (response.ok) {
         onUpdate()
-        setOpen(false)
+        setDialogOpen(false)
       }
     } catch (error) {
       console.error("Failed to update application:", error)
@@ -106,8 +124,8 @@ export function EditApplicationDialog({ application, onUpdate, trigger }: EditAp
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Application</DialogTitle>

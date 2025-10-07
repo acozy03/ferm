@@ -5,14 +5,14 @@ import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, Download, X } from "lucide-react"
+import { Trash2, Edit, FilePenLine, X } from "lucide-react"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 
 interface BulkActionsProps {
   selectedCount: number
   onBulkStatusUpdate: (status: string) => void
   onBulkDelete: () => Promise<void>
-  onBulkExport: () => void
+  onBulkEdit: () => void
   onClearSelection: () => void
 }
 
@@ -28,7 +28,7 @@ export function BulkActions({
   selectedCount,
   onBulkStatusUpdate,
   onBulkDelete,
-  onBulkExport,
+  onBulkEdit,
   onClearSelection,
 }: BulkActionsProps) {
   const [bulkStatus, setBulkStatus] = useState("")
@@ -97,9 +97,9 @@ export function BulkActions({
             Update
           </Button>
 
-          <Button variant="outline" size="sm" onClick={onBulkExport}>
-            <Download className="mr-1 h-4 w-4" />
-            Export
+          <Button variant="outline" size="sm" onClick={onBulkEdit}>
+            <FilePenLine className="mr-1 h-4 w-4" />
+            Edit
           </Button>
 
           <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
