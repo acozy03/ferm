@@ -6,7 +6,7 @@ import { Calendar, CheckCircle, Clock, MessageSquare, Plus, Search, X } from "lu
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ActivityDetailsDialog } from "@/components/activity-details-dialog"
 import { useActivityLog } from "@/lib/hooks/use-activity-log"
@@ -182,9 +182,20 @@ export function ActivityTimeline() {
 
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} direction="right">
         <DrawerContent position="right" className="sm:max-w-3xl">
-          <DrawerHeader>
+          <DrawerHeader className="relative pb-2 pr-12 sm:pr-16">
             <DrawerTitle>Activity history</DrawerTitle>
             <DrawerDescription>Search every update tracked for your applications.</DrawerDescription>
+            <DrawerClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close activity drawer</span>
+              </Button>
+            </DrawerClose>
           </DrawerHeader>
           <div className="border-t">
             <div className="flex flex-col gap-4 p-4">
@@ -230,11 +241,6 @@ export function ActivityTimeline() {
                 </div>
               </ScrollArea>
 
-              <div className="flex items-center justify-end">
-                <Button variant="ghost" size="sm" onClick={() => setIsDrawerOpen(false)}>
-                  Close
-                </Button>
-              </div>
             </div>
           </div>
         </DrawerContent>

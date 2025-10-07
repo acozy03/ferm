@@ -421,9 +421,16 @@ export default function Dashboard() {
                           Timeline
                         </TabsTrigger>
                       </TabsList>
-                      <p className="text-sm text-muted-foreground">
-                        Choose how you want to review your applications.
-                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2 self-start sm:self-auto"
+                        onClick={() => setIsApplicationsDrawerOpen(true)}
+                      >
+                        <ListChecks className="h-4 w-4" />
+                        Open application library
+                      </Button>
                     </div>
 
                     <TabsContent value="pipeline" className="space-y-4">
@@ -675,8 +682,11 @@ export default function Dashboard() {
                           } of ${count} applications`}
                     </p>
 
-                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                       <div className="flex items-center justify-end gap-2">
+                        <span className="text-xs text-muted-foreground sm:ml-1">
+                          Page {totalPages === 0 ? 1 : page} of {totalPages || 1}
+                        </span>
                         <Button
                           type="button"
                           variant="outline"
@@ -687,9 +697,6 @@ export default function Dashboard() {
                           <ChevronLeft className="h-4 w-4" />
                           <span className="sr-only">Previous page</span>
                         </Button>
-                        <span className="text-xs text-muted-foreground">
-                          Page {totalPages === 0 ? 1 : page} of {totalPages || 1}
-                        </span>
                         <Button
                           type="button"
                           variant="outline"
@@ -700,18 +707,8 @@ export default function Dashboard() {
                           <ChevronRight className="h-4 w-4" />
                           <span className="sr-only">Next page</span>
                         </Button>
+                        
                       </div>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => setIsApplicationsDrawerOpen(true)}
-                      >
-                        <ListChecks className="h-4 w-4" />
-                        Open application library
-                      </Button>
                     </div>
                   </div>
                 </div>
