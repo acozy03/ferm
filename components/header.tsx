@@ -44,7 +44,6 @@ export function Header() {
   const { supabase, user, isLoading: isAuthLoading } = useSupabase()
   const userAvatar = useMemo(() => {
     const metadata = user?.user_metadata as { picture?: string; avatar_url?: string } | undefined
-
     return metadata?.picture ?? metadata?.avatar_url ?? null
   }, [user])
   const handleSignOut = useCallback(async () => {

@@ -82,7 +82,7 @@ export function ActivityTimeline() {
     })
   }, [activities, trimmedSearch])
 
-  const limitedActivities = activities.slice(0, 6)
+  const limitedActivities = activities.slice(0, 3)
   const hasMoreActivity = activities.length > limitedActivities.length
 
   const renderActivityItem = (item: ActivityLogWithApplication) => {
