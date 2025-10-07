@@ -5,8 +5,6 @@ import useSWR from "swr"
 import type { JobApplication, JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
 import type { PaginatedResponse } from "@/lib/types/api"
 import { apiFetcher } from "@/lib/fetcher"
-import { useSettings } from "@/components/settings-provider"
-import { ACTIVE_STATUSES } from "@/lib/settings"
 
 interface UseJobApplicationsParams {
   page?: number
@@ -19,21 +17,10 @@ interface UseJobApplicationsParams {
 }
 
 export function useJobApplications(params: UseJobApplicationsParams = {}) {
-  const { settings } = useSettings()
-
-  const effectiveFilters = useMemo<JobApplicationFilters>(() => {
-    const baseFilters = params.filters ?? {}
-
-    if (params.ignoreArchivePreference || settings.showArchived) {
-      return baseFilters
-    }
-
-    if (baseFilters.status?.length) {
-      return baseFilters
-    }
-
-    return { ...baseFilters, status: ACTIVE_STATUSES }
-  }, [params.filters, params.ignoreArchivePreference, settings.showArchived])
+  const effectiveFilters = useMemo<JobApplicationFilters>(
+    () => params.filters ?? {},
+    [params.filters],
+  )
 
   const requestUrl = useMemo(() => {
     const searchParams = new URLSearchParams()

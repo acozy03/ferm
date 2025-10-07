@@ -5,14 +5,13 @@ import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, FilePenLine, X } from "lucide-react"
+import { Trash2, Edit, X } from "lucide-react"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 
 interface BulkActionsProps {
   selectedCount: number
   onBulkStatusUpdate: (status: string) => void
   onBulkDelete: () => Promise<void>
-  onBulkEdit: () => void
   onClearSelection: () => void
 }
 
@@ -28,7 +27,6 @@ export function BulkActions({
   selectedCount,
   onBulkStatusUpdate,
   onBulkDelete,
-  onBulkEdit,
   onClearSelection,
 }: BulkActionsProps) {
   const [bulkStatus, setBulkStatus] = useState("")
@@ -73,9 +71,6 @@ export function BulkActions({
       <div className="pointer-events-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-4 shadow-lg backdrop-blur">
         <div className="flex items-center gap-3">
           <Badge variant="secondary">{selectedCount} selected</Badge>
-          <Button variant="ghost" size="sm" onClick={onClearSelection}>
-            Clear
-          </Button>
         </div>
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none">
@@ -95,11 +90,6 @@ export function BulkActions({
           <Button variant="outline" size="sm" onClick={handleStatusUpdate} disabled={!bulkStatus}>
             <Edit className="mr-1 h-4 w-4" />
             Update
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={onBulkEdit}>
-            <FilePenLine className="mr-1 h-4 w-4" />
-            Edit
           </Button>
 
           <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
