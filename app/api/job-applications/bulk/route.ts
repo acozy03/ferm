@@ -51,6 +51,23 @@ export async function PUT(request: NextRequest) {
     delete (sanitizedUpdates as { resume_match_score?: number | null }).resume_match_score
     delete (sanitizedUpdates as { resume_match_summary?: string | null }).resume_match_summary
 
+    const statusInPayload = Object.prototype.hasOwnProperty.call(sanitizedUpdates, "status")
+    let previousStatuses: Record<string, string> = {}
+
+    if (statusInPayload) {
+      const { data: existingStatuses, error: existingError } = await supabase
+        .from("job_applications")
+        .select("id, status")
+        .in("id", ids)
+        .eq("user_id", user.id)
+
+      if (existingError) {
+        return NextResponse.json({ error: existingError.message }, { status: 500 })
+      }
+
+      previousStatuses = Object.fromEntries((existingStatuses ?? []).map((record) => [record.id, record.status]))
+    }
+
     const { data, error } = await supabase
       .from("job_applications")
       .update(sanitizedUpdates)
@@ -60,6 +77,24 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (statusInPayload) {
+      for (const record of data ?? []) {
+        if (!record?.id || !record?.status) continue
+        if (previousStatuses[record.id] === record.status) continue
+
+        const { error: historyError } = await supabase.from("job_application_status_history").insert({
+          job_application_id: record.id,
+          user_id: user.id,
+          status: record.status,
+          changed_at: record.updated_at ?? new Date().toISOString(),
+        })
+
+        if (historyError) {
+          console.error("Failed to record status history for bulk update", historyError, { recordId: record.id })
+        }
+      }
     }
 
     return NextResponse.json({

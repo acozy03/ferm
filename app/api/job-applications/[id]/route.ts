@@ -27,7 +27,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .select(`
         *,
         interviews(*),
-        activity_log(*)
+        activity_log(*),
+        status_history:job_application_status_history(*)
       `)
       .eq("id", id)
       .eq("user_id", user.id)
@@ -41,7 +42,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Job application not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ data })
+    const normalizedData = {
+      ...data,
+      status_history: [...(data.status_history ?? [])].sort(
+        (left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime(),
+      ),
+    }
+
+    return NextResponse.json({ data: normalizedData })
   } catch (error) {
     console.error("Failed to load job application", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -91,6 +99,29 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
+    const statusInPayload = Object.prototype.hasOwnProperty.call(sanitizedUpdates, "status")
+    let previousStatus: string | null = null
+
+    if (statusInPayload) {
+      const { data: existing, error: existingError } = await supabase
+        .from("job_applications")
+        .select("status")
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .single()
+
+      if (existingError) {
+        if (existingError.code === "PGRST116") {
+          return NextResponse.json({ error: "Job application not found" }, { status: 404 })
+        }
+
+        console.error("Failed to load current status before update", existingError)
+        return NextResponse.json({ error: existingError.message }, { status: 500 })
+      }
+
+      previousStatus = existing?.status ?? null
+    }
+
     const { data, error } = await supabase
       .from("job_applications")
       .update(sanitizedUpdates)
@@ -101,6 +132,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (statusInPayload && data?.status && previousStatus !== data.status) {
+      const { error: historyError } = await supabase.from("job_application_status_history").insert({
+        job_application_id: id,
+        user_id: user.id,
+        status: data.status,
+        changed_at: data.updated_at ?? new Date().toISOString(),
+      })
+
+      if (historyError) {
+        console.error("Failed to record status history change", historyError)
+      }
     }
 
     return NextResponse.json({ data })

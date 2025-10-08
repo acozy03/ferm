@@ -19,6 +19,14 @@ import { useActivityLog } from "@/lib/hooks/use-activity-log"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const SANKEY_BASE_NODE = "Applications Submitted"
+const STATUS_TO_STAGE: Record<JobApplicationStatus, string> = {
+  Applied: "Applied",
+  Interview: "Interviewing",
+  Offer: "Offer Received",
+  Rejected: "Rejected",
+  Withdrawn: "Withdrawn",
+  Accepted: "Accepted",
+}
 
 type SankeyNodeWithCount = {
   name: string
@@ -96,7 +104,7 @@ const CustomSankeyNode = ({ x, y, width, height, payload }: {
 export default function AnalyticsPage() {
   const sankeyContainerRef = useRef<HTMLDivElement>(null)
   const { stats, isLoading: statsLoading } = useDashboardStats()
-  const { applications, isLoading: appsLoading } = useJobApplications({ limit: 200 })
+  const { applications, isLoading: appsLoading } = useJobApplications({ limit: 200, include_status_history: true })
   const { interviews: upcomingInterviews } = useInterviews({ upcoming_only: true })
   const { activities, isLoading: activityLoading } = useActivityLog()
 
@@ -153,35 +161,35 @@ export default function AnalyticsPage() {
     }
 
     applications.forEach((application) => {
-      const path = [baseNode]
-      switch (application.status) {
+      const historyStatuses = (application.status_history ?? []).map((entry) => entry.status)
+      const baseSequence = historyStatuses.length > 0 ? historyStatuses : [application.status]
+      const dedupedSequence = baseSequence.filter((status, index, array) => index === 0 || status !== array[index - 1])
+      const statusSequence =
+        dedupedSequence[dedupedSequence.length - 1] === application.status
+          ? dedupedSequence
+          : [...dedupedSequence, application.status]
+
+      const statusStages = statusSequence.map((status) => STATUS_TO_STAGE[status] ?? status)
+      const path = [baseNode, ...statusStages]
+      const latestStatus = statusSequence[statusSequence.length - 1] ?? application.status
+
+      switch (latestStatus) {
         case "Applied": {
           path.push(staleFollowUpSet.has(application.id) ? "Ghosted" : "Awaiting Response")
           break
         }
-        case "Interview": {
-          path.push("Interviewing")
-          break
-        }
         case "Offer": {
-          path.push("Interviewing", "Offer Received", "Offer Pending")
+          if (!path.includes("Offer Pending")) {
+            path.push("Offer Pending")
+          }
           break
         }
-        case "Accepted": {
-          path.push("Interviewing", "Offer Received", "Accepted")
+        case "Accepted":
+        case "Rejected":
+        case "Withdrawn":
+        case "Interview":
+        default:
           break
-        }
-        case "Rejected": {
-          path.push("Rejected")
-          break
-        }
-        case "Withdrawn": {
-          path.push("Withdrawn")
-          break
-        }
-        default: {
-          path.push("Awaiting Response")
-        }
       }
 
       for (let index = 0; index < path.length - 1; index += 1) {

@@ -34,6 +34,14 @@ export interface JobApplication {
   updated_at: string
 }
 
+export interface JobApplicationStatusHistory {
+  id: string
+  job_application_id: string
+  user_id: string
+  status: JobApplicationStatus
+  changed_at: string
+}
+
 export interface Interview {
   id: string
   user_id: string
@@ -76,6 +84,10 @@ export interface JobApplicationWithInterviews extends JobApplication {
   interviews: Interview[]
 }
 
+export interface JobApplicationWithStatusHistory extends JobApplication {
+  status_history: JobApplicationStatusHistory[]
+}
+
 export interface JobApplicationWithActivity extends JobApplication {
   activity_log: ActivityLog[]
 }
@@ -83,6 +95,7 @@ export interface JobApplicationWithActivity extends JobApplication {
 export interface JobApplicationFull extends JobApplication {
   interviews: Interview[]
   activity_log: ActivityLog[]
+  status_history: JobApplicationStatusHistory[]
 }
 
 // Form types for creating/updating

@@ -192,6 +192,7 @@ export async function GET(request: NextRequest) {
     const limit = Number.parseInt(searchParams.get("limit") || "10")
     const include_interviews = searchParams.get("include_interviews") === "true"
     const include_activity = searchParams.get("include_activity") === "true"
+    const include_status_history = searchParams.get("include_status_history") === "true"
 
     // Filters
     const status = searchParams.get("status")?.split(",")
@@ -212,6 +213,7 @@ export async function GET(request: NextRequest) {
         *
         ${include_interviews ? ", interviews(*)" : ""}
         ${include_activity ? ", activity_log(*)" : ""}
+        ${include_status_history ? ", status_history:job_application_status_history(*)" : ""}
       `,
         { count: "exact" }
       )
@@ -247,9 +249,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders })
     }
 
+    const normalizedData = include_status_history
+      ? data?.map((application) => ({
+          ...application,
+          status_history: [...(application.status_history ?? [])].sort(
+            (left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime(),
+          ),
+        })) ?? []
+      : data ?? []
+
     return NextResponse.json(
       {
-        data,
+        data: normalizedData,
         count,
         page,
         limit,
@@ -294,6 +305,19 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders })
+    }
+
+    if (data?.id && data?.status) {
+      const { error: historyError } = await supabase.from("job_application_status_history").insert({
+        job_application_id: data.id,
+        user_id: userId,
+        status: data.status,
+        changed_at: data.created_at ?? new Date().toISOString(),
+      })
+
+      if (historyError) {
+        console.error("Failed to record status history for new application", historyError)
+      }
     }
 
     if (!OPENAI_API_KEY) {

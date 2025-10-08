@@ -28,6 +28,7 @@ export interface GetJobApplicationsParams {
   sort?: JobApplicationSort
   include_interviews?: boolean
   include_activity?: boolean
+  include_status_history?: boolean
 }
 
 export interface BulkUpdateJobApplicationsData {
