@@ -273,56 +273,6 @@ export async function POST(request: NextRequest) {
     const { supabase, userId } = auth
     const body: CreateJobApplicationData = await request.json()
 
-    let resumeMatchScore: number | null = null
-    let resumeMatchSummary: string | null = null
-
-    if (OPENAI_API_KEY) {
-      try {
-        const resume = await getLatestResumeText(userId)
-
-        if (resume?.text) {
-          console.info(
-            "Resume match scoring: found resume text for user, initiating scoring",
-            { userId }
-          )
-          const jobContext = {
-            company_name: body.company_name,
-            position_title: body.position_title,
-            job_description: body.job_description ?? null,
-            qualifications: body.qualifications ?? null,
-            job_responsibilities: body.job_responsibilities ?? null,
-            notes: body.notes ?? null,
-          }
-
-          const scoringResult = await generateResumeMatchScore({ job: jobContext, resumeText: resume.text })
-
-          if (!scoringResult) {
-            console.info("Resume match scoring: no score returned", {
-              userId,
-              company: jobContext.company_name,
-              position: jobContext.position_title,
-            })
-          }
-
-          if (scoringResult) {
-            resumeMatchScore = scoringResult.score
-            resumeMatchSummary = scoringResult.summary
-            console.info("Resume match scoring: score computed", {
-              userId,
-              resumeMatchScore,
-              hasSummary: Boolean(resumeMatchSummary),
-            })
-          }
-        } else {
-          console.info("Resume match scoring: no resume text available", { userId })
-        }
-      } catch (error) {
-        console.error("Failed to generate resume match score", error)
-      }
-    } else {
-      console.info("Resume match scoring: skipped, missing OPENAI_API_KEY")
-    }
-
     // Force user_id from server (never trust client)
     const insertData = {
       ...body,
@@ -336,14 +286,72 @@ export async function POST(request: NextRequest) {
       job_description: toNullableString(body.job_description ?? null),
       qualifications: toNullableString(body.qualifications ?? null),
       job_responsibilities: toNullableString(body.job_responsibilities ?? null),
-      resume_match_score: resumeMatchScore,
-      resume_match_summary: toNullableString(resumeMatchSummary ?? null),
+      resume_match_score: null as number | null,
+      resume_match_summary: null as string | null,
     }
 
     const { data, error } = await supabase.from("job_applications").insert([insertData]).select().single()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders })
+    }
+
+    if (!OPENAI_API_KEY) {
+      console.info("Resume match scoring: skipped, missing OPENAI_API_KEY")
+    } else if (!data?.id) {
+      console.error("Resume match scoring: skipped, inserted record missing id")
+    } else {
+      const jobContext = {
+        company_name: body.company_name,
+        position_title: body.position_title,
+        job_description: body.job_description ?? null,
+        qualifications: body.qualifications ?? null,
+        job_responsibilities: body.job_responsibilities ?? null,
+        notes: body.notes ?? null,
+      }
+
+      void (async () => {
+        try {
+          const resume = await getLatestResumeText(userId)
+
+          if (!resume?.text) {
+            console.info("Resume match scoring: no resume text available", { userId })
+            return
+          }
+
+          console.info("Resume match scoring: found resume text for user, initiating scoring", { userId })
+          const scoringResult = await generateResumeMatchScore({ job: jobContext, resumeText: resume.text })
+
+          if (!scoringResult) {
+            console.info("Resume match scoring: no score returned", {
+              userId,
+              company: jobContext.company_name,
+              position: jobContext.position_title,
+            })
+            return
+          }
+
+          console.info("Resume match scoring: score computed", {
+            userId,
+            resumeMatchScore: scoringResult.score,
+            hasSummary: Boolean(scoringResult.summary),
+          })
+
+          const { error: updateError } = await supabase
+            .from("job_applications")
+            .update({
+              resume_match_score: scoringResult.score,
+              resume_match_summary: toNullableString(scoringResult.summary ?? null),
+            })
+            .eq("id", data.id)
+
+          if (updateError) {
+            console.error("Resume match scoring: failed to update job application", updateError)
+          }
+        } catch (error) {
+          console.error("Resume match scoring: failed to generate score", error)
+        }
+      })()
     }
 
     return NextResponse.json({ data }, { status: 201, headers: corsHeaders })

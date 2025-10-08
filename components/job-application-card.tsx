@@ -9,7 +9,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { StatusUpdateDialog } from "@/components/status-update-dialog"
 import { JobDetailsDialog } from "@/components/job-details-dialog"
 import { EditApplicationDialog } from "@/components/edit-application-dialog"
-import { AddNoteDialog } from "@/components/add-note-dialog"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import type { JobApplication } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
@@ -79,38 +78,6 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
     }
   }
 
-  const handleDuplicate = async () => {
-    try {
-      const duplicateData = {
-        company_name: `${application.company_name} (Copy)`,
-        position_title: application.position_title,
-        status: "Applied" as const,
-        application_date: new Date().toISOString().split("T")[0],
-        location: application.location,
-        salary_range: application.salary_range,
-        job_url: application.job_url,
-        contact_person: application.contact_person,
-        contact_email: application.contact_email,
-        notes: application.notes ?? null,
-        job_description: application.job_description ?? null,
-        qualifications: application.qualifications ?? null,
-        job_responsibilities: application.job_responsibilities ?? null,
-      }
-
-      const response = await fetch("/api/job-applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(duplicateData),
-      })
-
-      if (response.ok && onUpdate) {
-        onUpdate()
-      }
-    } catch (error) {
-      console.error("Failed to duplicate application:", error)
-    }
-  }
-
   const handleCardClick = (event: MouseEvent<HTMLDivElement>) => {
     if (!onSelect) return
 
@@ -154,26 +121,27 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
     >
-      <CardHeader className="pb-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1 min-w-0 flex-col gap-1">
-            <h3 className="text-lg font-semibold leading-tight line-clamp-2 break-words">
-              {application.position_title}
-            </h3>
-            <p className="font-medium text-muted-foreground line-clamp-1 break-words" title={application.company_name}>
-              {application.company_name}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Badge variant="outline" className={statusColors[application.status]}>
-              {application.status}
-            </Badge>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
+ <CardHeader className="pb-4">
+  <div className="grid grid-cols-[1fr_auto] items-start gap-4 sm:gap-6">
+    <div className="min-w-0">
+      <h3 className="text-lg font-semibold leading-tight line-clamp-2 break-words">
+        {application.position_title}
+      </h3>
+      <p className="font-medium text-muted-foreground line-clamp-1 break-words">
+        {application.company_name}
+      </p>
+    </div>
+
+    <div className="flex items-center gap-2 shrink-0 justify-self-end">
+      <Badge className={statusColors[application.status] + " shrink-0"} variant="outline">
+        {application.status}
+      </Badge>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <EditApplicationDialog
                   application={application}
@@ -189,30 +157,6 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
                     </DropdownMenuItem>
                   }
                 />
-                <AddNoteDialog
-                  applicationId={application.id}
-                  currentNotes={application.notes || ""}
-                  onUpdate={onUpdate || (() => {})}
-                  trigger={
-                    <DropdownMenuItem
-                      onSelect={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                      }}
-                    >
-                      Add Note
-                    </DropdownMenuItem>
-                  }
-                />
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    handleDuplicate()
-                  }}
-                >
-                  Duplicate
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
                   onSelect={(event) => {
