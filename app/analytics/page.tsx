@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TrendingUp, Target, Clock3 } from "lucide-react"
+import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip } from "recharts"
+import type { JobApplicationStatus } from "@/lib/types/database"
 
 import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -26,11 +28,145 @@ export default function AnalyticsPage() {
   const offerRate = stats && totalApplications > 0 ? Math.round((stats.offers / totalApplications) * 100) : 0
   const activePipeline = applications.filter((app) => !["Rejected", "Withdrawn", "Accepted"].includes(app.status)).length
   const awaitingResponse = applications.filter((app) => app.status === "Applied").length
-  const staleFollowUps = applications.filter((app) => {
-    if (app.status !== "Applied") return false
-    const appliedAt = new Date(app.application_date)
-    return Number.isNaN(appliedAt.getTime()) ? false : Date.now() - appliedAt.getTime() > SEVEN_DAYS_MS
-  }).length
+  const staleFollowUpIds = applications
+    .filter((app) => {
+      if (app.status !== "Applied") return false
+      const appliedAt = new Date(app.application_date)
+      return Number.isNaN(appliedAt.getTime()) ? false : Date.now() - appliedAt.getTime() > SEVEN_DAYS_MS
+    })
+    .map((app) => app.id)
+  const staleFollowUps = staleFollowUpIds.length
+  const staleFollowUpSet = useMemo(() => new Set(staleFollowUpIds), [staleFollowUpIds])
+
+  const statusCounts = useMemo(
+    () =>
+      applications.reduce(
+        (acc, application) => {
+          acc[application.status] = (acc[application.status] ?? 0) + 1
+          return acc
+        },
+        {
+          Applied: 0,
+          Interview: 0,
+          Offer: 0,
+          Accepted: 0,
+          Rejected: 0,
+          Withdrawn: 0,
+        } satisfies Record<JobApplicationStatus, number>,
+      ),
+    [applications],
+  )
+
+  const sankeyData = useMemo(() => {
+    const baseNode = "Applications Submitted"
+    const links = new Map<string, number>()
+    const nodes = new Set<string>([baseNode])
+
+    const registerLink = (source: string, target: string, value: number) => {
+      if (!value) return
+      nodes.add(source)
+      nodes.add(target)
+      const key = `${source}=>${target}`
+      links.set(key, (links.get(key) ?? 0) + value)
+    }
+
+    applications.forEach((application) => {
+      const path = [baseNode]
+      switch (application.status) {
+        case "Applied": {
+          path.push(staleFollowUpSet.has(application.id) ? "Ghosted" : "Awaiting Response")
+          break
+        }
+        case "Interview": {
+          path.push("Interviewing")
+          break
+        }
+        case "Offer": {
+          path.push("Interviewing", "Offer Received", "Offer Pending")
+          break
+        }
+        case "Accepted": {
+          path.push("Interviewing", "Offer Received", "Accepted")
+          break
+        }
+        case "Rejected": {
+          path.push("Rejected")
+          break
+        }
+        case "Withdrawn": {
+          path.push("Withdrawn")
+          break
+        }
+        default: {
+          path.push("Awaiting Response")
+        }
+      }
+
+      for (let index = 0; index < path.length - 1; index += 1) {
+        const source = path[index]
+        const target = path[index + 1]
+        registerLink(source, target, 1)
+      }
+    })
+
+    const totalOffers = stats?.offers ?? 0
+    const acceptedCount = statusCounts.Accepted ?? 0
+    const pendingOffers = statusCounts.Offer ?? 0
+    const declinedOffers = Math.max(totalOffers - acceptedCount - pendingOffers, 0)
+
+    if (declinedOffers > 0) {
+      registerLink("Offer Received", "Offer Declined", declinedOffers)
+    }
+
+    const nodeOrder = [
+      baseNode,
+      "Awaiting Response",
+      "Ghosted",
+      "Interviewing",
+      "Offer Received",
+      "Offer Pending",
+      "Offer Declined",
+      "Accepted",
+      "Rejected",
+      "Withdrawn",
+    ]
+
+    const orderedNodes = nodeOrder
+      .filter((name) => nodes.has(name))
+      .concat(Array.from(nodes).filter((name) => !nodeOrder.includes(name)))
+      .map((name) => ({
+        name,
+        color:
+          {
+            [baseNode]: "#6366F1",
+            "Awaiting Response": "#38BDF8",
+            Ghosted: "#F472B6",
+            Interviewing: "#FB923C",
+            "Offer Received": "#22C55E",
+            "Offer Pending": "#EAB308",
+            "Offer Declined": "#F97316",
+            Accepted: "#16A34A",
+            Rejected: "#EF4444",
+            Withdrawn: "#94A3B8",
+          }[name] ?? "#94A3B8",
+      }))
+
+    const orderedNodeIndex = Object.fromEntries(orderedNodes.map((node, index) => [node.name, index]))
+
+    const orderedLinks = Array.from(links.entries()).map(([key, value]) => {
+      const [source, target] = key.split("=>")
+      return {
+        source: orderedNodeIndex[source],
+        target: orderedNodeIndex[target],
+        value,
+      }
+    })
+
+    return {
+      nodes: orderedNodes,
+      links: orderedLinks,
+    }
+  }, [applications, staleFollowUpSet, stats?.offers, statusCounts.Accepted, statusCounts.Offer])
 
   const analyticsSummary = useMemo(
     () => [
@@ -114,6 +250,59 @@ export default function AnalyticsPage() {
               High-level insights that show how your job search is trending and where to focus next.
             </p>
           </header>
+
+          <section>
+            <Card>
+              <CardHeader>
+                <CardTitle>Job search journey</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[360px]">
+                {statsLoading || appsLoading ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-4 w-64" />
+                  </div>
+                ) : sankeyData.links.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <Sankey
+                      data={sankeyData}
+                      nodeWidth={16}
+                      nodePadding={32}
+                      linkCurvature={0.5}
+                      iterations={64}
+                      node={{
+                        cursor: "pointer",
+                        stroke: "hsl(var(--background))",
+                        strokeWidth: 1,
+                      }}
+                      link={{ strokeOpacity: 0.35 }}
+                    >
+                      <RechartsTooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null
+                          const link = payload[0]?.payload
+                          if (!link?.source?.name || !link?.target?.name) return null
+                          return (
+                            <div className="rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+                              <p className="font-medium text-foreground">
+                                {link.source.name} → {link.target.name}
+                              </p>
+                              <p className="text-muted-foreground">{link.value} application{link.value === 1 ? "" : "s"}</p>
+                            </div>
+                          )
+                        }}
+                      />
+                    </Sankey>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    Not enough application data yet to chart your journey.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
 
           <section>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
