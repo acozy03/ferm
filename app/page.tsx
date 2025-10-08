@@ -604,19 +604,22 @@ export default function Dashboard() {
                                     handleSelectApplication(application.id, !isSelected)
                                   }}
                                 >
-                                  <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                                     <div className="min-w-0">
-                                      <p className="font-medium leading-tight line-clamp-2 break-words">
+                                      <p
+                                        className="font-medium leading-tight truncate"
+                                        title={application.position_title ?? undefined}
+                                      >
                                         {application.position_title}
                                       </p>
                                       <p
-                                        className="text-sm text-muted-foreground line-clamp-1 break-words"
+                                        className="text-sm text-muted-foreground truncate"
                                         title={application.company_name}
                                       >
                                         {application.company_name}
                                       </p>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-shrink-0 items-center gap-2">
                                       <Badge variant="outline" className={statusBadges[application.status]}>
                                         {application.status}
                                       </Badge>
