@@ -255,6 +255,23 @@ export default function AnalyticsPage() {
     }
   }, [applications, staleFollowUpSet, stats?.offers, statusCounts.Accepted, statusCounts.Offer])
 
+  const sankeyHeight = useMemo(() => {
+    if (!sankeyData.nodes.length) return 320
+
+    const baseNode = sankeyData.nodes.find((node) => node.name === SANKEY_BASE_NODE)
+    const largestNode = sankeyData.nodes.reduce(
+      (max, node) => (node.count > max ? node.count : max),
+      baseNode?.count ?? 0,
+    )
+
+    const totalFlow = baseNode?.count ?? largestNode
+    const minHeight = 320
+    const maxHeight = 1200
+    const pixelsPerApplication = 24
+
+    return Math.max(minHeight, Math.min(maxHeight, totalFlow * pixelsPerApplication))
+  }, [sankeyData.nodes])
+
   const handleExportSankey = async () => {
     if (!sankeyContainerRef.current) return
 
@@ -379,7 +396,7 @@ export default function AnalyticsPage() {
                   </div>
                 ) : sankeyData.links.length > 0 ? (
                   <div ref={sankeyContainerRef} className="space-y-4">
-                    <div className="h-[320px]">
+                    <div style={{ height: `${sankeyHeight}px` }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <Sankey
                           data={sankeyData}
