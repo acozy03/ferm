@@ -580,7 +580,7 @@ export default function Dashboard() {
                           </p>
                         </div>
                       ) : (
-                        <div className="relative space-y-6">
+                        <div className="relative w-full max-w-4xl space-y-6">
                           <div className="absolute left-1.5 top-0 h-full w-px bg-border" aria-hidden />
                           {timelineItems.map((application) => {
                             const isSelected = selectedApplications.includes(application.id)
