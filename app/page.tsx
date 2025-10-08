@@ -580,7 +580,7 @@ export default function Dashboard() {
                           </p>
                         </div>
                       ) : (
-                        <div className="relative w-full max-w-4xl space-y-6">
+                        <div className="relative space-y-6">
                           <div className="absolute left-1.5 top-0 h-full w-px bg-border" aria-hidden />
                           {timelineItems.map((application) => {
                             const isSelected = selectedApplications.includes(application.id)
@@ -606,20 +606,17 @@ export default function Dashboard() {
                                 >
                                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                                     <div className="min-w-0">
-                                      <p
-                                        className="font-medium leading-tight truncate"
-                                        title={application.position_title ?? undefined}
-                                      >
+                                      <p className="font-medium leading-tight line-clamp-2 break-words">
                                         {application.position_title}
                                       </p>
                                       <p
-                                        className="text-sm text-muted-foreground truncate"
+                                        className="text-sm text-muted-foreground line-clamp-1 break-words"
                                         title={application.company_name}
                                       >
                                         {application.company_name}
                                       </p>
                                     </div>
-                                    <div className="flex flex-shrink-0 items-center gap-2">
+                                    <div className="flex items-center gap-2">
                                       <Badge variant="outline" className={statusBadges[application.status]}>
                                         {application.status}
                                       </Badge>
