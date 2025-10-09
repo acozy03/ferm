@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, X } from "lucide-react"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
+import { DEFAULT_MAX_INTERVIEW_ROUNDS, generateStatusOptions } from "@/lib/status"
+import type { JobApplicationStatus } from "@/lib/types/database"
 
 interface BulkActionsProps {
   selectedCount: number
@@ -15,13 +17,10 @@ interface BulkActionsProps {
   onClearSelection: () => void
 }
 
-const statusOptions = [
-  { value: "Applied", label: "Applied" },
-  { value: "Interview", label: "Interview" },
-  { value: "Rejected", label: "Rejected" },
-  { value: "Offer", label: "Offer" },
-  { value: "Accepted", label: "Accepted" },
-]
+const statusOptions = generateStatusOptions(DEFAULT_MAX_INTERVIEW_ROUNDS + 1).map((option) => ({
+  value: option.value,
+  label: option.label,
+}))
 
 export function BulkActions({
   selectedCount,
@@ -29,7 +28,7 @@ export function BulkActions({
   onBulkDelete,
   onClearSelection,
 }: BulkActionsProps) {
-  const [bulkStatus, setBulkStatus] = useState("")
+  const [bulkStatus, setBulkStatus] = useState<JobApplicationStatus | "">("")
   const [mounted, setMounted] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
@@ -74,7 +73,7 @@ export function BulkActions({
         </div>
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none">
-          <Select value={bulkStatus} onValueChange={setBulkStatus}>
+          <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value as JobApplicationStatus)}>
             <SelectTrigger className="w-full min-w-[10rem] sm:w-48">
               <SelectValue placeholder="Update status" />
             </SelectTrigger>

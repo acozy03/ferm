@@ -10,7 +10,12 @@ import { Button } from "@/components/ui/button"
 import { TrendingUp, Target, Clock3 } from "lucide-react"
 import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip } from "recharts"
 import { toPng } from "html-to-image"
-import type { JobApplicationStatus } from "@/lib/types/database"
+import {
+  getStatusChartColor,
+  getStatusStage,
+  isActiveStage,
+  parseStatus,
+} from "@/lib/status"
 
 import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -19,15 +24,6 @@ import { useActivityLog } from "@/lib/hooks/use-activity-log"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const SANKEY_BASE_NODE = "Applications Submitted"
-const STATUS_TO_STAGE: Record<JobApplicationStatus, string> = {
-  Applied: "Applied",
-  Interview: "Interviewing",
-  Offer: "Offer Received",
-  Rejected: "Rejected",
-  Withdrawn: "Withdrawn",
-  Accepted: "Accepted",
-}
-
 type SankeyNodeWithCount = {
   name: string
   color: string
@@ -111,7 +107,7 @@ export default function AnalyticsPage() {
   const totalApplications = stats?.total_applications ?? 0
   const interviewConversion = stats && stats.applied > 0 ? Math.round((stats.interviews / stats.applied) * 100) : 0
   const offerRate = stats && totalApplications > 0 ? Math.round((stats.offers / totalApplications) * 100) : 0
-  const activePipeline = applications.filter((app) => !["Rejected", "Withdrawn", "Accepted"].includes(app.status)).length
+  const activePipeline = applications.filter((app) => isActiveStage(getStatusStage(app.status))).length
   const awaitingResponse = applications.filter((app) => app.status === "Applied").length
   const staleFollowUpIds = applications
     .filter((app) => {
@@ -121,138 +117,134 @@ export default function AnalyticsPage() {
     })
     .map((app) => app.id)
   const staleFollowUps = staleFollowUpIds.length
-  const staleFollowUpSet = useMemo(() => new Set(staleFollowUpIds), [staleFollowUpIds])
 
   const statusCounts = useMemo(
     () =>
       applications.reduce(
         (acc, application) => {
-          acc[application.status] = (acc[application.status] ?? 0) + 1
+          const stage = getStatusStage(application.status)
+
+          switch (stage) {
+            case "applied":
+              acc.applied += 1
+              break
+            case "interview":
+              acc.interview += 1
+              break
+            case "offer":
+              acc.offer += 1
+              break
+            case "accepted":
+              acc.accepted += 1
+              break
+            case "rejected":
+              acc.rejected += 1
+              break
+            case "ghosted":
+              acc.ghosted += 1
+              break
+            case "withdrawn":
+              acc.withdrawn += 1
+              break
+            default:
+              break
+          }
+
           return acc
         },
         {
-          Applied: 0,
-          Interview: 0,
-          Offer: 0,
-          Accepted: 0,
-          Rejected: 0,
-          Withdrawn: 0,
-        } satisfies Record<JobApplicationStatus, number>,
+          applied: 0,
+          interview: 0,
+          offer: 0,
+          accepted: 0,
+          rejected: 0,
+          ghosted: 0,
+          withdrawn: 0,
+        },
       ),
     [applications],
   )
 
   const sankeyData = useMemo(() => {
     const baseNode = SANKEY_BASE_NODE
+    const baseColor = getStatusChartColor("Applied")
     const links = new Map<string, number>()
-    const nodes = new Set<string>([baseNode])
-    const nodeCounts = new Map<string, number>()
+    const nodes = new Map<string, { color: string; count: number; order: number }>([
+      [baseNode, { color: baseColor, count: 0, order: -100 }],
+    ])
 
-    const registerLink = (source: string, target: string, value: number) => {
-      if (!value) return
-      nodes.add(source)
-      nodes.add(target)
+    const registerLink = (source: string, target: string) => {
       const key = `${source}=>${target}`
-      links.set(key, (links.get(key) ?? 0) + value)
+      links.set(key, (links.get(key) ?? 0) + 1)
     }
 
-    const incrementNodeCount = (name: string) => {
-      nodeCounts.set(name, (nodeCounts.get(name) ?? 0) + 1)
+    const incrementNode = (label: string, color: string, order: number) => {
+      const existing = nodes.get(label)
+
+      if (existing) {
+        nodes.set(label, {
+          color: existing.color,
+          count: existing.count + 1,
+          order: Math.min(existing.order, order),
+        })
+      } else {
+        nodes.set(label, { color, count: 1, order })
+      }
     }
 
     applications.forEach((application) => {
-      const historyStatuses = (application.status_history ?? []).map((entry) => entry.status)
-      const baseSequence = historyStatuses.length > 0 ? historyStatuses : [application.status]
+      const historyStatuses = (application.status_history ?? []).map((entry) => parseStatus(entry.status).value)
+      const latestStatus = parseStatus(application.status).value
+      const baseSequence = historyStatuses.length > 0 ? historyStatuses : [latestStatus]
       const dedupedSequence = baseSequence.filter((status, index, array) => index === 0 || status !== array[index - 1])
       const statusSequence =
-        dedupedSequence[dedupedSequence.length - 1] === application.status
+        dedupedSequence[dedupedSequence.length - 1] === latestStatus
           ? dedupedSequence
-          : [...dedupedSequence, application.status]
+          : [...dedupedSequence, latestStatus]
 
-      const statusStages = statusSequence.map((status) => STATUS_TO_STAGE[status] ?? status)
-      const path = [baseNode, ...statusStages]
-      const latestStatus = statusSequence[statusSequence.length - 1] ?? application.status
+      const metadataSequence = statusSequence.map((status) => parseStatus(status))
+      const pathMetadata = [
+        { label: baseNode, color: baseColor, order: -100 },
+        ...metadataSequence.map((meta) => ({ label: meta.label, color: meta.chartColor, order: meta.order })),
+      ]
 
-      switch (latestStatus) {
-        case "Applied": {
-          path.push(staleFollowUpSet.has(application.id) ? "Ghosted" : "Awaiting Response")
-          break
-        }
-        case "Offer": {
-          if (!path.includes("Offer Pending")) {
-            path.push("Offer Pending")
-          }
-          break
-        }
-        case "Accepted":
-        case "Rejected":
-        case "Withdrawn":
-        case "Interview":
-        default:
-          break
+      pathMetadata.forEach(({ label, color, order }) => incrementNode(label, color, order))
+
+      for (let index = 0; index < pathMetadata.length - 1; index += 1) {
+        const source = pathMetadata[index].label
+        const target = pathMetadata[index + 1].label
+        registerLink(source, target)
       }
-
-      for (let index = 0; index < path.length - 1; index += 1) {
-        const source = path[index]
-        const target = path[index + 1]
-        registerLink(source, target, 1)
-      }
-
-      path.forEach((stage) => {
-        incrementNodeCount(stage)
-      })
     })
 
-    const totalOffers = stats?.offers ?? 0
-    const acceptedCount = statusCounts.Accepted ?? 0
-    const pendingOffers = statusCounts.Offer ?? 0
-    const declinedOffers = Math.max(totalOffers - acceptedCount - pendingOffers, 0)
+    const orderedNodes: SankeyNodeWithCount[] = Array.from(nodes.entries())
+      .sort((left, right) => {
+        if (left[1].order === right[1].order) {
+          return left[0].localeCompare(right[0])
+        }
 
-    if (declinedOffers > 0) {
-      registerLink("Offer Received", "Offer Declined", declinedOffers)
-    }
-
-    const nodeOrder = [
-      baseNode,
-      "Awaiting Response",
-      "Ghosted",
-      "Interviewing",
-      "Offer Received",
-      "Offer Pending",
-      "Offer Declined",
-      "Accepted",
-      "Rejected",
-      "Withdrawn",
-    ]
-
-    const orderedNodes: SankeyNodeWithCount[] = nodeOrder
-      .filter((name) => nodes.has(name))
-      .concat(Array.from(nodes).filter((name) => !nodeOrder.includes(name)))
-      .map((name) => ({
+        return left[1].order - right[1].order
+      })
+      .map(([name, info]) => ({
         name,
-        color:
-          {
-            [baseNode]: "#6366F1",
-            "Awaiting Response": "#38BDF8",
-            Ghosted: "#F472B6",
-            Interviewing: "#FB923C",
-            "Offer Received": "#22C55E",
-            "Offer Pending": "#EAB308",
-            "Offer Declined": "#F97316",
-            Accepted: "#16A34A",
-            Rejected: "#EF4444",
-            Withdrawn: "#94A3B8",
-          }[name] ?? "#94A3B8",
-        count: nodeCounts.get(name) ?? 0,
+        color: info.color,
+        count: info.count,
       }))
 
     const orderedNodeIndex = Object.fromEntries(orderedNodes.map((node, index) => [node.name, index]))
 
-    const orderedLinks: SankeyLink[] = Array.from(links.entries()).map(([key, value]) => {
+    const orderedLinks: SankeyLink[] = Array.from(links.entries()).flatMap(([key, value]) => {
       const [source, target] = key.split("=>")
+      const sourceIndex = orderedNodeIndex[source]
+      const targetIndex = orderedNodeIndex[target]
+
+      if (sourceIndex === undefined || targetIndex === undefined) {
+        return []
+      }
+
       return {
-        source: orderedNodeIndex[source],
-        target: orderedNodeIndex[target],
+        source: sourceIndex,
+        target: targetIndex,
         value,
       }
     })
@@ -261,7 +253,7 @@ export default function AnalyticsPage() {
       nodes: orderedNodes,
       links: orderedLinks,
     }
-  }, [applications, staleFollowUpSet, stats?.offers, statusCounts.Accepted, statusCounts.Offer])
+  }, [applications])
 
   const sankeyHeight = useMemo(() => {
     if (!sankeyData.nodes.length) return 320
@@ -347,13 +339,26 @@ export default function AnalyticsPage() {
       },
       {
         icon: Clock3,
-        text:
-          awaitingResponse > 0
-            ? `${staleFollowUps} application${staleFollowUps === 1 ? "" : "s"} have been waiting more than a week. Time for a follow-up.`
-            : "All pending applications have received recent follow-ups.",
+        text: (() => {
+          const followUpText =
+            awaitingResponse > 0
+              ? `${staleFollowUps} application${staleFollowUps === 1 ? "" : "s"} have been waiting more than a week. Time for a follow-up.`
+              : "All pending applications have received recent follow-ups."
+          if (statusCounts.ghosted > 0) {
+            return `${followUpText} ${statusCounts.ghosted} application${statusCounts.ghosted === 1 ? " has" : "s have"} been marked as ghosted.`
+          }
+          return followUpText
+        })(),
       },
     ],
-    [awaitingResponse, staleFollowUps, stats?.interviews, stats?.response_rate, upcomingInterviews.length],
+    [
+      awaitingResponse,
+      staleFollowUps,
+      stats?.interviews,
+      stats?.response_rate,
+      statusCounts.ghosted,
+      upcomingInterviews.length,
+    ],
   )
 
   const recentWindow = Date.now() - SEVEN_DAYS_MS

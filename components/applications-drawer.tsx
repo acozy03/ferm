@@ -23,6 +23,7 @@ import type {
 } from "@/lib/types/database"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { JobApplicationCard } from "@/components/job-application-card"
+import { DEFAULT_MAX_INTERVIEW_ROUNDS, generateStatusOptions } from "@/lib/status"
 
 type FilterChip =
   | { type: "status"; value: JobApplicationStatus; label: string }
@@ -42,7 +43,7 @@ type ApplicationsDrawerProps = {
 }
 
 const DRAWER_PAGE_SIZE = 12
-const statusOptions: JobApplicationStatus[] = ["Applied", "Interview", "Offer", "Accepted", "Rejected", "Withdrawn"]
+const statusOptions = generateStatusOptions(DEFAULT_MAX_INTERVIEW_ROUNDS + 1)
 const priorityOptions: Priority[] = ["Low", "Medium", "High"]
 
 export function ApplicationsDrawer({
@@ -322,19 +323,19 @@ export function ApplicationsDrawer({
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {statusOptions.map((status) => {
-                      const isActive = (filters.status ?? []).includes(status)
+                    {statusOptions.map((option) => {
+                      const isActive = (filters.status ?? []).includes(option.value)
 
                       return (
                         <Button
-                          key={status}
+                          key={option.value}
                           type="button"
                           variant={isActive ? "secondary" : "outline"}
                           size="sm"
                           className="justify-start"
-                          onClick={() => handleStatusToggle(status)}
+                          onClick={() => handleStatusToggle(option.value)}
                         >
-                          {status}
+                          {option.label}
                         </Button>
                       )
                     })}

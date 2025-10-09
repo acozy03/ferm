@@ -9,22 +9,14 @@ import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { MapPin, DollarSign, Calendar, FileText, Edit, Save, X } from "lucide-react"
-import type { JobApplication as DbJobApplication, JobApplicationStatus } from "@/lib/types/database"
+import type { JobApplication as DbJobApplication } from "@/lib/types/database"
+import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
 
 type JobDetailsDialogProps = {
   application: DbJobApplication
   onUpdate: () => void
   trigger: React.ReactNode
 }
-
-const statusColors = {
-  Applied: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  Interview: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  Rejected: "bg-red-500/10 text-red-500 border-red-500/20",
-  Offer: "bg-green-500/10 text-green-500 border-green-500/20",
-  Accepted: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-  Withdrawn: "bg-gray-500/10 text-gray-500 border-gray-500/20",
-} satisfies Record<JobApplicationStatus, string>;
 
 export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsDialogProps) {
   const [open, setOpen] = useState(false)
@@ -90,8 +82,8 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
           <DialogTitle className="text-xl text-balance">{application.position_title}</DialogTitle>
           <div className="flex items-center gap-2">
             <span className="text-lg font-medium">{application.company_name}</span>
-            <Badge variant="outline" className={statusColors[application.status]}>
-              {application.status}
+            <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
+              {formatStatusLabel(application.status)}
             </Badge>
           </div>
         </DialogHeader>

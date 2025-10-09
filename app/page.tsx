@@ -27,16 +27,12 @@ import { AddApplicationDialog } from "@/components/add-application-dialog"
 import { JobScoreIndicator } from "@/components/job-score-indicator"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { createSearchParamsWithFilters, parseJobApplicationFilters } from "@/lib/job-filters"
-import type {
-  CreateJobApplicationData,
-  JobApplication,
-  JobApplicationFilters,
-  JobApplicationSort,
-} from "@/lib/types/database"
+import type { CreateJobApplicationData, JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
 import { useSettings } from "@/components/settings-provider"
 import { ApplicationActionsMenu } from "@/components/application-actions-menu"
 import { defaultViewOptions } from "@/lib/settings"
 import { cn } from "@/lib/utils"
+import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
 
 const serializeFilters = (filters: JobApplicationFilters) =>
   createSearchParamsWithFilters(new URLSearchParams(), filters).toString()
@@ -53,15 +49,6 @@ type DashboardView = (typeof defaultViewOptions)[number]["value"]
 
 const isDashboardView = (value: string | null): value is DashboardView =>
   defaultViewOptions.some((option) => option.value === value)
-
-const statusBadges: Record<JobApplication["status"], string> = {
-  Applied: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  Interview: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  Offer: "bg-green-500/10 text-green-500 border-green-500/20",
-  Rejected: "bg-red-500/10 text-red-500 border-red-500/20",
-  Withdrawn: "bg-gray-500/10 text-gray-500 border-gray-500/20",
-  Accepted: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-}
 
 const INTERACTIVE_ELEMENT_SELECTOR =
   "button, a, [role='button'], input, textarea, select, [data-prevent-selection-toggle='true']"
@@ -547,8 +534,8 @@ export default function Dashboard() {
                                     </div>
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant="outline" className={statusBadges[application.status]}>
-                                      {application.status}
+                                    <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
+                                      {formatStatusLabel(application.status)}
                                     </Badge>
                                   </TableCell>
                               
@@ -666,8 +653,8 @@ export default function Dashboard() {
                                         showDescription={false}
                                       />
                                       <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className={statusBadges[application.status]}>
-                                          {application.status}
+                                        <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
+                                          {formatStatusLabel(application.status)}
                                         </Badge>
                                         <ApplicationActionsMenu
                                           application={application}

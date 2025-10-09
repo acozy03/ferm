@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { getStatusStage } from "@/lib/status"
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,14 +44,48 @@ export async function GET(request: NextRequest) {
 
     const { data: statusData } = await statusQuery
 
-    const statusCounts =
-      statusData?.reduce(
-        (acc, app) => {
-          acc[app.status] = (acc[app.status] || 0) + 1
-          return acc
-        },
-        {} as Record<string, number>,
-      ) || {}
+    const stageTotals = (statusData ?? []).reduce(
+      (acc, app) => {
+        const stage = getStatusStage(app.status)
+
+        switch (stage) {
+          case "applied":
+            acc.applied += 1
+            break
+          case "interview":
+            acc.interviews += 1
+            break
+          case "offer":
+            acc.offers += 1
+            break
+          case "accepted":
+            acc.accepted += 1
+            break
+          case "rejected":
+            acc.rejected += 1
+            break
+          case "ghosted":
+            acc.ghosted += 1
+            break
+          case "withdrawn":
+            acc.withdrawn += 1
+            break
+          default:
+            break
+        }
+
+        return acc
+      },
+      {
+        applied: 0,
+        interviews: 0,
+        offers: 0,
+        accepted: 0,
+        rejected: 0,
+        ghosted: 0,
+        withdrawn: 0,
+      },
+    )
 
     // Get upcoming interviews count
     const { count: upcoming_interviews } = await supabase
@@ -61,17 +96,18 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id)
 
     // Calculate response rate (interviews + offers + rejected) / total
-    const responses = (statusCounts.Interview || 0) + (statusCounts.Offer || 0) + (statusCounts.Rejected || 0)
+    const responses = stageTotals.interviews + stageTotals.offers + stageTotals.rejected
     const response_rate = total_applications ? (responses / total_applications) * 100 : 0
 
     const stats = {
       total_applications: total_applications || 0,
-      applied: statusCounts.Applied || 0,
-      interviews: statusCounts.Interview || 0,
-      offers: statusCounts.Offer || 0,
-      accepted: statusCounts.Accepted || 0,
-      rejected: statusCounts.Rejected || 0,
-      withdrawn: statusCounts.Withdrawn || 0,
+      applied: stageTotals.applied,
+      interviews: stageTotals.interviews,
+      offers: stageTotals.offers,
+      accepted: stageTotals.accepted,
+      rejected: stageTotals.rejected,
+      ghosted: stageTotals.ghosted,
+      withdrawn: stageTotals.withdrawn,
       upcoming_interviews: upcoming_interviews || 0,
       response_rate: Math.round(response_rate * 100) / 100,
     }

@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 import type { BulkUpdateJobApplicationsData } from "@/lib/types/api"
 import type { CreateJobApplicationData } from "@/lib/types/database"
 import { toNullableString } from "@/lib/utils"
+import { isStatusProgressionAllowed, normalizeStatusValue } from "@/lib/status"
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -66,6 +67,22 @@ export async function PUT(request: NextRequest) {
       }
 
       previousStatuses = Object.fromEntries((existingStatuses ?? []).map((record) => [record.id, record.status]))
+
+      if (typeof sanitizedUpdates.status === "string") {
+        const nextStatus = normalizeStatusValue(sanitizedUpdates.status)
+        const hasRegression = (existingStatuses ?? []).some((record) =>
+          record?.status ? !isStatusProgressionAllowed(record.status, nextStatus) : false,
+        )
+
+        if (hasRegression) {
+          return NextResponse.json(
+            { error: "At least one application cannot move backwards in the pipeline" },
+            { status: 400 },
+          )
+        }
+
+        sanitizedUpdates.status = nextStatus
+      }
     }
 
     const { data, error } = await supabase

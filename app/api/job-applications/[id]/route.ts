@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import type { UpdateJobApplicationData } from "@/lib/types/database"
 import { toNullableString } from "@/lib/utils"
+import { isStatusProgressionAllowed, normalizeStatusValue, parseStatus } from "@/lib/status"
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -44,9 +45,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const normalizedData = {
       ...data,
-      status_history: [...(data.status_history ?? [])].sort(
-        (left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime(),
-      ),
+      status: parseStatus(data.status).value,
+      status_history: [...(data.status_history ?? [])]
+        .map((entry) => ({ ...entry, status: normalizeStatusValue(entry.status) }))
+        .sort((left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime()),
     }
 
     return NextResponse.json({ data: normalizedData })
@@ -120,6 +122,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
 
       previousStatus = existing?.status ?? null
+
+      if (typeof sanitizedUpdates.status === "string") {
+        const nextStatus = normalizeStatusValue(sanitizedUpdates.status)
+        if (!isStatusProgressionAllowed(previousStatus, nextStatus)) {
+          return NextResponse.json(
+            { error: "Status cannot move backwards in the pipeline" },
+            { status: 400 },
+          )
+        }
+
+        sanitizedUpdates.status = nextStatus
+      }
     }
 
     const { data, error } = await supabase

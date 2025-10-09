@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Building2, Mail, NotebookPen } from "lucide-react"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
+import { formatStatusLabel, getStatusStage, isActiveStage } from "@/lib/status"
+import type { PipelineStage } from "@/lib/status"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -20,6 +22,7 @@ interface CompanySummary {
   primaryEmail?: string
   roles: Set<string>
   statuses: Set<string>
+  stages: Set<PipelineStage>
   latestUpdate: number
   followUpDue: boolean
 }
@@ -40,6 +43,7 @@ export default function CompaniesPage() {
         primaryEmail: application.contact_email || undefined,
         roles: new Set<string>(),
         statuses: new Set<string>(),
+        stages: new Set<PipelineStage>(),
         latestUpdate: safeUpdatedAt,
         followUpDue: false,
       }
@@ -55,7 +59,8 @@ export default function CompaniesPage() {
       }
 
       existing.roles.add(application.position_title)
-      existing.statuses.add(application.status)
+      existing.statuses.add(formatStatusLabel(application.status))
+      existing.stages.add(getStatusStage(application.status))
       existing.latestUpdate = Math.max(existing.latestUpdate, safeUpdatedAt)
 
       if (application.status === "Applied") {
@@ -71,10 +76,9 @@ export default function CompaniesPage() {
     return Array.from(map.values()).sort((a, b) => b.latestUpdate - a.latestUpdate)
   }, [applications])
 
-  const activeProspects = companies.filter((company) => {
-    const inactiveStatuses = ["Rejected", "Withdrawn", "Accepted"]
-    return Array.from(company.statuses).some((status) => !inactiveStatuses.includes(status))
-  }).length
+  const activeProspects = companies.filter((company) =>
+    Array.from(company.stages).some((stage) => isActiveStage(stage)),
+  ).length
 
   const warmContacts = companies.filter((company) => Boolean(company.primaryEmail || company.primaryContact)).length
   const followUpsDue = companies.filter((company) => company.followUpDue).length

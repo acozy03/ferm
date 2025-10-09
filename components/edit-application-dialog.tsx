@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import type { JobApplication, JobApplicationStatus } from "@/lib/types/database"
+import { DEFAULT_MAX_INTERVIEW_ROUNDS, generateStatusOptions } from "@/lib/status"
 
 interface EditApplicationDialogProps {
   application: JobApplication
@@ -19,14 +20,7 @@ interface EditApplicationDialogProps {
   onOpenChange?: (open: boolean) => void
 }
 
-const statusOptions = [
-  { value: "Applied", label: "Applied" },
-  { value: "Interview", label: "Interview" },
-  { value: "Rejected", label: "Rejected" },
-  { value: "Offer", label: "Offer" },
-  { value: "Accepted", label: "Accepted" },
-  { value: "Withdrawn", label: "Withdrawn" },
-] as const
+const statusOptions = generateStatusOptions(DEFAULT_MAX_INTERVIEW_ROUNDS + 1)
 
 export function EditApplicationDialog({
   application,
@@ -157,7 +151,7 @@ export function EditApplicationDialog({
               <Label htmlFor="status">Status</Label>
               <Select
                 value={formData.status}
-                onValueChange={(value: JobApplicationStatus) => setFormData({ ...formData, status: value })}
+                onValueChange={(value) => setFormData({ ...formData, status: value as JobApplicationStatus })}
               >
                 <SelectTrigger>
                   <SelectValue />

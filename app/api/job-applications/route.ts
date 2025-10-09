@@ -7,6 +7,7 @@ import { z } from "zod"
 import type { CreateJobApplicationData } from "@/lib/types/database"
 import { getLatestResumeText } from "@/lib/resume/server"
 import { toNullableString } from "@/lib/utils"
+import { normalizeStatusValue, parseStatus } from "@/lib/status"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -220,7 +221,12 @@ export async function GET(request: NextRequest) {
       // belt-and-suspenders: still filter by user_id even with RLS
       .eq("user_id", userId)
 
-    if (status && status.length > 0) query = query.in("status", status)
+    const normalizedStatusFilter = status
+      ?.map((value) => normalizeStatusValue(value))
+      .filter((value): value is string => Boolean(value))
+    const uniqueStatusFilter = normalizedStatusFilter ? Array.from(new Set(normalizedStatusFilter)) : []
+
+    if (uniqueStatusFilter.length > 0) query = query.in("status", uniqueStatusFilter)
     if (priority && priority.length > 0) query = query.in("priority", priority)
     if (company_name) query = query.ilike("company_name", `%${company_name}%`)
 
@@ -249,14 +255,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders })
     }
 
-    const normalizedData = include_status_history
-      ? data?.map((application) => ({
+    const normalizedData = (data ?? []).map((application) => {
+      const normalizedStatus = parseStatus(application.status).value
+
+      if (!include_status_history) {
+        return {
           ...application,
-          status_history: [...(application.status_history ?? [])].sort(
-            (left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime(),
-          ),
-        })) ?? []
-      : data ?? []
+          status: normalizedStatus,
+        }
+      }
+
+      return {
+        ...application,
+        status: normalizedStatus,
+        status_history: [...(application.status_history ?? [])]
+          .map((entry) => ({ ...entry, status: normalizeStatusValue(entry.status) }))
+          .sort((left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime()),
+      }
+    })
 
     return NextResponse.json(
       {
@@ -299,6 +315,10 @@ export async function POST(request: NextRequest) {
       job_responsibilities: toNullableString(body.job_responsibilities ?? null),
       resume_match_score: null as number | null,
       resume_match_summary: null as string | null,
+    }
+
+    if (insertData.status) {
+      insertData.status = normalizeStatusValue(insertData.status)
     }
 
     const { data, error } = await supabase.from("job_applications").insert([insertData]).select().single()

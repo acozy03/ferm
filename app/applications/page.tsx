@@ -14,6 +14,7 @@ import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useActivityLog } from "@/lib/hooks/use-activity-log"
 import { useSettings } from "@/components/settings-provider"
+import { formatStatusLabel, getStatusBadgeClass, getStatusStage, isActiveStage } from "@/lib/status"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -37,9 +38,7 @@ export default function ApplicationsPage() {
 
   const pipelineSummary = useMemo(() => {
     const now = Date.now()
-    const active = applications.filter(
-      (app) => !["Rejected", "Withdrawn", "Accepted"].includes(app.status),
-    ).length
+    const active = applications.filter((app) => isActiveStage(getStatusStage(app.status))).length
     const recentSubmissions = applications.filter((app) => {
       const appliedAt = new Date(app.application_date).getTime()
       return !Number.isNaN(appliedAt) && now - appliedAt <= SEVEN_DAYS_MS
@@ -163,7 +162,9 @@ export default function ApplicationsPage() {
                             {application.position_title}
                           </p>
                         </div>
-                        <Badge>{application.status}</Badge>
+                        <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
+                          {formatStatusLabel(application.status)}
+                        </Badge>
                       </div>
                       <p className="mt-3 text-xs text-muted-foreground">
                         Updated {formatDistanceToNow(new Date(application.updated_at), { addSuffix: true })}

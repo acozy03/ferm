@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Filter, X } from "lucide-react"
 import type { JobApplicationFilters, JobApplicationStatus, Priority } from "@/lib/types/database"
+import { DEFAULT_MAX_INTERVIEW_ROUNDS, generateStatusOptions } from "@/lib/status"
 
 interface ApplicationFiltersProps {
   filters: JobApplicationFilters
@@ -12,7 +13,7 @@ interface ApplicationFiltersProps {
 }
 
 export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFiltersProps) {
-  const statusOptions: JobApplicationStatus[] = ["Applied", "Interview", "Offer", "Rejected", "Withdrawn"]
+  const statusOptions = generateStatusOptions(DEFAULT_MAX_INTERVIEW_ROUNDS + 1)
   const priorityOptions: Priority[] = ["Low", "Medium", "High"]
 
   const handleStatusToggle = (status: JobApplicationStatus) => {
@@ -91,15 +92,15 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
         <div>
           <h4 className="text-sm font-medium mb-3">Status</h4>
           <div className="space-y-2">
-            {statusOptions.map((status) => (
+            {statusOptions.map((option) => (
               <Button
-                key={status}
-                variant={(filters.status || []).includes(status) ? "secondary" : "ghost"}
+                key={option.value}
+                variant={(filters.status || []).includes(option.value) ? "secondary" : "ghost"}
                 size="sm"
                 className="w-full justify-start h-8"
-                onClick={() => handleStatusToggle(status)}
+                onClick={() => handleStatusToggle(option.value)}
               >
-                <span>{status}</span>
+                <span>{option.label}</span>
               </Button>
             ))}
           </div>

@@ -11,23 +11,15 @@ import { JobDetailsDialog } from "@/components/job-details-dialog"
 import { EditApplicationDialog } from "@/components/edit-application-dialog"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import { JobScoreIndicator } from "@/components/job-score-indicator"
-import type { JobApplication } from "@/lib/types/database"
+import type { JobApplication, JobApplicationStatus } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
+import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
 
 interface JobApplicationCardProps {
   application: JobApplication
   isSelected?: boolean
   onSelect?: (selected: boolean) => void
   onUpdate?: () => void
-}
-
-const statusColors = {
-  Applied: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  Interview: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  Rejected: "bg-red-500/10 text-red-500 border-red-500/20",
-  Offer: "bg-green-500/10 text-green-500 border-green-500/20",
-  Accepted: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-  Withdrawn: "bg-gray-500/10 text-gray-500 border-gray-500/20",
 }
 
 export function JobApplicationCard({ application, isSelected, onSelect, onUpdate }: JobApplicationCardProps) {
@@ -41,7 +33,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
     })
   }
 
-  const handleStatusUpdate = async (status: string, note?: string) => {
+  const handleStatusUpdate = async (status: JobApplicationStatus, note?: string) => {
     try {
       const response = await fetch(`/api/job-applications/${application.id}`, {
         method: "PUT",
@@ -134,8 +126,8 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <Badge className={statusColors[application.status] + " shrink-0"} variant="outline">
-              {application.status}
+            <Badge className={`${getStatusBadgeClass(application.status)} shrink-0`} variant="outline">
+              {formatStatusLabel(application.status)}
             </Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

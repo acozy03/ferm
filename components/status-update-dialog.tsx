@@ -2,40 +2,43 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import type { JobApplicationStatus, JobApplicationStatusHistory } from "@/lib/types/database"
+import { getAllowedStatusOptions, getStatusBadgeClass, parseStatus } from "@/lib/status"
 
 interface StatusUpdateDialogProps {
-  currentStatus: string
-  onStatusUpdate: (status: string, note?: string) => void
+  currentStatus: JobApplicationStatus
+  statusHistory?: JobApplicationStatusHistory[]
+  onStatusUpdate: (status: JobApplicationStatus, note?: string) => void
   trigger: React.ReactNode
 }
 
-const statusOptions = [
-  { value: "Applied", label: "Applied", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
-  { value: "Interview", label: "Interview", color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" },
-  { value: "Rejected", label: "Rejected", color: "bg-red-500/10 text-red-500 border-red-500/20" },
-  { value: "Offer", label: "Offer", color: "bg-green-500/10 text-green-500 border-green-500/20" },
-  { value: "Accepted", label: "Accepted", color: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
-]
-
-export function StatusUpdateDialog({ currentStatus, onStatusUpdate, trigger }: StatusUpdateDialogProps) {
-  const [selectedStatus, setSelectedStatus] = useState(currentStatus)
+export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdate, trigger }: StatusUpdateDialogProps) {
+  const currentMetadata = useMemo(() => parseStatus(currentStatus), [currentStatus])
+  const [selectedStatus, setSelectedStatus] = useState<JobApplicationStatus>(currentMetadata.value)
   const [note, setNote] = useState("")
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    setSelectedStatus(currentMetadata.value)
+  }, [currentMetadata.value])
+
+  const options = useMemo(
+    () => getAllowedStatusOptions(currentMetadata.value, { statusHistory }),
+    [currentMetadata.value, statusHistory],
+  )
 
   const handleUpdate = () => {
     onStatusUpdate(selectedStatus, note)
     setNote("")
     setOpen(false)
   }
-
-  const selectedOption = statusOptions.find((option) => option.value === selectedStatus)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -51,8 +54,8 @@ export function StatusUpdateDialog({ currentStatus, onStatusUpdate, trigger }: S
               <div className="rounded-md border bg-background/80 p-4 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current</p>
                 <div className="mt-3">
-                  <Badge variant="outline" className={selectedOption?.color}>
-                    {currentStatus}
+                  <Badge variant="outline" className={getStatusBadgeClass(currentMetadata.value)}>
+                    {currentMetadata.label}
                   </Badge>
                 </div>
               </div>
@@ -63,17 +66,24 @@ export function StatusUpdateDialog({ currentStatus, onStatusUpdate, trigger }: S
                 >
                   Update To
                 </Label>
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as JobApplicationStatus)}>
                   <SelectTrigger id="new-status" className="mt-3">
                     <SelectValue placeholder="Select a status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map((option) => (
+                    {options.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={option.color}>
+                        <div className="flex flex-col">
+                          <Badge variant="outline" className={option.badgeClass}>
                             {option.label}
                           </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {option.round !== null
+                              ? option.round === 0
+                                ? "Pre-interview outcome"
+                                : `Round ${option.round}`
+                              : option.stage.replace(/^[a-z]/, (letter) => letter.toUpperCase())}
+                          </span>
                         </div>
                       </SelectItem>
                     ))}
@@ -98,7 +108,9 @@ export function StatusUpdateDialog({ currentStatus, onStatusUpdate, trigger }: S
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdate}>Update Status</Button>
+            <Button onClick={handleUpdate} disabled={selectedStatus === currentMetadata.value && note.trim().length === 0}>
+              Update Status
+            </Button>
           </div>
         </div>
       </DialogContent>

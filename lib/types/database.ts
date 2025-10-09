@@ -1,4 +1,17 @@
-export type JobApplicationStatus = "Applied" | "Interview" | "Offer" | "Rejected" | "Withdrawn" | "Accepted"
+export type InterviewRoundStatus = `Interview Round ${number}`
+export type GhostedStatus = `Ghosted After Round ${number}`
+export type OfferStatus = `Offer After Round ${number}`
+export type RejectedStatus = `Rejected After Round ${number}`
+export type LegacyStatus = "Interview" | "Offer" | "Rejected" | "Ghosted"
+export type JobApplicationStatus =
+  | "Applied"
+  | "Withdrawn"
+  | "Accepted"
+  | InterviewRoundStatus
+  | GhostedStatus
+  | OfferStatus
+  | RejectedStatus
+  | LegacyStatus
 export type Priority = "Low" | "Medium" | "High"
 export type EmploymentType = "Full-time" | "Part-time" | "Contract" | "Internship"
 export type InterviewType = "Phone" | "Video" | "In-person" | "Technical" | "Final"
@@ -144,6 +157,7 @@ export interface DashboardStats {
   offers: number
   accepted: number
   rejected: number
+  ghosted: number
   withdrawn: number
   upcoming_interviews: number
   response_rate: number
