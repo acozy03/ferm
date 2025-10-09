@@ -28,8 +28,8 @@ export function JobScoreIndicator({
   showDescription = true,
   align = "start",
 }: JobScoreIndicatorProps) {
-  const parsedScore = typeof score === "number" ? clamp(score, 0, 10) : null
-  const normalized = parsedScore === null ? 0 : parsedScore / 10
+  const parsedScore = typeof score === "number" ? clamp(score, 0, 100) : null
+  const normalized = parsedScore === null ? 0 : parsedScore / 100
 
   const formattedScore = useMemo(() => {
     if (parsedScore === null) return null
@@ -50,8 +50,8 @@ export function JobScoreIndicator({
   const statusColorClass = useMemo(() => {
     if (isPending || isUnavailable) return "text-muted-foreground"
     if (parsedScore === null) return "text-muted-foreground"
-    if (parsedScore >= 8) return "text-emerald-500"
-    if (parsedScore >= 6) return "text-amber-500"
+    if (parsedScore >= 80) return "text-emerald-500"
+    if (parsedScore >= 60) return "text-amber-500"
     return "text-red-500"
   }, [isPending, isUnavailable, parsedScore])
 
@@ -84,7 +84,7 @@ export function JobScoreIndicator({
             ? isPending
               ? "Resume match score pending"
               : "Resume match score unavailable"
-            : `Resume match score ${formattedScore} out of 10`
+            : `Resume match score ${formattedScore} out of 100`
         }
       >
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rotate-[-90deg]">

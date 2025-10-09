@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   CalendarClock,
@@ -8,7 +8,9 @@ import {
   LayoutPanelLeft,
   ListChecks,
   Plus,
+  Search,
   Table2,
+  X,
 } from "lucide-react"
 
 import { Header } from "@/components/header"
@@ -19,6 +21,7 @@ import { QuickActions } from "@/components/quick-actions"
 import { UpcomingInterviews } from "@/components/upcoming-interviews"
 import { BulkActions } from "@/components/bulk-actions"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -102,6 +105,7 @@ export default function Dashboard() {
   const [page, setPage] = useState(pageFromParams)
   const [selectedApplications, setSelectedApplications] = useState<string[]>([])
   const [isApplicationsDrawerOpen, setIsApplicationsDrawerOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState(filters.search ?? "")
   const [view, setView] = useState<DashboardView>(viewFromParams)
 
   useEffect(() => {
@@ -219,10 +223,44 @@ export default function Dashboard() {
   const canGoPrevious = page > 1
   const canGoNext = page < totalPages
 
+  useEffect(() => {
+    setSearchTerm(filters.search ?? "")
+  }, [filters.search])
+
   const handleFilterChange = (newFilters: JobApplicationFilters) => {
     setFilters(newFilters)
     setPage(1)
     commitState({ filters: newFilters, page: 1 })
+  }
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+    setSearchTerm(value)
+
+    const trimmed = value.trim()
+    const normalized = trimmed.length > 0 ? trimmed : undefined
+
+    if (normalized === filters.search) {
+      return
+    }
+
+    handleFilterChange({
+      ...filters,
+      search: normalized,
+    })
+  }
+
+  const clearSearch = () => {
+    if (!filters.search) {
+      setSearchTerm("")
+      return
+    }
+
+    setSearchTerm("")
+    handleFilterChange({
+      ...filters,
+      search: undefined,
+    })
   }
 
   const handleViewChange = (nextView: DashboardView) => {
@@ -387,7 +425,7 @@ export default function Dashboard() {
                     className="space-y-4"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap sm:gap-3">
                         <TabsList>
                           <TabsTrigger value="pipeline" className="gap-2">
                             <LayoutPanelLeft className="h-4 w-4" />
@@ -402,16 +440,37 @@ export default function Dashboard() {
                             Timeline
                           </TabsTrigger>
                         </TabsList>
-                        <div className="self-start sm:self-auto">
-                          <AddApplicationDialog
-                            onAdd={handleAddApplication}
-                            trigger={
-                              <Button type="button" variant="outline" size="sm" className="gap-2">
-                                <Plus className="h-4 w-4" />
-                                Add application
-                              </Button>
-                            }
-                          />
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 sm:flex-1">
+                          <div className="self-start sm:self-auto">
+                            <AddApplicationDialog
+                              onAdd={handleAddApplication}
+                              trigger={
+                                <Button type="button" variant="outline" size="sm" className="gap-2">
+                                  <Plus className="h-4 w-4" />
+                                  Add application
+                                </Button>
+                              }
+                            />
+                          </div>
+                          <div className="relative w-full sm:flex-1 sm:min-w-[16rem] sm:max-w-xs lg:max-w-sm">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              value={searchTerm}
+                              onChange={handleSearchChange}
+                              placeholder="Search applications by role, company, notes, and more"
+                              className="pl-9 pr-9"
+                            />
+                            {searchTerm ? (
+                              <button
+                                type="button"
+                                onClick={clearSearch}
+                                className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+                              >
+                                <X className="h-4 w-4" />
+                                <span className="sr-only">Clear search</span>
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                       <Button
