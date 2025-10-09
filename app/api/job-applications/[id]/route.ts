@@ -167,20 +167,39 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     if (statusInPayload && data?.status && previousStatus !== data.status) {
-      const { error: historyError } = await supabase.from("job_application_status_history").insert({
-        job_application_id: id,
-        user_id: user.id,
-        status: data.status,
-        changed_at: data.updated_at ?? new Date().toISOString(),
-      })
+      const previousNormalized = parseStatus(previousStatus).value
+      const nextNormalized = parseStatus(data.status).value
 
-      if (historyError) {
-        console.error("Failed to record status history change", {
-          jobId: id,
-          userId,
-          newStatus: data.status,
-          historyError,
+      if (nextNormalized === "Applied" && previousNormalized !== "Applied") {
+        const { error: deleteError } = await supabase
+          .from("job_application_status_history")
+          .delete()
+          .eq("job_application_id", id)
+          .eq("user_id", user.id)
+
+        if (deleteError) {
+          console.error("Failed to clear status history during reset", {
+            jobId: id,
+            userId,
+            deleteError,
+          })
+        }
+      } else {
+        const { error: historyError } = await supabase.from("job_application_status_history").insert({
+          job_application_id: id,
+          user_id: user.id,
+          status: data.status,
+          changed_at: data.updated_at ?? new Date().toISOString(),
         })
+
+        if (historyError) {
+          console.error("Failed to record status history change", {
+            jobId: id,
+            userId,
+            newStatus: data.status,
+            historyError,
+          })
+        }
       }
     }
 

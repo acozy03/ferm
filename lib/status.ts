@@ -248,11 +248,16 @@ export function isStatusProgressionAllowed(previous: string | null | undefined, 
   const nextMetadata = parseStatus(next)
   const previousMetadata = parseStatus(previous)
 
+  if (nextMetadata.value === previousMetadata.value) {
+    return true
+  }
+
   if (nextMetadata.value === "Applied" && previousMetadata.value !== "Applied") {
     return true
   }
 
-  return nextMetadata.order >= previousMetadata.order
+  const allowedNextStatuses = getNextStatusTransitions(previousMetadata)
+  return allowedNextStatuses.includes(nextMetadata.value)
 }
 
 export function isTerminalStage(stage: PipelineStage) {
@@ -325,9 +330,75 @@ function createOutcomeStatuses(round: number): JobApplicationStatus[] {
   ]
 }
 
+interface StatusTransitionConfig {
+  fallbackRound?: number
+  maxRound?: number
+}
+
+function getNextStatusTransitions(
+  current: StatusMetadata,
+  { fallbackRound = 0, maxRound = DEFAULT_MAX_INTERVIEW_ROUNDS }: StatusTransitionConfig = {},
+) {
+  const normalizedFallback = toNonNegativeInteger(fallbackRound)
+  const currentRound = toNonNegativeInteger(current.round, normalizedFallback)
+  const normalizedMaxRound = Math.max(
+    toNonNegativeInteger(maxRound, DEFAULT_MAX_INTERVIEW_ROUNDS),
+    normalizedFallback + 1,
+    currentRound + 1,
+  )
+
+  switch (current.stage) {
+    case "applied": {
+      const [offerStatus, rejectedStatus, ghostedStatus] = createOutcomeStatuses(0)
+      return [
+        `Interview Round 1` as JobApplicationStatus,
+        offerStatus,
+        rejectedStatus,
+        ghostedStatus,
+        "Withdrawn" as JobApplicationStatus,
+      ]
+    }
+    case "interview": {
+      const interviewRound = Math.max(1, currentRound)
+      const nextRound = interviewRound + 1
+      const [offerStatus, rejectedStatus, ghostedStatus] = createOutcomeStatuses(interviewRound)
+      const transitions: JobApplicationStatus[] = []
+
+      if (nextRound <= normalizedMaxRound) {
+        transitions.push(`Interview Round ${nextRound}` as JobApplicationStatus)
+      }
+
+      transitions.push(offerStatus, rejectedStatus, ghostedStatus, "Withdrawn")
+      return transitions
+    }
+    case "offer": {
+      const [, rejectedStatus] = createOutcomeStatuses(currentRound)
+      return ["Accepted" as JobApplicationStatus, rejectedStatus, "Withdrawn" as JobApplicationStatus]
+    }
+    case "ghosted":
+    case "rejected":
+    case "accepted":
+    case "withdrawn":
+      return []
+    default: {
+      const normalizedRound = currentRound > 0 ? currentRound : normalizedFallback
+      const nextRound = Math.max(1, normalizedRound + 1)
+      const [offerStatus, rejectedStatus, ghostedStatus] = createOutcomeStatuses(normalizedRound)
+      const transitions: JobApplicationStatus[] = []
+
+      if (nextRound <= normalizedMaxRound) {
+        transitions.push(`Interview Round ${nextRound}` as JobApplicationStatus)
+      }
+
+      transitions.push(offerStatus, rejectedStatus, ghostedStatus, "Withdrawn")
+      return transitions
+    }
+  }
+}
+
 export function getAllowedStatusOptions(
   currentStatus: string,
-  { statusHistory = [] }: AllowedStatusOptionsConfig = {},
+  { statusHistory = [], maxRound }: AllowedStatusOptionsConfig = {},
 ) {
   const current = parseStatus(currentStatus)
 
@@ -336,7 +407,6 @@ export function getAllowedStatusOptions(
     .filter((round): round is number => typeof round === "number" && Number.isFinite(round) && round >= 0)
 
   const fallbackRound = historyRounds.length > 0 ? Math.max(...historyRounds) : 0
-  const currentRound = toNonNegativeInteger(current.round, fallbackRound)
 
   const optionValues = new Map<JobApplicationStatus, StatusMetadata>()
 
@@ -347,50 +417,8 @@ export function getAllowedStatusOptions(
 
   register(current.value)
 
-  const addOutcomeSet = (round: number) => {
-    createOutcomeStatuses(round).forEach(register)
-  }
-
-  switch (current.stage) {
-    case "applied":
-      register("Withdrawn")
-      register(`Interview Round 1` as JobApplicationStatus)
-      addOutcomeSet(0)
-      break
-    case "interview": {
-      const round = Math.max(1, currentRound)
-      register(`Interview Round ${round + 1}` as JobApplicationStatus)
-      register("Withdrawn")
-      register("Accepted")
-      addOutcomeSet(round)
-      break
-    }
-    case "offer": {
-      const round = currentRound
-      register("Accepted")
-      register("Withdrawn")
-      register(`Rejected After Round ${round}` as JobApplicationStatus)
-      break
-    }
-    case "accepted":
-      register("Withdrawn")
-      break
-    case "withdrawn":
-      register("Accepted")
-      addOutcomeSet(currentRound)
-      break
-    case "ghosted":
-    case "rejected":
-      register("Accepted")
-      register("Withdrawn")
-      addOutcomeSet(currentRound)
-      break
-    default:
-      register("Accepted")
-      register("Withdrawn")
-      addOutcomeSet(currentRound)
-      break
-  }
+  const transitions = getNextStatusTransitions(current, { fallbackRound, maxRound })
+  transitions.forEach(register)
 
   return Array.from(optionValues.values())
     .filter((option) => option.order >= current.order)

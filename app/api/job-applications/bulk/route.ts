@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 import type { BulkUpdateJobApplicationsData } from "@/lib/types/api"
 import type { CreateJobApplicationData } from "@/lib/types/database"
 import { toNullableString } from "@/lib/utils"
-import { isStatusProgressionAllowed, normalizeStatusValue } from "@/lib/status"
+import { isStatusProgressionAllowed, normalizeStatusValue, parseStatus } from "@/lib/status"
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -100,6 +100,25 @@ export async function PUT(request: NextRequest) {
       for (const record of data ?? []) {
         if (!record?.id || !record?.status) continue
         if (previousStatuses[record.id] === record.status) continue
+
+        const previousNormalized = parseStatus(previousStatuses[record.id]).value
+        const nextNormalized = parseStatus(record.status).value
+
+        if (nextNormalized === "Applied" && previousNormalized !== "Applied") {
+          const { error: deleteError } = await supabase
+            .from("job_application_status_history")
+            .delete()
+            .eq("job_application_id", record.id)
+            .eq("user_id", user.id)
+
+          if (deleteError) {
+            console.error("Failed to clear status history during bulk reset", deleteError, {
+              recordId: record.id,
+            })
+          }
+
+          continue
+        }
 
         const { error: historyError } = await supabase.from("job_application_status_history").insert({
           job_application_id: record.id,
