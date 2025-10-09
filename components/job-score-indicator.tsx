@@ -30,13 +30,12 @@ export function JobScoreIndicator({
 }: JobScoreIndicatorProps) {
   const parsedScore = typeof score === "number" ? clamp(score, 0, 10) : null
   const normalized = parsedScore === null ? 0 : parsedScore / 10
-  const scoreOutOfFive = parsedScore === null ? null : parsedScore / 2
 
   const formattedScore = useMemo(() => {
-    if (scoreOutOfFive === null) return null
-    const rounded = Math.round(scoreOutOfFive * 10) / 10
+    if (parsedScore === null) return null
+    const rounded = Math.round(parsedScore * 10) / 10
     return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)
-  }, [scoreOutOfFive])
+  }, [parsedScore])
 
   const createdAtTime = useMemo(() => {
     if (!createdAt) return null
@@ -50,11 +49,11 @@ export function JobScoreIndicator({
 
   const statusColorClass = useMemo(() => {
     if (isPending || isUnavailable) return "text-muted-foreground"
-    if (scoreOutOfFive === null) return "text-muted-foreground"
-    if (scoreOutOfFive >= 4) return "text-emerald-500"
-    if (scoreOutOfFive >= 3) return "text-amber-500"
+    if (parsedScore === null) return "text-muted-foreground"
+    if (parsedScore >= 8) return "text-emerald-500"
+    if (parsedScore >= 6) return "text-amber-500"
     return "text-red-500"
-  }, [isPending, isUnavailable, scoreOutOfFive])
+  }, [isPending, isUnavailable, parsedScore])
 
   const circumference = useMemo(() => {
     const radius = (size - 8) / 2
@@ -85,7 +84,7 @@ export function JobScoreIndicator({
             ? isPending
               ? "Resume match score pending"
               : "Resume match score unavailable"
-            : `Resume match score ${formattedScore} out of 5`
+            : `Resume match score ${formattedScore} out of 10`
         }
       >
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rotate-[-90deg]">
