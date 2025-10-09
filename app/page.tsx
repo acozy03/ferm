@@ -647,18 +647,20 @@ export default function Dashboard() {
                                         {application.company_name}
                                       </p>
                                     </div>
-                                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
+                                    
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
+                                          {formatStatusLabel(application.status)}
+                                        </Badge>
+                                        
+                                        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
                                       <JobScoreIndicator
                                         score={application.resume_match_score ?? null}
                                         createdAt={application.created_at}
                                         size={48}
                                         showDescription={false}
                                       />
-                                      <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
-                                          {formatStatusLabel(application.status)}
-                                        </Badge>
-                                        <ApplicationActionsMenu
+                                      <ApplicationActionsMenu
                                           application={application}
                                           onStatusUpdate={(status, note) =>
                                             handleStatusChange(application.id, status, note)

@@ -73,6 +73,9 @@ export function JobScoreIndicator({
 
   return (
     <div className={cn("flex gap-3", alignmentClasses, className)}>
+      {showDescription && (
+        <div className={cn("text-sm font-medium text-muted-foreground", textAlignment)}>Fit Score</div>
+      )}
       <div
         className="relative flex items-center justify-center"
         style={{ width: size, height: size }}
@@ -123,9 +126,7 @@ export function JobScoreIndicator({
         </div>
       </div>
 
-      {showDescription && (
-        <div className={cn("text-sm font-medium text-muted-foreground", textAlignment)}>Fit Score</div>
-      )}
+      
     </div>
   )
 }
