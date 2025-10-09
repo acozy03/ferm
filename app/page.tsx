@@ -7,6 +7,7 @@ import {
   ChevronRight,
   LayoutPanelLeft,
   ListChecks,
+  Plus,
   Table2,
 } from "lucide-react"
 
@@ -22,10 +23,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { ApplicationsDrawer } from "@/components/applications-drawer"
+import { AddApplicationDialog } from "@/components/add-application-dialog"
 import { JobScoreIndicator } from "@/components/job-score-indicator"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { createSearchParamsWithFilters, parseJobApplicationFilters } from "@/lib/job-filters"
-import type { JobApplication, JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
+import type {
+  CreateJobApplicationData,
+  JobApplication,
+  JobApplicationFilters,
+  JobApplicationSort,
+} from "@/lib/types/database"
 import { useSettings } from "@/components/settings-provider"
 import { ApplicationActionsMenu } from "@/components/application-actions-menu"
 import { defaultViewOptions } from "@/lib/settings"
@@ -242,6 +249,24 @@ export default function Dashboard() {
     commitState({ view: nextView, page: 1 })
   }
 
+  const handleAddApplication = async (application: CreateJobApplicationData) => {
+    try {
+      const response = await fetch("/api/job-applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(application),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to add application")
+      }
+
+      handleApplicationUpdate()
+    } catch (error) {
+      console.error("Failed to add application:", error)
+    }
+  }
+
   const handleApplicationUpdate = () => {
     mutate() // Refresh data after updates
   }
@@ -375,20 +400,33 @@ export default function Dashboard() {
                     className="space-y-4"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <TabsList>
-                        <TabsTrigger value="pipeline" className="gap-2">
-                          <LayoutPanelLeft className="h-4 w-4" />
-                          Pipeline
-                        </TabsTrigger>
-                        <TabsTrigger value="table" className="gap-2">
-                          <Table2 className="h-4 w-4" />
-                          Table
-                        </TabsTrigger>
-                        <TabsTrigger value="timeline" className="gap-2">
-                          <CalendarClock className="h-4 w-4" />
-                          Timeline
-                        </TabsTrigger>
-                      </TabsList>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <TabsList>
+                          <TabsTrigger value="pipeline" className="gap-2">
+                            <LayoutPanelLeft className="h-4 w-4" />
+                            Pipeline
+                          </TabsTrigger>
+                          <TabsTrigger value="table" className="gap-2">
+                            <Table2 className="h-4 w-4" />
+                            Table
+                          </TabsTrigger>
+                          <TabsTrigger value="timeline" className="gap-2">
+                            <CalendarClock className="h-4 w-4" />
+                            Timeline
+                          </TabsTrigger>
+                        </TabsList>
+                        <div className="self-start sm:self-auto">
+                          <AddApplicationDialog
+                            onAdd={handleAddApplication}
+                            trigger={
+                              <Button type="button" variant="outline" size="sm" className="gap-2">
+                                <Plus className="h-4 w-4" />
+                                Add application
+                              </Button>
+                            }
+                          />
+                        </div>
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"
