@@ -670,19 +670,22 @@ export default function Dashboard() {
                                       </div>
                                     </div>
                                   </div>
-                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                   <span>
                                     Applied {timelineDateFormatter.format(new Date(application.application_date))}
                                   </span>
                                   <span>•</span>
                                   <span>{formatDaysSinceApplied(application.application_date)}</span>
                                   {application.location && (
-                                    <span className="flex min-w-0 items-center gap-1 max-w-[14rem]">
+                                    <>
                                       <span>•</span>
-                                      <span className="truncate" title={application.location}>
+                                      <span
+                                        className="inline-block max-w-[14rem] truncate"
+                                        title={application.location}
+                                      >
                                         {application.location}
                                       </span>
-                                    </span>
+                                    </>
                                   )}
                                 </div>
                                 {application.notes && (

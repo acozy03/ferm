@@ -263,8 +263,35 @@ export default function ResumePage() {
           throw uploadError
         }
 
-        toast({ title: "Resume updated", description: "Your resume has been uploaded successfully." })
+        let syncErrorMessage: string | null = null
+
+        try {
+          const response = await fetch("/api/resume/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+          })
+
+          if (!response.ok) {
+            const payload = (await response.json().catch(() => null)) as { error?: string } | null
+            syncErrorMessage = payload?.error ?? `Unexpected error (status ${response.status})`
+          }
+        } catch (error) {
+          syncErrorMessage =
+            error instanceof Error ? error.message : "We couldn't store the parsed resume text. Please try again later."
+        }
+
         await fetchResume()
+
+        if (syncErrorMessage) {
+          toast({
+            title: "Resume text unavailable",
+            description: syncErrorMessage,
+            variant: "destructive",
+          })
+        } else {
+          toast({ title: "Resume updated", description: "Your resume has been uploaded successfully." })
+        }
       } catch (error) {
         console.error("Failed to upload resume:", error)
         const rawMessage =
@@ -314,7 +341,29 @@ export default function ResumePage() {
 
       setResume(null)
       await fetchResume()
+
+      let syncErrorMessage: string | null = null
+
+      try {
+        const response = await fetch("/api/resume/refresh", { method: "DELETE" })
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null
+          syncErrorMessage = payload?.error ?? `Unexpected error (status ${response.status})`
+        }
+      } catch (error) {
+        syncErrorMessage =
+          error instanceof Error ? error.message : "We couldn't remove the stored resume text. Please try again later."
+      }
+
       toast({ title: "Resume removed", description: "Your resume has been deleted." })
+      if (syncErrorMessage) {
+        toast({
+          title: "Resume text cleanup failed",
+          description: syncErrorMessage,
+          variant: "destructive",
+        })
+      }
       setIsRemoveDialogOpen(false)
     } catch (error) {
       console.error("Failed to remove resume:", error)

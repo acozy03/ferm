@@ -73,7 +73,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
         company_name: formData.company_name,
         position_title: formData.position_title,
         status: formData.status,
-        application_date: formData.appliedDate.toISOString().split("T")[0],
+        application_date: format(formData.appliedDate, "yyyy-MM-dd"),
         location: toNullable(formData.location),
         salary_range: toNullable(formData.salary_range),
         employment_type: formData.employment_type,
