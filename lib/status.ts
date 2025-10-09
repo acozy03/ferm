@@ -262,15 +262,122 @@ export interface AllowedStatusOptionsConfig {
   statusHistory?: Pick<JobApplicationStatusHistory, "status">[]
 }
 
+function toNonNegativeInteger(value: number | null | undefined, fallback = 0) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback
+  }
+
+  const rounded = Math.floor(value)
+  return rounded < 0 ? fallback : rounded
+}
+
+function createOutcomeStatuses(round: number): JobApplicationStatus[] {
+  const normalizedRound = toNonNegativeInteger(round)
+
+  return [
+    `Offer After Round ${normalizedRound}` as JobApplicationStatus,
+    `Rejected After Round ${normalizedRound}` as JobApplicationStatus,
+    `Ghosted After Round ${normalizedRound}` as JobApplicationStatus,
+  ]
+}
+
 export function getAllowedStatusOptions(
   currentStatus: string,
-  { maxRound = DEFAULT_MAX_INTERVIEW_ROUNDS, statusHistory = [] }: AllowedStatusOptionsConfig = {},
+  { statusHistory = [] }: AllowedStatusOptionsConfig = {},
 ) {
   const current = parseStatus(currentStatus)
-  const historyRounds = statusHistory.map((entry) => parseStatus(entry.status).round ?? 0)
-  const highestRound = Math.max(maxRound, current.round ?? 0, ...historyRounds)
-  const options = generateStatusOptions(Math.max(highestRound + 1, maxRound), [current.value])
-  return options.filter((option) => option.order >= current.order || option.value === current.value)
+
+  const historyRounds = statusHistory
+    .map((entry) => parseStatus(entry.status).round)
+    .filter((round): round is number => typeof round === "number" && Number.isFinite(round) && round >= 0)
+
+  const fallbackRound = historyRounds.length > 0 ? Math.max(...historyRounds) : 0
+  const currentRound = toNonNegativeInteger(current.round, fallbackRound)
+
+  const optionValues = new Map<JobApplicationStatus, StatusMetadata>()
+
+  const register = (status: JobApplicationStatus) => {
+    const metadata = parseStatus(status)
+    optionValues.set(metadata.value, metadata)
+  }
+
+  register(current.value)
+
+  const addOutcomeSet = (round: number) => {
+    createOutcomeStatuses(round).forEach(register)
+  }
+
+  switch (current.stage) {
+    case "applied":
+      register("Withdrawn")
+      register(`Interview Round 1` as JobApplicationStatus)
+      addOutcomeSet(0)
+      break
+    case "interview": {
+      const round = Math.max(1, currentRound)
+      register(`Interview Round ${round + 1}` as JobApplicationStatus)
+      register("Withdrawn")
+      register("Accepted")
+      addOutcomeSet(round)
+      break
+    }
+    case "offer": {
+      const round = currentRound
+      register("Accepted")
+      register("Withdrawn")
+      register(`Rejected After Round ${round}` as JobApplicationStatus)
+      break
+    }
+    case "accepted":
+      register("Withdrawn")
+      break
+    case "withdrawn":
+      register("Accepted")
+      addOutcomeSet(currentRound)
+      break
+    case "ghosted":
+    case "rejected":
+      register("Accepted")
+      register("Withdrawn")
+      addOutcomeSet(currentRound)
+      break
+    default:
+      register("Accepted")
+      register("Withdrawn")
+      addOutcomeSet(currentRound)
+      break
+  }
+
+  return Array.from(optionValues.values()).sort((left, right) => {
+    if (left.order === right.order) {
+      return left.label.localeCompare(right.label)
+    }
+
+    return left.order - right.order
+  })
+}
+
+export function formatStatusOptionLabel(status: StatusMetadata | string | null | undefined) {
+  const metadata = typeof status === "string" || status == null ? parseStatus(status) : status
+
+  switch (metadata.stage) {
+    case "interview":
+      return metadata.round ? `Interview Round ${metadata.round}` : "Interview"
+    case "offer":
+      return "Offer"
+    case "accepted":
+      return "Offer accepted"
+    case "ghosted":
+      return "Ghosted"
+    case "rejected":
+      return "Rejected"
+    case "withdrawn":
+      return "Withdrawn"
+    case "applied":
+      return "Applied"
+    default:
+      return metadata.label
+  }
 }
 
 export function getMaxRoundFromHistory(history: Pick<JobApplicationStatusHistory, "status">[] = []) {

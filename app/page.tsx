@@ -489,7 +489,7 @@ export default function Dashboard() {
                               <TableHead>Role</TableHead>
                               <TableHead>Status</TableHead>
                              
-                              <TableHead className="w-[150px]">Match score</TableHead>
+                              <TableHead className="w-[150px] text-center">Match score</TableHead>
                               <TableHead>Applied</TableHead>
                               <TableHead className="hidden lg:table-cell">Location</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -539,13 +539,15 @@ export default function Dashboard() {
                                     </Badge>
                                   </TableCell>
                               
-                                  <TableCell>
-                                    <JobScoreIndicator
-                                      score={application.resume_match_score ?? null}
-                                      createdAt={application.created_at}
-                                      size={48}
-                                      showDescription={false}
-                                    />
+                                  <TableCell className="text-justify">
+                                    <div className="flex justify-center">
+                                      <JobScoreIndicator
+                                        score={application.resume_match_score ?? null}
+                                        createdAt={application.created_at}
+                                        size={48}
+                                        showDescription={false}
+                                      />
+                                    </div>
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex flex-col">

@@ -13,7 +13,7 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*", // tighten to your extension origin if you want
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, content-type",
 }

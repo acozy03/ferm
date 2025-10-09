@@ -10,7 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import type { JobApplicationStatus, JobApplicationStatusHistory } from "@/lib/types/database"
-import { getAllowedStatusOptions, getStatusBadgeClass, parseStatus } from "@/lib/status"
+import {
+  formatStatusOptionLabel,
+  getAllowedStatusOptions,
+  getStatusBadgeClass,
+  parseStatus,
+} from "@/lib/status"
 
 interface StatusUpdateDialogProps {
   currentStatus: JobApplicationStatus
@@ -55,7 +60,7 @@ export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdat
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current</p>
                 <div className="mt-3">
                   <Badge variant="outline" className={getStatusBadgeClass(currentMetadata.value)}>
-                    {currentMetadata.label}
+                    {formatStatusOptionLabel(currentMetadata)}
                   </Badge>
                 </div>
               </div>
@@ -73,18 +78,9 @@ export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdat
                   <SelectContent>
                     {options.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        <div className="flex flex-col">
-                          <Badge variant="outline" className={option.badgeClass}>
-                            {option.label}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {option.round !== null
-                              ? option.round === 0
-                                ? "Pre-interview outcome"
-                                : `Round ${option.round}`
-                              : option.stage.replace(/^[a-z]/, (letter) => letter.toUpperCase())}
-                          </span>
-                        </div>
+                        <Badge variant="outline" className={option.badgeClass}>
+                          {formatStatusOptionLabel(option)}
+                        </Badge>
                       </SelectItem>
                     ))}
                   </SelectContent>
