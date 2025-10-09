@@ -3,8 +3,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 import type { UpdateJobApplicationData } from "@/lib/types/database"
 import { toNullableString } from "@/lib/utils"
 import { isStatusProgressionAllowed, normalizeStatusValue, parseStatus } from "@/lib/status"
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -59,6 +59,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  const { id } = params
+  let sanitizedUpdates: Partial<UpdateJobApplicationData> = {}
+  let userId: string | null = null
   try {
     const supabase = await createServerSupabaseClient()
     const {
@@ -73,7 +76,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    const { id } = params
+    userId = user.id
     const body: Partial<UpdateJobApplicationData> = await request.json()
     const updates: Partial<UpdateJobApplicationData> = { ...body }
     delete (updates as { id?: string }).id
@@ -93,7 +96,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       "job_responsibilities",
     ]
 
-    const sanitizedUpdates: Partial<UpdateJobApplicationData> = { ...updates }
+    sanitizedUpdates = { ...updates }
     const mutableUpdates = sanitizedUpdates as Record<string, string | null | undefined>
     for (const field of nullableFields) {
       if (field in mutableUpdates) {
@@ -126,6 +129,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       if (typeof sanitizedUpdates.status === "string") {
         const nextStatus = normalizeStatusValue(sanitizedUpdates.status)
         if (!isStatusProgressionAllowed(previousStatus, nextStatus)) {
+          console.warn("Status progression prevented", {
+            jobId: id,
+            userId,
+            previousStatus,
+            attemptedStatus: nextStatus,
+          })
           return NextResponse.json(
             { error: "Status cannot move backwards in the pipeline" },
             { status: 400 },
@@ -145,7 +154,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error("Supabase failed to update job application", {
+        jobId: id,
+        userId,
+        updates: sanitizedUpdates,
+        error,
+      })
+      return NextResponse.json(
+        { error: error.message, code: error.code, details: error.details },
+        { status: 500 },
+      )
     }
 
     if (statusInPayload && data?.status && previousStatus !== data.status) {
@@ -157,13 +175,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       })
 
       if (historyError) {
-        console.error("Failed to record status history change", historyError)
+        console.error("Failed to record status history change", {
+          jobId: id,
+          userId,
+          newStatus: data.status,
+          historyError,
+        })
       }
     }
 
     return NextResponse.json({ data })
   } catch (error) {
-    console.error("Failed to update job application", error)
+    console.error("Failed to update job application", {
+      jobId: id,
+      userId,
+      updates: sanitizedUpdates,
+      error,
+    })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

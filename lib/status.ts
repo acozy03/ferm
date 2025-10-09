@@ -245,7 +245,14 @@ export function isStatusProgressionAllowed(previous: string | null | undefined, 
     return true
   }
 
-  return getStatusOrder(next) >= getStatusOrder(previous)
+  const nextMetadata = parseStatus(next)
+  const previousMetadata = parseStatus(previous)
+
+  if (nextMetadata.value === "Applied" && previousMetadata.value !== "Applied") {
+    return true
+  }
+
+  return nextMetadata.order >= previousMetadata.order
 }
 
 export function isTerminalStage(stage: PipelineStage) {

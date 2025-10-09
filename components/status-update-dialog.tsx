@@ -45,6 +45,17 @@ export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdat
     setOpen(false)
   }
 
+  const handleResetPipeline = () => {
+    const resetStatus = "Applied" as JobApplicationStatus
+    const hasNote = note.trim().length > 0
+    onStatusUpdate(resetStatus, hasNote ? note : undefined)
+    setSelectedStatus(resetStatus)
+    setNote("")
+    setOpen(false)
+  }
+
+  const resetDisabled = currentMetadata.value === "Applied"
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -86,6 +97,20 @@ export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdat
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-muted/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">Need to start over?</p>
+                <p className="text-xs text-muted-foreground">
+                  Reset the pipeline to the initial &ldquo;Applied&rdquo; status if you need to re-run the progression.
+                </p>
+              </div>
+              <Button variant="secondary" onClick={handleResetPipeline} disabled={resetDisabled}>
+                Reset to Applied
+              </Button>
             </div>
           </div>
 
