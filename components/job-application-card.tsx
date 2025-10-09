@@ -10,6 +10,7 @@ import { StatusUpdateDialog } from "@/components/status-update-dialog"
 import { JobDetailsDialog } from "@/components/job-details-dialog"
 import { EditApplicationDialog } from "@/components/edit-application-dialog"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
+import { JobScoreIndicator } from "@/components/job-score-indicator"
 import type { JobApplication } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 
@@ -121,54 +122,62 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
     >
- <CardHeader className="pb-4">
-  <div className="grid grid-cols-[1fr_auto] items-start gap-4 sm:gap-6">
-    <div className="min-w-0">
-      <h3 className="text-lg font-semibold leading-tight line-clamp-2 break-words">
-        {application.position_title}
-      </h3>
-      <p className="font-medium text-muted-foreground line-clamp-1 break-words">
-        {application.company_name}
-      </p>
-    </div>
+      <CardHeader className="pb-4">
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-lg font-semibold leading-tight line-clamp-2 break-words">
+              {application.position_title}
+            </h3>
+            <p className="font-medium text-muted-foreground line-clamp-1 break-words">
+              {application.company_name}
+            </p>
+          </div>
 
-    <div className="flex items-center gap-2 shrink-0 justify-self-end">
-      <Badge className={statusColors[application.status] + " shrink-0"} variant="outline">
-        {application.status}
-      </Badge>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <EditApplicationDialog
-                  application={application}
-                  onUpdate={onUpdate || (() => {})}
-                  trigger={
-                    <DropdownMenuItem
-                      onSelect={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                      }}
-                    >
-                      Edit Application
-                    </DropdownMenuItem>
-                  }
-                />
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    setIsDeleteDialogOpen(true)
-                  }}
-                >
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
+            <JobScoreIndicator
+              score={application.resume_match_score ?? null}
+              createdAt={application.created_at}
+              className="sm:order-1"
+              align="end"
+            />
+            <div className="flex items-center gap-2">
+              <Badge className={statusColors[application.status] + " shrink-0"} variant="outline">
+                {application.status}
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <EditApplicationDialog
+                    application={application}
+                    onUpdate={onUpdate || (() => {})}
+                    trigger={
+                      <DropdownMenuItem
+                        onSelect={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                        }}
+                      >
+                        Edit Application
+                      </DropdownMenuItem>
+                    }
+                  />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setIsDeleteDialogOpen(true)
+                    }}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </CardHeader>

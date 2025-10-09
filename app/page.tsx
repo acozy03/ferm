@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { ApplicationsDrawer } from "@/components/applications-drawer"
+import { JobScoreIndicator } from "@/components/job-score-indicator"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { createSearchParamsWithFilters, parseJobApplicationFilters } from "@/lib/job-filters"
 import type { JobApplication, JobApplicationFilters, JobApplicationSort } from "@/lib/types/database"
@@ -469,6 +470,7 @@ export default function Dashboard() {
                               <TableHead>Role</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Priority</TableHead>
+                              <TableHead className="w-[150px]">Match score</TableHead>
                               <TableHead>Applied</TableHead>
                               <TableHead className="hidden lg:table-cell">Location</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -518,6 +520,14 @@ export default function Dashboard() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell>{application.priority}</TableCell>
+                                  <TableCell>
+                                    <JobScoreIndicator
+                                      score={application.resume_match_score ?? null}
+                                      createdAt={application.created_at}
+                                      size={48}
+                                      showDescription={false}
+                                    />
+                                  </TableCell>
                                   <TableCell>
                                     <div className="flex flex-col">
                                       <span className="text-sm font-medium">
@@ -604,7 +614,7 @@ export default function Dashboard() {
                                     handleSelectApplication(application.id, !isSelected)
                                   }}
                                 >
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                                     <div className="min-w-0">
                                       <p className="font-medium leading-tight line-clamp-2 break-words">
                                         {application.position_title}
@@ -616,17 +626,25 @@ export default function Dashboard() {
                                         {application.company_name}
                                       </p>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline" className={statusBadges[application.status]}>
-                                        {application.status}
-                                      </Badge>
-                                      <ApplicationActionsMenu
-                                        application={application}
-                                        onStatusUpdate={(status, note) =>
-                                          handleStatusChange(application.id, status, note)
-                                        }
-                                        onApplicationUpdate={handleApplicationUpdate}
+                                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
+                                      <JobScoreIndicator
+                                        score={application.resume_match_score ?? null}
+                                        createdAt={application.created_at}
+                                        size={48}
+                                        showDescription={false}
                                       />
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className={statusBadges[application.status]}>
+                                          {application.status}
+                                        </Badge>
+                                        <ApplicationActionsMenu
+                                          application={application}
+                                          onStatusUpdate={(status, note) =>
+                                            handleStatusChange(application.id, status, note)
+                                          }
+                                          onApplicationUpdate={handleApplicationUpdate}
+                                        />
+                                      </div>
                                     </div>
                                   </div>
                                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
