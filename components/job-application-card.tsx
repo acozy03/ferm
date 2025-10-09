@@ -133,51 +133,43 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
             </p>
           </div>
 
-          <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
-            <JobScoreIndicator
-              score={application.resume_match_score ?? null}
-              createdAt={application.created_at}
-              className="sm:order-1"
-              align="end"
-            />
-            <div className="flex items-center gap-2">
-              <Badge className={statusColors[application.status] + " shrink-0"} variant="outline">
-                {application.status}
-              </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <EditApplicationDialog
-                    application={application}
-                    onUpdate={onUpdate || (() => {})}
-                    trigger={
-                      <DropdownMenuItem
-                        onSelect={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                        }}
-                      >
-                        Edit Application
-                      </DropdownMenuItem>
-                    }
-                  />
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onSelect={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      setIsDeleteDialogOpen(true)
-                    }}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+          <div className="flex items-center justify-end gap-2">
+            <Badge className={statusColors[application.status] + " shrink-0"} variant="outline">
+              {application.status}
+            </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <EditApplicationDialog
+                  application={application}
+                  onUpdate={onUpdate || (() => {})}
+                  trigger={
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }}
+                    >
+                      Edit Application
+                    </DropdownMenuItem>
+                  }
+                />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setIsDeleteDialogOpen(true)
+                  }}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardHeader>
@@ -235,7 +227,11 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
               }
             />
           </div>
-          <div className="text-xs text-muted-foreground sm:text-right">ID: {application.id.slice(0, 8)}</div>
+          <JobScoreIndicator
+            score={application.resume_match_score ?? null}
+            createdAt={application.created_at}
+            align="end"
+          />
         </div>
       </CardContent>
       <DeleteConfirmationDialog

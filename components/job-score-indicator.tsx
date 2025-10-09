@@ -48,18 +48,6 @@ export function JobScoreIndicator({
   const isPending = parsedScore === null && createdAtTime !== null && now - createdAtTime < RECENT_THRESHOLD_MS
   const isUnavailable = parsedScore === null && !isPending
 
-  const descriptor = useMemo(() => {
-    if (isPending) return "Analyzing resume"
-    if (isUnavailable) return "Match data unavailable"
-    if (scoreOutOfFive === null) return ""
-
-    if (scoreOutOfFive >= 4.5) return "Outstanding match"
-    if (scoreOutOfFive >= 4) return "Great match"
-    if (scoreOutOfFive >= 3) return "Solid alignment"
-    if (scoreOutOfFive >= 2) return "Needs refinement"
-    return "Low alignment"
-  }, [isPending, isUnavailable, scoreOutOfFive])
-
   const statusColorClass = useMemo(() => {
     if (isPending || isUnavailable) return "text-muted-foreground"
     if (scoreOutOfFive === null) return "text-muted-foreground"
@@ -82,8 +70,6 @@ export function JobScoreIndicator({
 
   const alignmentClasses = align === "end" ? "items-center justify-end" : "items-center"
   const textAlignment = align === "end" ? "text-right" : "text-left"
-
-  const textWidthClass = showDescription ? "min-w-[96px]" : "min-w-[72px]"
 
   return (
     <div className={cn("flex gap-3", alignmentClasses, className)}>
@@ -137,14 +123,9 @@ export function JobScoreIndicator({
         </div>
       </div>
 
-      <div className={cn(textWidthClass, "space-y-0.5", textAlignment)}>
-        <p className={cn("text-sm font-medium", statusColorClass)}>
-          {isPending ? "Scoring" : formattedScore ? `${formattedScore} / 5` : "No score"}
-        </p>
-        {showDescription && (
-          <p className="text-xs text-muted-foreground leading-tight">{descriptor}</p>
-        )}
-      </div>
+      {showDescription && (
+        <div className={cn("text-sm font-medium text-muted-foreground", textAlignment)}>Fit Score</div>
+      )}
     </div>
   )
 }

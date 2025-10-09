@@ -13,7 +13,6 @@ import {
 import { Header } from "@/components/header"
 import { JobApplicationCard } from "@/components/job-application-card"
 import { StatsOverview } from "@/components/stats-overview"
-import { ApplicationFilters } from "@/components/application-filters"
 import { ActivityTimeline } from "@/components/activity-timeline"
 import { QuickActions } from "@/components/quick-actions"
 import { UpcomingInterviews } from "@/components/upcoming-interviews"
@@ -365,12 +364,7 @@ export default function Dashboard() {
             </div>
 
             <div className="lg:col-span-2 space-y-6">
-              <div className="flex flex-col lg:flex-row gap-6">
-                <aside className="lg:w-64 flex-shrink-0">
-                  <ApplicationFilters filters={filters} onFiltersChange={handleFilterChange} />
-                </aside>
-
-                <div className="flex-1 space-y-4 pb-24">
+              <div className="space-y-4 pb-24">
                   <Tabs
                     value={view}
                     onValueChange={(next) => {
@@ -469,7 +463,7 @@ export default function Dashboard() {
                             <TableRow>
                               <TableHead>Role</TableHead>
                               <TableHead>Status</TableHead>
-                              <TableHead>Priority</TableHead>
+                             
                               <TableHead className="w-[150px]">Match score</TableHead>
                               <TableHead>Applied</TableHead>
                               <TableHead className="hidden lg:table-cell">Location</TableHead>
@@ -519,7 +513,7 @@ export default function Dashboard() {
                                       {application.status}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell>{application.priority}</TableCell>
+                              
                                   <TableCell>
                                     <JobScoreIndicator
                                       score={application.resume_match_score ?? null}
@@ -590,7 +584,7 @@ export default function Dashboard() {
                           </p>
                         </div>
                       ) : (
-                        <div className="relative mx-auto w-full max-w-[35rem] space-y-6">
+                        <div className="relative mx-auto w-full max-w-4xl space-y-6">
                           <div className="absolute left-1.5 top-0 h-full w-px bg-border" aria-hidden />
                           {timelineItems.map((application) => {
                             const isSelected = selectedApplications.includes(application.id)
@@ -714,7 +708,6 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                </div>
               </div>
             </div>
           </div>
