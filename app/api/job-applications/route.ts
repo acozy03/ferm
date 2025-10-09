@@ -7,7 +7,7 @@ import { z } from "zod"
 import type { CreateJobApplicationData } from "@/lib/types/database"
 import { getLatestResumeText } from "@/lib/resume/server"
 import { toNullableString } from "@/lib/utils"
-import { normalizeStatusValue, parseStatus } from "@/lib/status"
+import { expandStatusFilters, normalizeStatusValue, parseStatus } from "@/lib/status"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -221,12 +221,9 @@ export async function GET(request: NextRequest) {
       // belt-and-suspenders: still filter by user_id even with RLS
       .eq("user_id", userId)
 
-    const normalizedStatusFilter = status
-      ?.map((value) => normalizeStatusValue(value))
-      .filter((value): value is string => Boolean(value))
-    const uniqueStatusFilter = normalizedStatusFilter ? Array.from(new Set(normalizedStatusFilter)) : []
+    const expandedStatusFilters = expandStatusFilters(status ?? [])
 
-    if (uniqueStatusFilter.length > 0) query = query.in("status", uniqueStatusFilter)
+    if (expandedStatusFilters.length > 0) query = query.in("status", expandedStatusFilters)
     if (priority && priority.length > 0) query = query.in("priority", priority)
     if (company_name) query = query.ilike("company_name", `%${company_name}%`)
 

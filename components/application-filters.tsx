@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Filter, X } from "lucide-react"
-import type { JobApplicationFilters, JobApplicationStatus, Priority } from "@/lib/types/database"
-import { formatStatusOptionLabel } from "@/lib/status"
-import { SequentialStatusSelect } from "@/components/status-select"
+import type { JobApplicationFilters, Priority } from "@/lib/types/database"
+import { formatStatusFilterLabel, STATUS_STAGE_FILTER_OPTIONS } from "@/lib/status"
+import type { PipelineStage } from "@/lib/status"
 
 interface ApplicationFiltersProps {
   filters: JobApplicationFilters
@@ -16,7 +17,7 @@ interface ApplicationFiltersProps {
 }
 
 export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFiltersProps) {
-  const [statusBuilder, setStatusBuilder] = useState<JobApplicationStatus | undefined>(undefined)
+  const [statusBuilder, setStatusBuilder] = useState<PipelineStage | undefined>(undefined)
   const priorityOptions: Priority[] = ["Low", "Medium", "High"]
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
     }
   }, [filters.status])
 
-  const handleStatusAdd = (status: JobApplicationStatus) => {
+  const handleStatusAdd = (status: string) => {
     const currentStatuses = filters.status ?? []
     if (currentStatuses.includes(status)) {
       return
@@ -39,7 +40,7 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
     })
   }
 
-  const handleStatusRemove = (status: JobApplicationStatus) => {
+  const handleStatusRemove = (status: string) => {
     const currentStatuses = filters.status ?? []
     const nextStatuses = currentStatuses.filter((item) => item !== status)
 
@@ -95,7 +96,7 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
   }
 
   const activeFilters = [
-    ...(filters.status || []).map((s) => ({ type: "status", value: s, label: formatStatusOptionLabel(s) })),
+    ...(filters.status || []).map((s) => ({ type: "status", value: s, label: formatStatusFilterLabel(s) })),
     ...(filters.priority || []).map((p) => ({ type: "priority", value: p, label: `${p} Priority` })),
     ...(filters.company_name
       ? [{ type: "company", value: filters.company_name, label: `Company: ${filters.company_name}` }]
@@ -114,11 +115,21 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
         <div>
           <h4 className="text-sm font-medium mb-3">Status</h4>
           <div className="space-y-3">
-            <SequentialStatusSelect
+            <Select
               value={statusBuilder}
-              onChange={setStatusBuilder}
-              placeholder="Select a status"
-            />
+              onValueChange={(next) => setStatusBuilder(next as PipelineStage)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a status" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_STAGE_FILTER_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -142,12 +153,12 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
               <div className="flex flex-wrap gap-2">
                 {(filters.status || []).map((status) => (
                   <Badge key={status} variant="secondary" className="gap-1">
-                    {formatStatusOptionLabel(status)}
+                    {formatStatusFilterLabel(status)}
                     <button
                       type="button"
                       onClick={() => handleStatusRemove(status)}
                       className="rounded-full p-0.5 hover:bg-muted"
-                      aria-label={`Remove ${formatStatusOptionLabel(status)}`}
+                      aria-label={`Remove ${formatStatusFilterLabel(status)}`}
                     >
                       <X className="h-3 w-3" />
                     </button>

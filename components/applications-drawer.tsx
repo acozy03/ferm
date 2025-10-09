@@ -15,19 +15,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import type {
-  JobApplicationFilters,
-  JobApplicationSort,
-  JobApplicationStatus,
-  Priority,
-} from "@/lib/types/database"
+import type { JobApplicationFilters, JobApplicationSort, Priority } from "@/lib/types/database"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { JobApplicationCard } from "@/components/job-application-card"
-import { formatStatusOptionLabel } from "@/lib/status"
-import { SequentialStatusSelect } from "@/components/status-select"
+import {
+  formatStatusFilterLabel,
+  STATUS_STAGE_FILTER_OPTIONS,
+} from "@/lib/status"
+import type { PipelineStage } from "@/lib/status"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type FilterChip =
-  | { type: "status"; value: JobApplicationStatus; label: string }
+  | { type: "status"; value: string; label: string }
   | { type: "priority"; value: Priority; label: string }
   | { type: "company_name"; value: string; label: string }
   | { type: "date_from"; value: string; label: string }
@@ -56,7 +55,7 @@ export function ApplicationsDrawer({
 }: ApplicationsDrawerProps) {
   const [searchTerm, setSearchTerm] = useState(filters.search ?? "")
   const [page, setPage] = useState(1)
-  const [statusBuilder, setStatusBuilder] = useState<JobApplicationStatus | undefined>(undefined)
+  const [statusBuilder, setStatusBuilder] = useState<PipelineStage | undefined>(undefined)
 
   const trimmedSearch = useMemo(() => searchTerm.trim(), [searchTerm])
 
@@ -109,7 +108,7 @@ export function ApplicationsDrawer({
     const chips: FilterChip[] = []
 
     for (const status of filters.status ?? []) {
-      chips.push({ type: "status", value: status, label: formatStatusOptionLabel(status) })
+      chips.push({ type: "status", value: status, label: formatStatusFilterLabel(status) })
     }
 
     for (const priority of filters.priority ?? []) {
@@ -157,7 +156,7 @@ export function ApplicationsDrawer({
     }
   }, [filters.status])
 
-  const handleStatusAdd = (status: JobApplicationStatus) => {
+  const handleStatusAdd = (status: string) => {
     const current = filters.status ?? []
     if (current.includes(status)) {
       return
@@ -172,7 +171,7 @@ export function ApplicationsDrawer({
     setPage(1)
   }
 
-  const handleStatusRemove = (status: JobApplicationStatus) => {
+  const handleStatusRemove = (status: string) => {
     const current = filters.status ?? []
     const nextStatuses = current.filter((item) => item !== status)
 
@@ -345,11 +344,18 @@ export function ApplicationsDrawer({
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
                   <div className="mt-2 space-y-3">
-                    <SequentialStatusSelect
-                      value={statusBuilder}
-                      onChange={setStatusBuilder}
-                      placeholder="Select a status"
-                    />
+                    <Select value={statusBuilder} onValueChange={(next) => setStatusBuilder(next as PipelineStage)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_STAGE_FILTER_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         type="button"
@@ -373,12 +379,12 @@ export function ApplicationsDrawer({
                       <div className="flex flex-wrap gap-2">
                         {(filters.status ?? []).map((status) => (
                           <Badge key={status} variant="secondary" className="gap-1">
-                            {formatStatusOptionLabel(status)}
+                            {formatStatusFilterLabel(status)}
                             <button
                               type="button"
                               onClick={() => handleStatusRemove(status)}
                               className="rounded-full p-0.5 hover:bg-muted"
-                              aria-label={`Remove ${formatStatusOptionLabel(status)}`}
+                              aria-label={`Remove ${formatStatusFilterLabel(status)}`}
                             >
                               <X className="h-3 w-3" />
                             </button>

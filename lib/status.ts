@@ -12,6 +12,43 @@ export type PipelineStage =
   | "withdrawn"
   | "unknown"
 
+const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
+  applied: "Applied",
+  interview: "Interviewing",
+  ghosted: "Ghosted",
+  offer: "Offer",
+  rejected: "Rejected",
+  accepted: "Accepted",
+  withdrawn: "Withdrawn",
+  unknown: "Unknown",
+}
+
+export const STATUS_STAGE_FILTER_OPTIONS: Array<{ value: PipelineStage; label: string }> = [
+  { value: "applied", label: PIPELINE_STAGE_LABELS.applied },
+  { value: "interview", label: PIPELINE_STAGE_LABELS.interview },
+  { value: "ghosted", label: PIPELINE_STAGE_LABELS.ghosted },
+  { value: "offer", label: PIPELINE_STAGE_LABELS.offer },
+  { value: "rejected", label: PIPELINE_STAGE_LABELS.rejected },
+  { value: "accepted", label: PIPELINE_STAGE_LABELS.accepted },
+  { value: "withdrawn", label: PIPELINE_STAGE_LABELS.withdrawn },
+]
+
+export const STATUS_FILTER_MAX_ROUND = 25
+
+export function isPipelineStage(value: string | null | undefined): value is PipelineStage {
+  if (!value) {
+    return false
+  }
+
+  return ["applied", "interview", "ghosted", "offer", "rejected", "accepted", "withdrawn", "unknown"].includes(
+    value as PipelineStage,
+  )
+}
+
+export function formatPipelineStageLabel(stage: PipelineStage) {
+  return PIPELINE_STAGE_LABELS[stage] ?? stage
+}
+
 interface StageVisuals {
   badge: string
   chart: string
@@ -348,13 +385,15 @@ export function getAllowedStatusOptions(
       break
   }
 
-  return Array.from(optionValues.values()).sort((left, right) => {
-    if (left.order === right.order) {
-      return left.label.localeCompare(right.label)
-    }
+  return Array.from(optionValues.values())
+    .filter((option) => option.order >= current.order)
+    .sort((left, right) => {
+      if (left.order === right.order) {
+        return left.label.localeCompare(right.label)
+      }
 
-    return left.order - right.order
-  })
+      return left.order - right.order
+    })
 }
 
 export function formatStatusOptionLabel(status: StatusMetadata | string | null | undefined) {
@@ -380,6 +419,14 @@ export function formatStatusOptionLabel(status: StatusMetadata | string | null |
   }
 }
 
+export function formatStatusFilterLabel(value: string | null | undefined) {
+  if (isPipelineStage(value)) {
+    return formatPipelineStageLabel(value)
+  }
+
+  return formatStatusOptionLabel(value)
+}
+
 export function getMaxRoundFromHistory(history: Pick<JobApplicationStatusHistory, "status">[] = []) {
   return history.reduce((max, entry) => {
     const round = parseStatus(entry.status).round ?? 0
@@ -391,4 +438,26 @@ export function getStatusesByStage(stage: PipelineStage, maxRound: number = DEFA
   return generateStatusOptions(maxRound)
     .filter((option) => option.stage === stage)
     .map((option) => option.value)
+}
+
+export function expandStatusFilters(
+  values: string[] = [],
+  { maxRound = STATUS_FILTER_MAX_ROUND }: { maxRound?: number } = {},
+) {
+  const statuses = new Set<JobApplicationStatus>()
+
+  values.forEach((value) => {
+    if (!value) {
+      return
+    }
+
+    if (isPipelineStage(value)) {
+      getStatusesByStage(value, maxRound).forEach((status) => statuses.add(status))
+      return
+    }
+
+    statuses.add(normalizeStatusValue(value))
+  })
+
+  return Array.from(statuses)
 }

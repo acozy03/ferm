@@ -12,11 +12,14 @@ function Dialog({
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 
-function DialogTrigger({
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
-}
+const DialogTrigger = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger>
+>((props, ref) => {
+  return <DialogPrimitive.Trigger ref={ref} data-slot="dialog-trigger" {...props} />
+})
+
+DialogTrigger.displayName = DialogPrimitive.Trigger.displayName
 
 function DialogPortal({
   ...props
@@ -24,18 +27,22 @@ function DialogPortal({
   return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
 }
 
-function DialogClose({
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
-}
+const DialogClose = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Close>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Close>
+>((props, ref) => {
+  return <DialogPrimitive.Close ref={ref} data-slot="dialog-close" {...props} />
+})
 
-function DialogOverlay({
-  className,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+DialogClose.displayName = DialogPrimitive.Close.displayName
+
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => {
   return (
     <DialogPrimitive.Overlay
+      ref={ref}
       data-slot="dialog-overlay"
       data-prevent-selection-toggle="true"
       data-prevent-card-toggle="true"
@@ -46,14 +53,16 @@ function DialogOverlay({
       {...props}
     />
   )
-}
+})
+
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     showCloseButton?: boolean
   }
->(({ className, children, showCloseButton = true, ...props }, forwardedRef) => {
+>(({ className, children, showCloseButton = true, "aria-describedby": ariaDescribedBy, ...props }, forwardedRef) => {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -62,6 +71,7 @@ const DialogContent = React.forwardRef<
         data-slot="dialog-content"
         data-prevent-card-toggle="true"
         data-prevent-selection-toggle="true"
+        aria-describedby={ariaDescribedBy ?? undefined}
         className={cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[var(--dialog-max-height,min(calc(100vh-4rem),38rem))] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
           className,

@@ -165,7 +165,7 @@ export interface DashboardStats {
 
 // Filter and sort types
 export interface JobApplicationFilters {
-  status?: JobApplicationStatus[]
+  status?: (JobApplicationStatus | string)[]
   priority?: Priority[]
   employment_type?: EmploymentType[]
   company_name?: string
