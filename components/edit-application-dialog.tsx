@@ -7,10 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import type { JobApplication, JobApplicationStatus } from "@/lib/types/database"
-import { DEFAULT_MAX_INTERVIEW_ROUNDS, generateStatusOptions } from "@/lib/status"
+import { SequentialStatusSelect } from "@/components/status-select"
 
 interface EditApplicationDialogProps {
   application: JobApplication
@@ -19,8 +18,6 @@ interface EditApplicationDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
-
-const statusOptions = generateStatusOptions(DEFAULT_MAX_INTERVIEW_ROUNDS + 1)
 
 export function EditApplicationDialog({
   application,
@@ -149,21 +146,12 @@ export function EditApplicationDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select
+              <SequentialStatusSelect
+                id="status"
                 value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value as JobApplicationStatus })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(status) => setFormData({ ...formData, status })}
+                statusHistory={application.status_history}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="application_date">Application Date</Label>

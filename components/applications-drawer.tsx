@@ -23,7 +23,8 @@ import type {
 } from "@/lib/types/database"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { JobApplicationCard } from "@/components/job-application-card"
-import { DEFAULT_MAX_INTERVIEW_ROUNDS, generateStatusOptions } from "@/lib/status"
+import { formatStatusOptionLabel } from "@/lib/status"
+import { SequentialStatusSelect } from "@/components/status-select"
 
 type FilterChip =
   | { type: "status"; value: JobApplicationStatus; label: string }
@@ -43,7 +44,6 @@ type ApplicationsDrawerProps = {
 }
 
 const DRAWER_PAGE_SIZE = 12
-const statusOptions = generateStatusOptions(DEFAULT_MAX_INTERVIEW_ROUNDS + 1)
 const priorityOptions: Priority[] = ["Low", "Medium", "High"]
 
 export function ApplicationsDrawer({
@@ -56,6 +56,7 @@ export function ApplicationsDrawer({
 }: ApplicationsDrawerProps) {
   const [searchTerm, setSearchTerm] = useState(filters.search ?? "")
   const [page, setPage] = useState(1)
+  const [statusBuilder, setStatusBuilder] = useState<JobApplicationStatus | undefined>(undefined)
 
   const trimmedSearch = useMemo(() => searchTerm.trim(), [searchTerm])
 
@@ -108,7 +109,7 @@ export function ApplicationsDrawer({
     const chips: FilterChip[] = []
 
     for (const status of filters.status ?? []) {
-      chips.push({ type: "status", value: status, label: status })
+      chips.push({ type: "status", value: status, label: formatStatusOptionLabel(status) })
     }
 
     for (const priority of filters.priority ?? []) {
@@ -150,10 +151,30 @@ export function ApplicationsDrawer({
     setPage(1)
   }
 
-  const handleStatusToggle = (status: JobApplicationStatus) => {
+  useEffect(() => {
+    if ((filters.status ?? []).length === 0) {
+      setStatusBuilder(undefined)
+    }
+  }, [filters.status])
+
+  const handleStatusAdd = (status: JobApplicationStatus) => {
     const current = filters.status ?? []
-    const exists = current.includes(status)
-    const nextStatuses = exists ? current.filter((item) => item !== status) : [...current, status]
+    if (current.includes(status)) {
+      return
+    }
+
+    const nextStatuses = [...current, status]
+
+    onFiltersChange({
+      ...filters,
+      status: nextStatuses,
+    })
+    setPage(1)
+  }
+
+  const handleStatusRemove = (status: JobApplicationStatus) => {
+    const current = filters.status ?? []
+    const nextStatuses = current.filter((item) => item !== status)
 
     onFiltersChange({
       ...filters,
@@ -199,6 +220,7 @@ export function ApplicationsDrawer({
     setSearchTerm("")
     onFiltersChange({})
     setPage(1)
+    setStatusBuilder(undefined)
   }
 
   const handleRemoveFilter = (chip: FilterChip) => {
@@ -322,23 +344,48 @@ export function ApplicationsDrawer({
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {statusOptions.map((option) => {
-                      const isActive = (filters.status ?? []).includes(option.value)
-
-                      return (
-                        <Button
-                          key={option.value}
-                          type="button"
-                          variant={isActive ? "secondary" : "outline"}
-                          size="sm"
-                          className="justify-start"
-                          onClick={() => handleStatusToggle(option.value)}
-                        >
-                          {option.label}
-                        </Button>
-                      )
-                    })}
+                  <div className="mt-2 space-y-3">
+                    <SequentialStatusSelect
+                      value={statusBuilder}
+                      onChange={setStatusBuilder}
+                      placeholder="Select a status"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => statusBuilder && handleStatusAdd(statusBuilder)}
+                        disabled={!statusBuilder}
+                      >
+                        Add status filter
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setStatusBuilder(undefined)}
+                        disabled={!statusBuilder}
+                      >
+                        Reset selection
+                      </Button>
+                    </div>
+                    {(filters.status ?? []).length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {(filters.status ?? []).map((status) => (
+                          <Badge key={status} variant="secondary" className="gap-1">
+                            {formatStatusOptionLabel(status)}
+                            <button
+                              type="button"
+                              onClick={() => handleStatusRemove(status)}
+                              className="rounded-full p-0.5 hover:bg-muted"
+                              aria-label={`Remove ${formatStatusOptionLabel(status)}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 

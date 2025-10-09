@@ -7,21 +7,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Plus } from "lucide-react"
 import { format } from "date-fns"
-import type { CreateJobApplicationData, JobApplicationStatus, Priority, EmploymentType } from "@/lib/types/database"
-import { DEFAULT_MAX_INTERVIEW_ROUNDS, generateStatusOptions } from "@/lib/status"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type { CreateJobApplicationData, Priority, EmploymentType } from "@/lib/types/database"
+import { SequentialStatusSelect } from "@/components/status-select"
 
 interface AddApplicationDialogProps {
   trigger?: React.ReactNode
   onAdd: (application: CreateJobApplicationData) => void
 }
-
-const statusOptions = generateStatusOptions(DEFAULT_MAX_INTERVIEW_ROUNDS + 1)
 
 const priorityOptions: { value: Priority; label: string }[] = [
   { value: "Low", label: "Low" },
@@ -150,21 +154,11 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select
+              <SequentialStatusSelect
+                id="status"
                 value={formData.status}
-                onValueChange={(value) => updateFormData("status", value as JobApplicationStatus)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(status) => updateFormData("status", status)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
