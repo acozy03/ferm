@@ -1,13 +1,12 @@
 // app/api/job-applications/route.ts
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { createClient } from "@supabase/supabase-js"
 import { z } from "zod"
 
 import type { CreateJobApplicationData } from "@/lib/types/database"
 import { getLatestResumeText } from "@/lib/resume/server"
 import { toNullableString } from "@/lib/utils"
 import { expandStatusFilters, normalizeStatusValue, parseStatus } from "@/lib/status"
+import { getAuthedClient } from "@/lib/api/auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -126,57 +125,6 @@ async function generateResumeMatchScore({ job, resumeText }: ResumeScoringPayloa
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders })
-}
-
-/**
- * Helper: authenticate via Bearer (extension) OR cookies (web app),
- * and return a Supabase client bound to the user + the user's id.
- */
-async function getAuthedClient(request: NextRequest) {
-  const authHeader = request.headers.get("authorization") || ""
-  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
-
-  if (bearer) {
-    // Validate the token with Supabase Auth
-    const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
-      headers: {
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        Authorization: `Bearer ${bearer}`,
-      },
-      cache: "no-store",
-    })
-
-    if (!userResp.ok) {
-      return { error: { status: 401, message: "Unauthorized (invalid token)" } as const }
-    }
-
-    const user = (await userResp.json()) as { id: string }
-    if (!user?.id) {
-      return { error: { status: 401, message: "Unauthorized (no user id)" } as const }
-    }
-
-    // Bind client to this token so RLS evaluates as the user
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${bearer}` } } }
-    )
-
-    return { supabase, userId: user.id } as const
-  }
-
-  // Fall back to cookie-based auth (SSR/CSR session)
-  const cookieClient = await createServerSupabaseClient()
-  const {
-    data: { user },
-    error,
-  } = await cookieClient.auth.getUser()
-
-  if (error || !user) {
-    return { error: { status: 401, message: "Unauthorized" } as const }
-  }
-
-  return { supabase: cookieClient, userId: user.id } as const
 }
 
 export async function GET(request: NextRequest) {

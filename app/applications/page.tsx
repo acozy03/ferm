@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { Header } from "@/components/header"
@@ -14,6 +15,7 @@ import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useActivityLog } from "@/lib/hooks/use-activity-log"
 import { useSettings } from "@/components/settings-provider"
+import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import { formatStatusLabel, getStatusBadgeClass, getStatusStage, isActiveStage } from "@/lib/status"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
@@ -21,8 +23,9 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 export default function ApplicationsPage() {
   const { settings } = useSettings()
   const { applications, isLoading, error } = useJobApplications({ limit: 100, include_interviews: true })
-  const { interviews: upcomingInterviews, isLoading: isLoadingInterviews } = useInterviews({ upcoming_only: true })
+  const { interviews: upcomingInterviews } = useInterviews({ upcoming_only: true })
   const { activities, isLoading: isLoadingActivity } = useActivityLog()
+  const { followUps, isLoading: isLoadingFollowUps } = useApplicationFollowUps()
 
   const interviewDateFormatter = useMemo(
     () =>
@@ -44,11 +47,22 @@ export default function ApplicationsPage() {
       return !Number.isNaN(appliedAt) && now - appliedAt <= SEVEN_DAYS_MS
     }).length
     const pendingResponse = applications.filter((app) => app.status === "Applied").length
-    const followUpsDue = applications.filter((app) => {
-      if (app.status !== "Applied") return false
-      const appliedAt = new Date(app.application_date).getTime()
-      return Number.isNaN(appliedAt) ? false : now - appliedAt > SEVEN_DAYS_MS
+
+    const followUpRecords = followUps.filter((item) => item.enabled && item.next_follow_up_date)
+    const followUpsDue = followUpRecords.filter((item) => {
+      if (!item.next_follow_up_date) return false
+      return new Date(item.next_follow_up_date).getTime() <= now
     }).length
+    const nextFollowUp = followUpRecords
+      .filter((item) => {
+        if (!item.next_follow_up_date) return false
+        return new Date(item.next_follow_up_date).getTime() > now
+      })
+      .sort((a, b) => {
+        const left = a.next_follow_up_date ? new Date(a.next_follow_up_date).getTime() : Number.POSITIVE_INFINITY
+        const right = b.next_follow_up_date ? new Date(b.next_follow_up_date).getTime() : Number.POSITIVE_INFINITY
+        return left - right
+      })[0]
 
     const sortedUpcoming = [...upcomingInterviews].sort(
       (a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime(),
@@ -75,10 +89,14 @@ export default function ApplicationsPage() {
         label: "Awaiting responses",
         value: pendingResponse,
         helper:
-          followUpsDue > 0 ? `${followUpsDue} ready for follow-up` : "All follow-ups are up to date",
+          followUpsDue > 0
+            ? `${followUpsDue} reminder${followUpsDue === 1 ? "" : "s"} ready for follow-up`
+            : nextFollowUp?.next_follow_up_date
+              ? `Next reminder ${formatDistanceToNow(new Date(nextFollowUp.next_follow_up_date), { addSuffix: true })}`
+              : "All follow-ups are up to date",
       },
     ]
-  }, [applications, upcomingInterviews, interviewDateFormatter])
+  }, [applications, followUps, upcomingInterviews, interviewDateFormatter])
 
   const highlightedApplications = useMemo(() => {
     return [...applications]
@@ -87,6 +105,7 @@ export default function ApplicationsPage() {
   }, [applications])
 
   const upcomingTasks = useMemo(() => activities.slice(0, 5), [activities])
+  const isSummaryLoading = isLoading || isLoadingFollowUps
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,7 +121,7 @@ export default function ApplicationsPage() {
 
           <section>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(isLoading ? Array.from({ length: 3 }) : pipelineSummary).map((item, index) => (
+              {(isSummaryLoading ? Array.from({ length: 3 }) : pipelineSummary).map((item, index) => (
                 <Card key={item ? item.label : index}>
                   <CardHeader>
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -181,31 +200,65 @@ export default function ApplicationsPage() {
             </Card>
 
             <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Upcoming interviews</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Follow-up reminders</CardTitle>
+                <Button asChild variant="ghost" size="sm" className="gap-2">
+                  <Link href="/follow-ups">
+                    Manage
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
-                {isLoadingInterviews ? (
-                  Array.from({ length: 2 }).map((_, index) => <Skeleton key={index} className="h-20 w-full" />)
-                ) : upcomingInterviews.length === 0 ? (
-                  <p>No interviews scheduled yet.</p>
+                {isLoadingFollowUps ? (
+                  Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-16 w-full" />)
+                ) : followUps.filter((item) => item.enabled).length === 0 ? (
+                  <p>Enable reminders on an application to receive a follow-up nudge.</p>
                 ) : (
-                  upcomingInterviews.slice(0, 3).map((interview) => (
-                    <div key={interview.id} className="rounded-lg border p-3 space-y-1">
-                      <p
-                        className="font-medium text-foreground line-clamp-1 break-words"
-                        title={interview.job_applications?.company_name ?? undefined}
-                      >
-                        {interview.job_applications?.company_name ?? "Unknown company"}
-                      </p>
-                      <p className="text-xs">
-                        {interviewDateFormatter.format(new Date(interview.scheduled_date))}
-                      </p>
-                      <p className="text-xs line-clamp-2 break-words">
-                        {interview.job_applications?.position_title ?? "Interview"} • {interview.interview_type}
-                      </p>
-                    </div>
-                  ))
+                  (() => {
+                    const applicationMap = new Map(applications.map((application) => [application.id, application]))
+                    return followUps
+                      .filter((item) => item.enabled)
+                      .map((item) => ({
+                        followUp: item,
+                        application: applicationMap.get(item.job_application_id),
+                      }))
+                      .filter((entry) => entry.application && entry.followUp.next_follow_up_date)
+                      .sort((a, b) => {
+                        const left = a.followUp.next_follow_up_date
+                          ? new Date(a.followUp.next_follow_up_date).getTime()
+                          : Number.POSITIVE_INFINITY
+                        const right = b.followUp.next_follow_up_date
+                          ? new Date(b.followUp.next_follow_up_date).getTime()
+                          : Number.POSITIVE_INFINITY
+                        return left - right
+                      })
+                      .slice(0, 3)
+                      .map((entry) => {
+                        const { application, followUp } = entry
+                        const dueDate = followUp.next_follow_up_date
+                          ? new Date(followUp.next_follow_up_date)
+                          : null
+                        const isDue = dueDate ? dueDate.getTime() <= Date.now() : false
+                        return (
+                          <div key={followUp.id} className="rounded-lg border p-3 space-y-1">
+                            <p className="font-medium text-foreground line-clamp-1 break-words">
+                              {application?.company_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                              {application?.position_title}
+                            </p>
+                            {dueDate && (
+                              <p className="text-xs font-medium">
+                                {isDue
+                                  ? `Overdue — ${formatDistanceToNow(dueDate, { addSuffix: true })}`
+                                  : `Due ${formatDistanceToNow(dueDate, { addSuffix: true })}`}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })
+                  })()
                 )}
               </CardContent>
             </Card>

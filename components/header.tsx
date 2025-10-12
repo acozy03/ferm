@@ -7,6 +7,7 @@ import { useSWRConfig } from "swr"
 import {
   LayoutDashboard,
   Briefcase,
+  Mail,
   Building2,
   BarChart3,
   Sprout,
@@ -32,6 +33,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Applications", href: "/applications", icon: Briefcase },
+  { label: "Follow-ups", href: "/follow-ups", icon: Mail },
   { label: "Companies", href: "/companies", icon: Building2 },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Resume", href: "/resume", icon: FileText },

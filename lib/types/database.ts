@@ -111,6 +111,18 @@ export interface JobApplicationFull extends JobApplication {
   status_history: JobApplicationStatusHistory[]
 }
 
+export interface ApplicationFollowUp {
+  id: string
+  user_id: string
+  job_application_id: string
+  enabled: boolean
+  interval_days: number
+  next_follow_up_date: string | null
+  last_notified_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Form types for creating/updating
 export interface CreateJobApplicationData {
   company_name: string

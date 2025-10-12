@@ -1,0 +1,123 @@
+"use client"
+
+import { useCallback, useState } from "react"
+import { Loader2, Wand2, Copy } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import type { JobApplication } from "@/lib/types/database"
+import { useToast } from "@/components/ui/use-toast"
+
+interface FollowUpDraftDialogProps {
+  application: JobApplication
+  intervalDays: number
+  disabled?: boolean
+}
+
+export function FollowUpDraftDialog({ application, intervalDays, disabled }: FollowUpDraftDialogProps) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const { toast } = useToast()
+
+  const generateDraft = useCallback(async () => {
+    setIsGenerating(true)
+    try {
+      const response = await fetch("/api/follow-ups/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_application_id: application.id,
+          companyName: application.company_name,
+          positionTitle: application.position_title,
+          contactName: application.contact_person,
+          notes: application.notes,
+          jobDescription: application.job_description,
+          appliedAt: application.application_date,
+          intervalDays: Math.max(intervalDays, 1),
+        }),
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({ error: "Failed to generate follow-up" }))
+        throw new Error(body.error ?? "Failed to generate follow-up")
+      }
+
+      const payload = (await response.json()) as { data?: { draft?: string } }
+      const content = payload.data?.draft?.trim()
+      if (!content) {
+        throw new Error("The AI response did not include a draft to share.")
+      }
+
+      setDraft(content)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate follow-up"
+      toast({ title: "Draft failed", description: message, variant: "destructive" })
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [application, intervalDays, toast])
+
+  const handleCopy = useCallback(() => {
+    if (!draft) return
+    void navigator.clipboard.writeText(draft)
+    toast({ title: "Draft copied" })
+  }, [draft, toast])
+
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      setOpen(nextOpen)
+      if (!nextOpen) {
+        setIsGenerating(false)
+      }
+    }}>
+      <DialogTrigger asChild>
+        <Button variant="secondary" size="sm" disabled={disabled} className="gap-2">
+          <Wand2 className="h-4 w-4" />
+          AI draft
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Draft a follow-up email</DialogTitle>
+          <DialogDescription>
+            We&rsquo;ll help you compose a concise, friendly message to send to {application.contact_person ?? "the hiring team"}.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Button onClick={() => void generateDraft()} disabled={isGenerating} className="gap-2">
+            {isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isGenerating ? "Generating" : "Generate draft"}
+          </Button>
+          <Textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={10}
+            placeholder="Your AI-generated follow-up will appear here."
+          />
+          <p className="text-xs text-muted-foreground">
+            Edit anything you&rsquo;d like before sending it to your recruiter or hiring manager.
+          </p>
+        </div>
+        <DialogFooter className="flex flex-row items-center justify-between gap-2 sm:flex-row">
+          <span className="text-xs text-muted-foreground">
+            {draft ? "Copy the draft and paste it into your email client." : "Generate a draft to review it here."}
+          </span>
+          <Button variant="ghost" size="sm" onClick={handleCopy} disabled={!draft} className="gap-2">
+            <Copy className="h-4 w-4" />
+            Copy draft
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
