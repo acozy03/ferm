@@ -86,7 +86,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
         qualifications: toNullable(formData.qualifications),
         job_responsibilities: toNullable(formData.job_responsibilities),
       }
-
+      console.log(applicationData)
       onAdd(applicationData)
       setFormData({
         company_name: "",

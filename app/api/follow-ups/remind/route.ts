@@ -25,7 +25,7 @@ function escapeHtml(value: string) {
 }
 
 function getAppUrl(path: string) {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://ferm.dev"
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ferm.dev"
 
   try {
     return new URL(path, base).toString()
@@ -57,40 +57,48 @@ function buildReminderHtml(message: string, options: { company: string | null })
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${companyHeadline}</title>
   </head>
-  <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:#18181b;">
-    <table role="presentation" width="100%" cellPadding="0" cellSpacing="0" style="background-color:#f4f4f5;padding:32px 0;">
+  <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji';color:#11181c;">
+    <table role="presentation" width="100%" cellPadding="0" cellSpacing="0" style="width:100%;background-color:#f4f4f5;">
       <tr>
-        <td align="center" style="padding:0 16px;">
-          <table role="presentation" width="100%" cellPadding="0" cellSpacing="0" style="max-width:520px;background-color:#ffffff;border-radius:20px;padding:40px 32px 32px;box-shadow:0 18px 48px rgba(15,23,42,0.12);">
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="570" cellPadding="0" cellSpacing="0" style="width:570px;margin:0 auto;background-color:#ffffff;border-radius:16px;border:1px solid #e4e4e7;box-shadow:0 24px 48px rgba(15,23,42,0.1);">
             <tr>
-              <td align="center" style="padding-bottom:24px;">
-                <img src="${logoUrl}" alt="ferm" width="48" height="48" style="display:block;" />
+              <td style="padding:32px 40px 0 40px;text-align:left;font-size:16px;line-height:24px;">
+                <table role="presentation" width="100%" cellPadding="0" cellSpacing="0">
+                  <tr>
+                    <td style="padding-bottom:24px;">
+                      <img src="${logoUrl}" alt="ferm" width="40" height="40" style="display:block;" />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-bottom:16px;">
+                      <h1 style="margin:0;font-size:24px;line-height:32px;font-weight:600;color:#11181c;">${companyHeadline}</h1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-bottom:28px;font-size:16px;line-height:26px;color:#3f3f46;">
+                      ${messageHtml}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-bottom:32px;">
+                      <a
+                        href="${dashboardUrl}"
+                        style="display:inline-block;padding:12px 24px;background-color:#11181c;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;border-radius:9999px;"
+                      >
+                        Open ferm.dev
+                      </a>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
             <tr>
-              <td align="center" style="padding-bottom:16px;">
-                <h1 style="margin:0;font-size:22px;line-height:32px;font-weight:600;color:#18181b;">${companyHeadline}</h1>
-              </td>
-            </tr>
-            <tr>
-              <td style="font-size:15px;line-height:24px;color:#3f3f46;padding-bottom:24px;">
-                ${messageHtml}
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding-bottom:24px;">
-                <a
-                  href="${dashboardUrl}"
-                  style="display:inline-block;padding:12px 28px;background-color:#4338ca;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;border-radius:9999px;"
-                >
-                  Open ferm.dev
-                </a>
-              </td>
-            </tr>
-            <tr>
-              <td style="font-size:13px;line-height:20px;color:#71717a;text-align:center;">
+              <td style="padding:0 40px 40px 40px;font-size:13px;line-height:20px;color:#71717a;text-align:left;">
                 You are receiving this reminder because you asked ferm.dev to nudge you about job applications. Manage notifications from your follow-up settings.
               </td>
             </tr>

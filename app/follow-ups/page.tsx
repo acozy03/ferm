@@ -408,8 +408,20 @@ export default function FollowUpsPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  disabled={!row.enabled || isPending}
-                                  onClick={() => sendReminder(row.application)}
+                                  disabled={isPending}
+                                  onClick={() => {
+                                    if (!row.enabled) {
+                                      toast({
+                                        title: "Turn on reminders",
+                                        description:
+                                          "Enable follow-up reminders for this application to send an email.",
+                                        variant: "destructive",
+                                      })
+                                      return
+                                    }
+
+                                    void sendReminder(row.application)
+                                  }}
                                 >
                                   Send reminder
                                 </Button>
