@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
 
     const { supabase, userId } = auth
     const body: CreateJobApplicationData = await request.json()
-
+    
     // Force user_id from server (never trust client)
     const insertData = {
       ...body,

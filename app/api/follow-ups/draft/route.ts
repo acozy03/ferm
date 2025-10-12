@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getAuthedClient } from "@/lib/api/auth"
+import { getLatestResumeText } from "@/lib/resume/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -61,8 +62,20 @@ export async function POST(request: NextRequest) {
   }
 
   const userEmail = profile.user.email
-  
-  const userPrompt = `You are drafting a concise, professional follow-up email.\n\nContext:\n- Candidate email: ${userEmail}\n- Company: ${companyName}\n- Role: ${positionTitle}\n- Contact: ${contactName ?? "Hiring manager"}\n- Days since application: ${intervalDays}\n- Application date: ${appliedAt ?? "Unknown"}\n- Notes: ${notes ?? "None"}\n- Job description excerpt: ${jobDescription ? jobDescription.slice(0, 1200) : "Not provided"}\n\nWrite a friendly, confident follow-up email encouraging a response. Return only the email body.`
+
+  let resumeText: string | null = null
+  try {
+    const resume = await getLatestResumeText(userId)
+    resumeText = resume?.text?.trim() || null
+  } catch (error) {
+    console.error("Failed to load resume text for follow-up draft", error)
+  }
+
+  const notesText = notes?.trim() || "None"
+  const jobDescriptionExcerpt = jobDescription ? jobDescription.slice(0, 1200) : null
+  const resumeContext = resumeText || "Not provided"
+
+  const userPrompt = `You are drafting a concise, professional follow-up email.\n\nContext:\n- Candidate email: ${userEmail}\n- Company: ${companyName}\n- Role: ${positionTitle}\n- Contact: ${contactName ?? "Hiring manager"}\n- Days since application: ${intervalDays}\n- Application date: ${appliedAt ?? "Unknown"}\n- Notes: ${notesText}\n- Job description excerpt: ${jobDescriptionExcerpt ?? "Not provided"}\n- Resume text:\n${resumeContext}\n\nWrite a friendly, confident follow-up email encouraging a response and including specifics about the user that can be a strength to this role from the resume content. Return only the email body.`
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
