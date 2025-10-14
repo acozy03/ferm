@@ -23,6 +23,8 @@ import type { ApplicationFollowUp, JobApplication } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 
 import { FollowUpDraftDialog } from "@/components/follow-up-draft-dialog"
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
 
 const DEFAULT_INTERVAL = 7
 const MAX_INTERVAL = 60
@@ -154,8 +156,21 @@ export default function FollowUpsPage() {
 
   const sendReminder = useCallback(
     async (application: JobApplication, recipientOverride?: string) => {
-      const recipient = recipientOverride ?? settings.email ?? user?.email ?? null
+      console.log("ENTER sendReminder", { appId: application.id })
 
+      const normalize = (v?: string | null) => {
+        const t = (v ?? "").trim()
+        return t.length ? t : null
+      }
+
+      const sEmail = normalize(settings?.email)
+      const uEmail = normalize(user?.email)
+      const rEmail = normalize(recipientOverride)
+
+      // use || so empty strings don't short-circuit
+      const recipient = rEmail || sEmail || uEmail
+
+      console.log("resolved recipient", { recipient, sEmail, uEmail })
       if (!recipient) {
         toast({
           title: "Add your email",
@@ -164,9 +179,10 @@ export default function FollowUpsPage() {
         })
         return
       }
-
+      console.log("right before pending state")
       setPendingState(application.id, true)
       try {
+        console.log("Reached")
         const response = await fetch("/api/follow-ups/remind", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -410,19 +426,16 @@ export default function FollowUpsPage() {
                                   size="sm"
                                   disabled={isPending}
                                   onClick={() => {
-                                    if (!row.enabled) {
-                                      toast({
-                                        title: "Turn on reminders",
-                                        description:
-                                          "Enable follow-up reminders for this application to send an email.",
-                                        variant: "destructive",
-                                      })
-                                      return
-                                    }
-
-                                    void sendReminder(row.application)
-                                  }}
-                                >
+    console.log("CLICK", { enabled: row.enabled, id: row.application.id })
+    if (!row.enabled) {
+      console.log("BLOCKED: reminders are OFF for", row.application.id)
+      // keep the toast if you want, but this proves the guard is tripping
+      return
+    }
+    console.log("CALLING sendReminder for", row.application.id)
+    void sendReminder(row.application)
+  }}
+>
                                   Send reminder
                                 </Button>
                               </TableCell>
