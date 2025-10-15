@@ -47,7 +47,7 @@ function formatMessageParagraphs(message: string) {
 }
 
 function buildReminderHtml(message: string, options: { company: string | null }) {
-  const logoUrl = getAppUrl("/logo.png")
+  const logoUrl = getAppUrl("/logo_full.png")
   const dashboardUrl = getAppUrl("/follow-ups")
   const companyHeadline = options.company ? `Follow up with ${escapeHtml(options.company)}` : "Time to follow up"
   const messageHtml = formatMessageParagraphs(message) ||

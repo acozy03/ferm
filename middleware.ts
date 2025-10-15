@@ -6,7 +6,9 @@ const PUBLIC_ROUTES = ["/landing", "/auth/callback", "/privacy"]
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-
+  if (/\.[a-z0-9]+$/i.test(pathname)) {
+    return NextResponse.next()
+  }
   // allow public routes straight through
   if (PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`))) {
     return NextResponse.next()
