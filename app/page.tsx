@@ -17,8 +17,7 @@ import { Header } from "@/components/header"
 import { JobApplicationCard } from "@/components/job-application-card"
 import { StatsOverview } from "@/components/stats-overview"
 import { ActivityTimeline } from "@/components/activity-timeline"
-import { QuickActions } from "@/components/quick-actions"
-import { UpcomingInterviews } from "@/components/upcoming-interviews"
+import { UpcomingReminders } from "@/components/upcoming-reminders"
 import { BulkActions } from "@/components/bulk-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -408,8 +407,7 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
-              <QuickActions onApplicationAdded={handleApplicationUpdate} />
-              <UpcomingInterviews />
+              <UpcomingReminders />
               <ActivityTimeline />
             </div>
 
