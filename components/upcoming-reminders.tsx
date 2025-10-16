@@ -43,24 +43,20 @@ function computeNextReminder(
 type ReminderStatus = "overdue" | "soon" | "scheduled"
 
 type ReminderTheme = {
-  label: string
   badge: string
   time: string
 }
 
 const reminderThemes: Record<ReminderStatus, ReminderTheme> = {
   overdue: {
-    label: "Overdue",
     badge: "border-destructive/40 bg-destructive/10 text-destructive",
     time: "text-destructive",
   },
   soon: {
-    label: "Due soon",
     badge: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
     time: "text-amber-600 dark:text-amber-400",
   },
   scheduled: {
-    label: "Scheduled",
     badge: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     time: "text-emerald-600 dark:text-emerald-400",
   },
@@ -116,11 +112,26 @@ export function UpcomingReminders() {
         }
 
         const difference = nextReminder.getTime() - now
+        const dayMs = 1000 * 60 * 60 * 24
+        const remainingDays = difference / dayMs
         let status: ReminderStatus = "scheduled"
         if (difference < 0) {
           status = "overdue"
         } else if (difference <= 1000 * 60 * 60 * 48) {
           status = "soon"
+        }
+
+        let countdownLabel: string
+        if (difference < 0) {
+          const overdueDays = Math.max(1, Math.ceil(Math.abs(remainingDays)))
+          countdownLabel =
+            overdueDays === 1 ? "Overdue by 1 day" : `Overdue by ${overdueDays} days`
+        } else if (difference <= dayMs) {
+          countdownLabel = "Due today"
+        } else {
+          const daysLeft = Math.ceil(remainingDays)
+          countdownLabel =
+            daysLeft === 1 ? "1 day remaining" : `${daysLeft} days remaining`
         }
 
         return {
@@ -129,6 +140,7 @@ export function UpcomingReminders() {
           nextReminder,
           status,
           intervalDays: followUp.interval_days,
+          countdownLabel,
         }
       })
       .filter((value): value is NonNullable<typeof value> => value !== null)
@@ -190,7 +202,7 @@ export function UpcomingReminders() {
                       </p>
                     </div>
                     <Badge variant="outline" className={cn("border", theme.badge)}>
-                      {theme.label}
+                      {reminder.countdownLabel}
                     </Badge>
                   </div>
 
@@ -199,12 +211,6 @@ export function UpcomingReminders() {
                       <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>
                         {dateFormatter.format(reminder.nextReminder)} at {timeFormatter.format(reminder.nextReminder)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className={cn("font-medium", theme.time)}>
-                        {formatDistanceToNow(reminder.nextReminder, { addSuffix: true })}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
