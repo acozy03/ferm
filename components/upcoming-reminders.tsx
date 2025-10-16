@@ -45,24 +45,24 @@ type ReminderStatus = "overdue" | "soon" | "scheduled"
 type ReminderTheme = {
   label: string
   badge: string
-  container: string
+  time: string
 }
 
 const reminderThemes: Record<ReminderStatus, ReminderTheme> = {
   overdue: {
     label: "Overdue",
-    badge: "border-rose-300/70 bg-rose-500/20 text-rose-50",
-    container: "border-rose-500/40 bg-gradient-to-r from-rose-500/20 via-rose-500/10 to-transparent shadow-[0_10px_40px_-20px_rgba(244,63,94,0.65)]",
+    badge: "border-destructive/40 bg-destructive/10 text-destructive",
+    time: "text-destructive",
   },
   soon: {
     label: "Due soon",
-    badge: "border-amber-300/80 bg-amber-400/20 text-amber-50",
-    container: "border-amber-500/40 bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent shadow-[0_10px_40px_-24px_rgba(245,158,11,0.6)]",
+    badge: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    time: "text-amber-600 dark:text-amber-400",
   },
   scheduled: {
     label: "Scheduled",
-    badge: "border-emerald-300/80 bg-emerald-500/20 text-emerald-50",
-    container: "border-emerald-500/40 bg-gradient-to-r from-emerald-500/20 via-emerald-500/10 to-transparent shadow-[0_10px_40px_-24px_rgba(16,185,129,0.55)]",
+    badge: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    time: "text-emerald-600 dark:text-emerald-400",
   },
 }
 
@@ -137,42 +137,38 @@ export function UpcomingReminders() {
   }, [applications, followUps])
 
   return (
-    <Card className="relative overflow-hidden border border-indigo-500/40 bg-gradient-to-br from-indigo-500/20 via-slate-900/70 to-slate-950 text-slate-100">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/80 to-transparent" />
+    <Card>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center justify-between gap-3 text-base">
           <span className="flex items-center gap-2">
-            <BellRing className="h-4 w-4" />
+            <BellRing className="h-4 w-4 text-muted-foreground" />
             Upcoming Reminders
           </span>
-          <Button
-            asChild
-            size="sm"
-            variant="secondary"
-            className="border border-white/10 bg-white/10 text-white hover:bg-white/20"
-          >
+          <Button asChild size="sm" variant="outline">
             <Link href="/follow-ups">Manage</Link>
           </Button>
         </CardTitle>
-        <p className="text-xs text-slate-300">Stay on top of follow-ups with the next reminders in your queue.</p>
+        <p className="text-xs text-muted-foreground">
+          Stay on top of follow-ups with the next reminders in your queue.
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, index) => (
-              <div key={index} className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div key={index} className="rounded-lg border bg-muted/20 p-4">
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-32 bg-white/20" />
-                  <Skeleton className="h-3 w-40 bg-white/10" />
-                  <Skeleton className="h-3 w-28 bg-white/10" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-40" />
+                  <Skeleton className="h-3 w-28" />
                 </div>
               </div>
             ))}
           </div>
         ) : loadError ? (
-          <p className="text-sm text-rose-200">Error loading reminders</p>
+          <p className="text-sm text-destructive">Error loading reminders</p>
         ) : reminders.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-6 text-center text-sm text-slate-300">
+          <div className="rounded-lg border border-dashed bg-muted/10 p-6 text-center text-sm text-muted-foreground">
             No reminders scheduled yet. Enable follow-up reminders on your applications to see them here.
           </div>
         ) : (
@@ -182,14 +178,14 @@ export function UpcomingReminders() {
               return (
                 <div
                   key={reminder.id}
-                  className={cn("rounded-xl border p-4 transition-colors backdrop-blur", theme.container)}
+                  className="rounded-lg border bg-card/70 p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-white">
+                      <p className="text-sm font-medium text-card-foreground">
                         {reminder.application.company_name}
                       </p>
-                      <p className="text-xs text-slate-200">
+                      <p className="text-xs text-muted-foreground">
                         {reminder.application.position_title}
                       </p>
                     </div>
@@ -198,19 +194,21 @@ export function UpcomingReminders() {
                     </Badge>
                   </div>
 
-                  <div className="mt-3 grid gap-2 text-xs text-slate-200 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                     <div className="flex items-center gap-2">
-                      <CalendarClock className="h-3.5 w-3.5 text-white/80" />
+                      <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>
                         {dateFormatter.format(reminder.nextReminder)} at {timeFormatter.format(reminder.nextReminder)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5 text-white/80" />
-                      <span>{formatDistanceToNow(reminder.nextReminder, { addSuffix: true })}</span>
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className={cn("font-medium", theme.time)}>
+                        {formatDistanceToNow(reminder.nextReminder, { addSuffix: true })}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-white/80" />
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>Repeats every {reminder.intervalDays} days</span>
                     </div>
                   </div>
