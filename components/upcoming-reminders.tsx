@@ -150,19 +150,15 @@ export function UpcomingReminders() {
 
   return (
     <Card>
-      <CardHeader className="pb-4">
+      <CardHeader>
         <CardTitle className="flex items-center justify-between gap-3 text-base">
           <span className="flex items-center gap-2">
             <BellRing className="h-4 w-4 text-muted-foreground" />
             Upcoming Reminders
           </span>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/follow-ups">Manage</Link>
-          </Button>
+   
         </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Stay on top of follow-ups with the next reminders in your queue.
-        </p>
+    
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? (

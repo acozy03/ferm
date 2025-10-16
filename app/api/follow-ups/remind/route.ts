@@ -53,7 +53,7 @@ function buildReminderHtml(message: string, options: { company: string | null })
   const messageHtml = formatMessageParagraphs(message) ||
     `<p style="margin: 0;">${escapeHtml(message)}</p>`
 
-  return `<!doctype html>
+return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -62,42 +62,38 @@ function buildReminderHtml(message: string, options: { company: string | null })
     <title>${companyHeadline}</title>
   </head>
   <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji';color:#11181c;">
-    <table role="presentation" width="100%" cellPadding="0" cellSpacing="0" style="width:100%;background-color:#f4f4f5;">
+    <table role="presentation" width="100%" cellPadding="0" cellSpacing="0" style="width:100%;background-color:#f4f4f5;min-height:100vh;">
       <tr>
         <td align="center" style="padding:32px 16px;">
-          <table role="presentation" width="570" align="center" cellPadding="0" cellSpacing="0" style="width:570px;margin:0 auto;background-color:#ffffff;border-radius:16px;border:1px solid #e4e4e7;box-shadow:0 24px 48px rgba(15,23,42,0.1);">
-              <td style="padding:32px 40px 0 40px;text-align:left;font-size:16px;line-height:24px;">
+          <table role="presentation" width="570" align="center" cellPadding="0" cellSpacing="0" style="max-width:570px;width:100%;margin:0 auto;background-color:#ffffff;border-radius:16px;border:1px solid #e4e4e7;box-shadow:0 24px 48px rgba(15,23,42,0.1);">
+            <tr>
+              <td style="padding:32px 40px 0 40px;text-align:center;font-size:16px;line-height:24px;">
                 <table role="presentation" width="100%" cellPadding="0" cellSpacing="0">
                   <tr>
-                    <td style="padding-bottom:24px;">
-                      <img src="${logoUrl}" alt="ferm" width="40" height="40" style="display:block;" />
+                    <td style="padding-bottom:24px;text-align:center;">
+                      <img src="${logoUrl}" alt="ferm" width="40" height="40" style="display:inline-block;" />
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding-bottom:16px;">
+                    <td style="padding-bottom:16px;text-align:center;">
                       <h1 style="margin:0;font-size:24px;line-height:32px;font-weight:600;color:#11181c;">${companyHeadline}</h1>
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding-bottom:28px;font-size:16px;line-height:26px;color:#3f3f46;">
+                    <td style="padding-bottom:28px;font-size:16px;line-height:26px;color:#3f3f46;text-align:center;">
                       ${messageHtml}
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding-bottom:32px;">
-                      <a
-                        href="${dashboardUrl}"
-                        style="display:inline-block;padding:12px 24px;background-color:#11181c;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;border-radius:9999px;"
-                      >
-                        Check it out!
-                      </a>
+                    <td style="padding-bottom:32px;text-align:center;">
+                      <a href="${dashboardUrl}" style="display:inline-block;padding:12px 24px;background-color:#11181c;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;border-radius:9999px;">Check it out!</a>
                     </td>
                   </tr>
                 </table>
               </td>
             </tr>
             <tr>
-              <td style="padding:0 40px 40px 40px;font-size:13px;line-height:20px;color:#71717a;text-align:left;">
+              <td style="padding:0 40px 40px 40px;font-size:13px;line-height:20px;color:#71717a;text-align:center;">
                 You are receiving this reminder because you asked ferm.dev to nudge you about job applications. Manage notifications from your follow-up settings.
               </td>
             </tr>
@@ -106,8 +102,7 @@ function buildReminderHtml(message: string, options: { company: string | null })
       </tr>
     </table>
   </body>
-</html>`
-}
+</html>`}
 
 export async function POST(request: NextRequest) {
   const auth = await getAuthedClient(request)
