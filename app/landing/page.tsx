@@ -7,6 +7,12 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react"
 import Slider from "react-infinite-logo-slider"
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { useSupabase } from "@/components/supabase-provider"
 import fermLogo from "@/public/logo.png"
 const navigation = [
@@ -15,6 +21,8 @@ const navigation = [
   { name: "Workflow", href: "#workflow" },
   { name: "Tools", href: "#tools" },
   { name: "Pricing", href: "#pricing" },
+  { name: "FAQ", href: "#faq" },
+  { name: "Contact", href: "#contact" },
 ]
 
 const featureHighlights = [
@@ -248,6 +256,39 @@ const testimonials: Testimonial[] = [
   },
 ]
 
+const faqs = [
+  {
+    question: "How does Ferm keep my applications organized?",
+    answer:
+      "Every role you track lives in a single workspace with stages, notes, attachments, and reminders so nothing slips through the cracks.",
+  },
+  {
+    question: "Can I import roles from job boards?",
+    answer:
+      "Yes. Install the FermDev Job Loader Chrome extension to capture titles, companies, locations, and links directly from any posting in seconds.",
+  },
+  {
+    question: "What happens when interviews pick up?",
+    answer:
+      "Timeline views surface upcoming conversations, prep docs, and follow-ups so you always know what happened last and what is next.",
+  },
+  {
+    question: "Does Ferm support collaboration?",
+    answer:
+      "Shared spaces are in development. In the meantime you can export progress to loop in mentors, coaches, or accountability partners.",
+  },
+  {
+    question: "Is there a cost to join the beta?",
+    answer:
+      "The personal beta is free while we build alongside early users. You can create an account today and keep your data when paid plans arrive.",
+  },
+  {
+    question: "How do I share feedback or feature ideas?",
+    answer:
+      "Reach out through the contact form below or email adrian@ferm.dev—every message shapes the roadmap.",
+  },
+]
+
 function HeroShowcase({ items }: { items: HeroClip[] }) {
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -346,19 +387,21 @@ function ReviewsMarquee({ testimonials }: { testimonials: Testimonial[] }) {
   }
 
   return (
-    <Slider width="320px" duration={32} pauseOnHover blurBorders blurBorderColor="rgba(24,24,27,0.85)">
-      {testimonials.map((testimonial) => (
-        <Slider.Slide key={testimonial.name} className="px-3">
-          <div className="flex h-full w-full flex-col justify-between rounded-2xl border border-zinc-800 bg-zinc-950/80 p-6 shadow-[0_25px_60px_rgba(16,185,129,0.15)] transition hover:border-emerald-500/40 hover:shadow-[0_25px_60px_rgba(16,185,129,0.35)]">
-            <p className="text-sm leading-relaxed text-zinc-200">“{testimonial.quote}”</p>
-            <div className="mt-5">
-              <p className="text-sm font-semibold text-white">{testimonial.name}</p>
-              <p className="text-xs text-zinc-400">{testimonial.role}</p>
+    <div className="relative left-1/2 w-screen -translate-x-1/2 px-6 sm:px-12 lg:px-24">
+      <Slider width="420px" duration={32} pauseOnHover blurBorders={false}>
+        {testimonials.map((testimonial) => (
+          <Slider.Slide key={testimonial.name} className="px-4 sm:px-6">
+            <div className="flex h-full w-full flex-col justify-between rounded-3xl border border-zinc-800 bg-zinc-950/85 p-6 shadow-[0_25px_60px_rgba(16,185,129,0.2)] transition hover:border-emerald-500/50 hover:shadow-[0_30px_80px_rgba(16,185,129,0.45)]">
+              <p className="text-base leading-relaxed text-zinc-100">“{testimonial.quote}”</p>
+              <div className="mt-6">
+                <p className="text-sm font-semibold text-white">{testimonial.name}</p>
+                <p className="text-xs text-zinc-400">{testimonial.role}</p>
+              </div>
             </div>
-          </div>
-        </Slider.Slide>
-      ))}
-    </Slider>
+          </Slider.Slide>
+        ))}
+      </Slider>
+    </div>
   )
 }
 
@@ -376,6 +419,9 @@ export default function LandingPage() {
   const [formMessage, setFormMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const passwordHasRequiredSpecial = PASSWORD_SPECIAL_CHAR_PATTERN.test(password)
+  const [contactName, setContactName] = useState("")
+  const [contactEmail, setContactEmail] = useState("")
+  const [contactMessage, setContactMessage] = useState("")
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -558,6 +604,40 @@ export default function LandingPage() {
 
   const { default: submitLabel, pending: pendingLabel } = submitLabels[modalView]
   const { title, subtitle } = modalCopy[modalView]
+
+  const handleContactSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const trimmedName = contactName.trim()
+    const trimmedEmail = contactEmail.trim()
+    const trimmedMessage = contactMessage.trim()
+
+    const subject = trimmedName
+      ? `Ferm landing inquiry from ${trimmedName}`
+      : "Ferm landing inquiry"
+
+    const bodyParts: string[] = []
+
+    if (trimmedMessage) {
+      bodyParts.push(trimmedMessage)
+    }
+
+    if (trimmedEmail) {
+      bodyParts.push(`Reply to: ${trimmedEmail}`)
+    }
+
+    const mailto = `mailto:adrian@ferm.dev?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+      bodyParts.join("\n\n"),
+    )}`
+
+    if (typeof window !== "undefined") {
+      window.location.href = mailto
+    }
+
+    setContactName("")
+    setContactEmail("")
+    setContactMessage("")
+  }
 
   return (
     <div className="min-h-screen bg-black text-zinc-100">
@@ -818,28 +898,91 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="border-b border-zinc-800">
+        <section id="contact" className="border-b border-zinc-800 bg-zinc-950/60">
           <div className="mx-auto max-w-7xl px-6 py-24">
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-12 text-center">
-              <h2 className="text-3xl font-semibold text-white sm:text-4xl">Ready to run your search with confidence?</h2>
-              <p className="mt-4 text-lg text-zinc-400">
-                Create a Ferm workspace to centralize applications, prepare for interviews, and make decisions with clarity.
-              </p>
-              <div className="mt-10 flex flex-wrap justify-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => openModal("signup")}
-                  className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
-                >
-                  Create an account
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openModal("signin")}
-                  className="rounded-full border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:text-white"
-                >
-                  Log in
-                </button>
+            <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+              <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-10 shadow-[0_25px_80px_-30px_rgba(16,185,129,0.35)]">
+                <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">Get in touch</p>
+                <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Ready to plan your job search with us?</h2>
+                <p className="mt-4 text-sm text-zinc-400">
+                  Share how Ferm can help and we&apos;ll follow up directly. Adrian reads every message and replies within one business day.
+                </p>
+                <form onSubmit={handleContactSubmit} className="mt-8 space-y-5">
+                  <div className="space-y-2">
+                    <label htmlFor="contact-name" className="text-sm font-medium text-zinc-200">
+                      Name
+                    </label>
+                    <input
+                      id="contact-name"
+                      type="text"
+                      value={contactName}
+                      onChange={(event) => setContactName(event.target.value)}
+                      placeholder="Your name"
+                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400 focus:ring-0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="contact-email" className="text-sm font-medium text-zinc-200">
+                      Email
+                    </label>
+                    <input
+                      id="contact-email"
+                      type="email"
+                      value={contactEmail}
+                      onChange={(event) => setContactEmail(event.target.value)}
+                      required
+                      placeholder="you@email.com"
+                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400 focus:ring-0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="contact-message" className="text-sm font-medium text-zinc-200">
+                      How can we help?
+                    </label>
+                    <textarea
+                      id="contact-message"
+                      value={contactMessage}
+                      onChange={(event) => setContactMessage(event.target.value)}
+                      rows={4}
+                      placeholder="Share context, priorities, or questions."
+                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400 focus:ring-0"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
+                  >
+                    Email Adrian
+                    <ArrowUpRight className="h-4 w-4" aria-hidden />
+                  </button>
+                  <p className="text-xs text-zinc-500">
+                    Prefer email? Reach us directly at{" "}
+                    <a href="mailto:adrian@ferm.dev" className="text-emerald-300 transition hover:text-emerald-200">
+                      adrian@ferm.dev
+                    </a>
+                    .
+                  </p>
+                </form>
+              </div>
+              <div id="faq" className="space-y-6">
+                <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Frequently asked questions</p>
+                <h2 className="text-3xl font-semibold text-white sm:text-4xl">Learn more about Ferm before you join.</h2>
+                <Accordion type="single" collapsible className="space-y-4">
+                  {faqs.map((faq) => (
+                    <AccordionItem
+                      key={faq.question}
+                      value={faq.question}
+                      className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950"
+                    >
+                      <AccordionTrigger className="px-6 py-4 text-left text-sm font-medium text-white hover:text-emerald-200">
+                        {faq.question}
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-6 text-sm text-zinc-400">
+                        {faq.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
               </div>
             </div>
           </div>
