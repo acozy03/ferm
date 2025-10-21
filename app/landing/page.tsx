@@ -4,6 +4,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { FormEvent, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react"
+import Slider from "react-infinite-logo-slider"
 
 import { useSupabase } from "@/components/supabase-provider"
 import fermLogo from "@/public/logo.png"
@@ -30,6 +32,97 @@ const featureHighlights = [
     title: "See progress at a glance",
     description:
       "Dashboard metrics surface how many applications are active, paused, or waiting on you.",
+  },
+]
+
+type HeroClipHighlight = {
+  title: string
+  description: string
+  accent: string
+}
+
+type HeroClip = {
+  id: string
+  label: string
+  title: string
+  description: string
+  highlights: HeroClipHighlight[]
+}
+
+const HERO_SHOWCASE_INTERVAL = 6000
+
+const heroShowcaseClips: HeroClip[] = [
+  {
+    id: "extension-import",
+    label: "Chrome extension",
+    title: "Send roles straight from your browser",
+    description:
+      "Add the FermDev Job Loader extension to capture job details from any posting without manual entry.",
+    highlights: [
+      {
+        title: "One-click capture",
+        description: "Job title, company, location, and link drop into Ferm instantly.",
+        accent: "from-emerald-500/60 via-emerald-500/20 to-transparent",
+      },
+      {
+        title: "Notes on the spot",
+        description: "Add fit notes before you forget while the listing is still open.",
+        accent: "from-sky-500/60 via-sky-500/20 to-transparent",
+      },
+      {
+        title: "Keep sources organized",
+        description: "Automatically tag imports so you can trace where opportunities came from.",
+        accent: "from-amber-500/60 via-amber-500/20 to-transparent",
+      },
+    ],
+  },
+  {
+    id: "interview-prep",
+    label: "Interview prep",
+    title: "Plan conversations with context",
+    description:
+      "Layer recruiter updates, prep documents, and reminders together so you walk into every call ready.",
+    highlights: [
+      {
+        title: "Centralized briefs",
+        description: "Keep role research, key questions, and resume variants in one workspace.",
+        accent: "from-purple-500/60 via-purple-500/20 to-transparent",
+      },
+      {
+        title: "Timeline clarity",
+        description: "Know exactly what happened last and what you promised to send next.",
+        accent: "from-blue-500/60 via-blue-500/20 to-transparent",
+      },
+      {
+        title: "Prep on mobile",
+        description: "Review talking points from your phone while heading into the meeting.",
+        accent: "from-rose-500/60 via-rose-500/20 to-transparent",
+      },
+    ],
+  },
+  {
+    id: "pipeline-health",
+    label: "Pipeline health",
+    title: "Spot momentum in your search",
+    description:
+      "See aging applications, recent wins, and upcoming interviews without exporting another spreadsheet.",
+    highlights: [
+      {
+        title: "Smart filters",
+        description: "Save the views you check daily—referrals, dream teams, or remote-only roles.",
+        accent: "from-cyan-500/60 via-cyan-500/20 to-transparent",
+      },
+      {
+        title: "Reminder rhythm",
+        description: "Automated nudges keep outreach and follow-ups from going cold.",
+        accent: "from-lime-500/60 via-lime-500/20 to-transparent",
+      },
+      {
+        title: "Offer clarity",
+        description: "Capture compensation data to compare opportunities when decisions hit at once.",
+        accent: "from-orange-500/60 via-orange-500/20 to-transparent",
+      },
+    ],
   },
 ]
 
@@ -120,6 +213,154 @@ const submitLabels: Record<ModalView, { default: string; pending: string }> = {
 const PASSWORD_SPECIAL_CHAR_PATTERN = /[^A-Za-z0-9]/
 const PASSWORD_REQUIREMENT_MESSAGE = "Password must include at least one special character (e.g. !@#$%)."
 const DUPLICATE_EMAIL_MESSAGE = "An account with this email already exists. Try logging in or resetting your password."
+
+type Testimonial = {
+  quote: string
+  name: string
+  role: string
+}
+
+const testimonials: Testimonial[] = [
+  {
+    quote: "Ferm keeps every outreach thread tidy. I stopped losing track of who I owed a follow-up.",
+    name: "Nina T.",
+    role: "Product manager transitioning to climate tech",
+  },
+  {
+    quote: "The extension saves me 10 minutes on every role I add. Import, tag, move on.",
+    name: "Jordan K.",
+    role: "Senior frontend engineer",
+  },
+  {
+    quote: "Finally a tracker that feels designed for job seekers instead of repurposed sales tooling.",
+    name: "Priya M.",
+    role: "Design lead exploring new teams",
+  },
+  {
+    quote: "Reminders plus the interview timeline mean I never walk into a loop cold anymore.",
+    name: "Andre B.",
+    role: "Staff data scientist",
+  },
+  {
+    quote: "Exporting progress for my mentor is now a click, not a Sunday night spreadsheet session.",
+    name: "Elena V.",
+    role: "Career switcher into product ops",
+  },
+]
+
+function HeroShowcase({ items }: { items: HeroClip[] }) {
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  useEffect(() => {
+    if (items.length <= 1) {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((previous) => (previous + 1) % items.length)
+    }, HERO_SHOWCASE_INTERVAL)
+
+    return () => window.clearInterval(timer)
+  }, [items.length])
+
+  const goToIndex = (next: number) => {
+    if (!items.length) {
+      return
+    }
+
+    const nextIndex = (next + items.length) % items.length
+    setActiveIndex(nextIndex)
+  }
+
+  const activeItem = items[activeIndex] ?? items[0]
+
+  if (!activeItem) {
+    return null
+  }
+
+  return (
+    <div className="flex h-full flex-col rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-900/80 via-zinc-950 to-black p-8 shadow-[0_35px_90px_-45px_rgba(16,185,129,0.5)]">
+      <div className="flex items-center justify-between gap-4">
+        <span className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-zinc-300">
+          {activeItem.label}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => goToIndex(activeIndex - 1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950/70 text-zinc-300 transition hover:border-zinc-600 hover:text-white"
+            aria-label="Show previous showcase clip"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => goToIndex(activeIndex + 1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950/70 text-zinc-300 transition hover:border-zinc-600 hover:text-white"
+            aria-label="Show next showcase clip"
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      </div>
+      <div className="mt-8 space-y-4">
+        <h2 className="text-2xl font-semibold text-white sm:text-3xl">{activeItem.title}</h2>
+        <p className="text-sm text-zinc-400">{activeItem.description}</p>
+      </div>
+      <div className="mt-10 flex-1 space-y-4">
+        {activeItem.highlights.map((highlight) => (
+          <div
+            key={highlight.title}
+            className="flex items-start gap-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-5 transition hover:border-zinc-600"
+          >
+            <span
+              className={`mt-1 h-12 w-12 flex-shrink-0 rounded-xl bg-gradient-to-br ${highlight.accent}`}
+              aria-hidden
+            />
+            <div>
+              <p className="text-sm font-semibold text-white">{highlight.title}</p>
+              <p className="mt-1 text-xs text-zinc-400">{highlight.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-8 flex items-center gap-2">
+        {items.map((item, index) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => goToIndex(index)}
+            className={`h-1.5 flex-1 rounded-full transition ${index === activeIndex ? "bg-emerald-400" : "bg-zinc-800 hover:bg-zinc-700"}`}
+            aria-label={`Showcase ${item.label}`}
+            aria-pressed={index === activeIndex}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ReviewsMarquee({ testimonials }: { testimonials: Testimonial[] }) {
+  if (!testimonials.length) {
+    return null
+  }
+
+  return (
+    <Slider width="320px" duration={32} pauseOnHover blurBorders blurBorderColor="rgba(24,24,27,0.85)">
+      {testimonials.map((testimonial) => (
+        <Slider.Slide key={testimonial.name} className="px-3">
+          <div className="flex h-full w-full flex-col justify-between rounded-2xl border border-zinc-800 bg-zinc-950/80 p-6 shadow-[0_25px_60px_rgba(16,185,129,0.15)] transition hover:border-emerald-500/40 hover:shadow-[0_25px_60px_rgba(16,185,129,0.35)]">
+            <p className="text-sm leading-relaxed text-zinc-200">“{testimonial.quote}”</p>
+            <div className="mt-5">
+              <p className="text-sm font-semibold text-white">{testimonial.name}</p>
+              <p className="text-xs text-zinc-400">{testimonial.role}</p>
+            </div>
+          </div>
+        </Slider.Slide>
+      ))}
+    </Slider>
+  )
+}
 
 export default function LandingPage() {
   const router = useRouter()
@@ -363,6 +604,10 @@ export default function LandingPage() {
               <p className="mt-6 max-w-xl text-lg text-zinc-400">
                 Ferm centralizes your applications, interview prep, and follow-ups so you always know what happened, what is next, and where to focus your time.
               </p>
+              <p className="mt-4 flex items-center gap-2 text-sm text-emerald-300">
+                <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" aria-hidden />
+                FermDev Job Loader Chrome extension now live for one-click imports.
+              </p>
               <div className="mt-10 flex flex-wrap gap-4">
                 <a
                   href="#pricing"
@@ -376,6 +621,15 @@ export default function LandingPage() {
                 >
                   See features
                 </a>
+                <a
+                  href="https://chromewebstore.google.com/detail/fermdev-job-loader/akgppdhffcfpeipmapfbgjcmdlkhkfpp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-6 py-3 text-sm font-medium text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-100"
+                >
+                  Install Chrome extension
+                  <ArrowUpRight className="h-4 w-4" aria-hidden />
+                </a>
               </div>
               <div className="mt-16 grid gap-8 sm:grid-cols-3">
                 {featureHighlights.map((feature) => (
@@ -386,28 +640,7 @@ export default function LandingPage() {
                 ))}
               </div>
             </div>
-            <div className="rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black p-10">
-              <div className="space-y-6">
-                <h2 className="text-lg font-semibold text-white">Built for the details</h2>
-                <p className="text-sm text-zinc-400">
-                  Track applications, interview feedback, and offer decisions with precision. Ferm keeps your search accurate without the back-and-forth of scattered docs.
-                </p>
-                <ul className="space-y-4 text-sm text-zinc-300">
-                  <li className="flex items-start gap-3">
-                    <span className="mt-1 h-1.5 w-6 bg-zinc-500" aria-hidden />
-                    Automated reminders keep interviews on schedule.
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="mt-1 h-1.5 w-6 bg-zinc-500" aria-hidden />
-                    Analytics reveal how your outreach is performing as you update statuses.
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="mt-1 h-1.5 w-6 bg-zinc-500" aria-hidden />
-                    Application profiles aggregate notes, resumes, and communication threads.
-                  </li>
-                </ul>
-              </div>
-            </div>
+            <HeroShowcase items={heroShowcaseClips} />
           </div>
         </section>
 
@@ -453,6 +686,23 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-b border-zinc-800 bg-zinc-950/60">
+          <div className="mx-auto max-w-6xl px-6 py-24">
+            <div className="max-w-3xl">
+              <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">Community</p>
+              <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">
+                Job seekers are shipping their search with Ferm.
+              </h2>
+              <p className="mt-4 text-lg text-zinc-400">
+                Hear how people replace scattered spreadsheets, prep faster for interviews, and keep momentum week after week.
+              </p>
+            </div>
+            <div className="mt-12">
+              <ReviewsMarquee testimonials={testimonials} />
             </div>
           </div>
         </section>

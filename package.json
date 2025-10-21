@@ -60,6 +60,7 @@
         "react-day-picker": "9.8.0",
         "react-dom": "^18",
         "react-hook-form": "^7.60.0",
+        "react-infinite-logo-slider": "^1.1.4",
         "react-resizable-panels": "^2.1.7",
         "recharts": "2.15.4",
         "resend": "^6.1.2",
