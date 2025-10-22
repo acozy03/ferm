@@ -182,7 +182,7 @@ export default function Dashboard() {
     sort,
     include_interviews: true,
   })
-
+  
   const timelineDateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat("en-US", {
@@ -412,7 +412,7 @@ export default function Dashboard() {
             </div>
 
             <div className="lg:col-span-2 space-y-6">
-              <div className="space-y-4 pb-24">
+              <div className="space-y-4 pb-20">
                   <Tabs
                     value={view}
                     onValueChange={(next) => {
@@ -422,66 +422,76 @@ export default function Dashboard() {
                     }}
                     className="space-y-4"
                   >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap sm:gap-3">
-                        <TabsList>
-                          <TabsTrigger value="pipeline" className="gap-2">
-                            <LayoutPanelLeft className="h-4 w-4" />
-                            Pipeline
-                          </TabsTrigger>
-                          <TabsTrigger value="table" className="gap-2">
-                            <Table2 className="h-4 w-4" />
-                            Table
-                          </TabsTrigger>
-                          <TabsTrigger value="timeline" className="gap-2">
-                            <CalendarClock className="h-4 w-4" />
-                            Timeline
-                          </TabsTrigger>
-                        </TabsList>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 sm:flex-1">
-                          <div className="self-start sm:self-auto">
-                            <AddApplicationDialog
-                              onAdd={handleAddApplication}
-                              trigger={
-                                <Button type="button" variant="outline" size="sm" className="gap-2">
-                                  <Plus className="h-4 w-4" />
-                                  Add application
-                                </Button>
-                              }
-                            />
-                          </div>
-                          <div className="relative w-full sm:flex-1 sm:min-w-[16rem] sm:max-w-xs lg:max-w-sm">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                              value={searchTerm}
-                              onChange={handleSearchChange}
-                              placeholder="Search applications by role, company, notes, and more"
-                              className="pl-9 pr-9"
-                            />
-                            {searchTerm ? (
-                              <button
-                                type="button"
-                                onClick={clearSearch}
-                                className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-                              >
-                                <X className="h-4 w-4" />
-                                <span className="sr-only">Clear search</span>
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="gap-2 self-start sm:self-auto"
-                        onClick={() => setIsApplicationsDrawerOpen(true)}
-                      >
-                        <ListChecks className="h-4 w-4" />
-                        Open application library
-                      </Button>
-                    </div>
+               <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+  {/* Tabs */}
+  <TabsList className="shrink-0 whitespace-nowrap overflow-x-auto">
+    <TabsTrigger value="pipeline" className="gap-2">
+      <LayoutPanelLeft className="h-4 w-4" />
+      Pipeline
+    </TabsTrigger>
+    <TabsTrigger value="table" className="gap-2">
+      <Table2 className="h-4 w-4" />
+      Table
+    </TabsTrigger>
+    <TabsTrigger value="timeline" className="gap-2">
+      <CalendarClock className="h-4 w-4" />
+      Timeline
+    </TabsTrigger>
+  </TabsList>
+  {/* Search bar (flexes) */}
+  <div className="relative flex-1 min-w-[220px] max-w-[520px]">
+    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <Input
+      value={searchTerm}
+      onChange={handleSearchChange}
+      placeholder="Search applications by role, company, notes, and more"
+      className="w-full pl-9 pr-9"
+    />
+    {searchTerm ? (
+      <button
+        type="button"
+        onClick={clearSearch}
+        className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+      >
+        <X className="h-4 w-4" />
+        <span className="sr-only">Clear search</span>
+      </button>
+    ) : null}
+  </div>
+  {/* Add application button */}
+  <AddApplicationDialog
+    onAdd={handleAddApplication}
+    trigger={
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="gap-2 shrink-0"
+      >
+        <Plus className="h-4 w-4" />
+        Add application
+      </Button>
+    }
+  />
+
+
+
+  {/* Open Library button */}
+  <div className=" shrink-0">
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="gap-2"
+      onClick={() => setIsApplicationsDrawerOpen(true)}
+    >
+      <ListChecks className="h-4 w-4" />
+      Application Library
+    </Button>
+  </div>
+</div>
+
+
 
                     <TabsContent value="pipeline" className="space-y-4">
                       <BulkActions
