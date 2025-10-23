@@ -393,10 +393,12 @@ export default function ResumePage() {
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Current resume</CardTitle>
-              <CardDescription>Upload a PDF, DOC, or DOCX file up to 5&nbsp;MB.</CardDescription>
-            </CardHeader>
+            {!resume && (
+              <CardHeader>
+                <CardTitle>Current resume</CardTitle>
+                <CardDescription>Upload a PDF, DOC, or DOCX file up to 5&nbsp;MB.</CardDescription>
+              </CardHeader>
+            )}
             <CardContent className="space-y-6">
               {errorMessage && (
                 <Alert variant="destructive">

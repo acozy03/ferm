@@ -17,6 +17,7 @@ import { useActivityLog } from "@/lib/hooks/use-activity-log"
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import { formatStatusLabel, getStatusBadgeClass, getStatusStage, isActiveStage } from "@/lib/status"
 import { getDateOrNull } from "@/lib/date"
+import next from "next"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -96,6 +97,7 @@ export default function ApplicationsPage() {
             ? `${followUpsDue} reminder${followUpsDue === 1 ? "" : "s"} ready for follow-up`
             : (() => {
                 const nextFollowUpDate = getDateOrNull(nextFollowUp?.next_follow_up_date ?? null)
+                console.log(nextFollowUpDate)
                 return nextFollowUpDate
                   ? `Next reminder ${formatDistanceToNow(nextFollowUpDate, { addSuffix: true })}`
                   : "All follow-ups are up to date"
