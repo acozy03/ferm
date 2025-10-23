@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { addDays, isValid } from "date-fns"
+import { isValid } from "date-fns"
 import { z } from "zod"
 
 import { getAuthedClient } from "@/lib/api/auth"
@@ -10,8 +10,10 @@ export const dynamic = "force-dynamic"
 const UpdateFollowUpSchema = z.object({
   job_application_id: z.string().uuid(),
   enabled: z.boolean(),
-  interval_days: z.number().int().min(1).max(60),
+  next_follow_up_date: z.string().datetime({ offset: true }).nullable().optional(),
 })
+
+const DEFAULT_INTERVAL = 7
 
 export async function GET(request: NextRequest) {
   const auth = await getAuthedClient(request)
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { supabase, userId } = auth
-  const { job_application_id, enabled, interval_days } = payload.data
+  const { job_application_id, enabled, next_follow_up_date } = payload.data
 
   const { data: application, error: applicationError } = await supabase
     .from("job_applications")
@@ -75,16 +77,19 @@ export async function POST(request: NextRequest) {
   }
 
   const now = new Date()
-  const baselineSource = existing?.last_notified_at ?? application.application_date
-  const baselineDate = isValid(new Date(baselineSource)) ? new Date(baselineSource) : now
-  const nextFollowUpDate = enabled ? addDays(baselineDate, interval_days) : null
+  const providedDate = next_follow_up_date ? new Date(next_follow_up_date) : null
+  if (next_follow_up_date && (!providedDate || !isValid(providedDate))) {
+    return NextResponse.json({ error: "Invalid follow-up date" }, { status: 400 })
+  }
+
+  const normalizedDate = providedDate ? providedDate.toISOString() : null
 
   const record = {
     user_id: userId,
     job_application_id,
     enabled,
-    interval_days,
-    next_follow_up_date: nextFollowUpDate ? nextFollowUpDate.toISOString() : null,
+    interval_days: existing?.interval_days ?? DEFAULT_INTERVAL,
+    next_follow_up_date: normalizedDate,
     last_notified_at: existing?.last_notified_at ?? null,
     updated_at: now.toISOString(),
   }

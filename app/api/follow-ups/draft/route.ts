@@ -15,7 +15,7 @@ const DraftSchema = z.object({
   notes: z.string().optional().nullable(),
   jobDescription: z.string().optional().nullable(),
   appliedAt: z.string().optional().nullable(),
-  intervalDays: z.number().int().min(1).max(60),
+  daysSinceApplication: z.number().int().min(0).max(365),
 })
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
@@ -37,7 +37,16 @@ export async function POST(request: NextRequest) {
   }
 
   const { supabase, userId } = auth
-  const { job_application_id, companyName, positionTitle, contactName, notes, jobDescription, appliedAt, intervalDays } =
+  const {
+    job_application_id,
+    companyName,
+    positionTitle,
+    contactName,
+    notes,
+    jobDescription,
+    appliedAt,
+    daysSinceApplication,
+  } =
     payload.data
 
   const { data: application, error: applicationError } = await supabase
@@ -75,7 +84,7 @@ export async function POST(request: NextRequest) {
   const jobDescriptionExcerpt = jobDescription ? jobDescription.slice(0, 1200) : null
   const resumeContext = resumeText || "Not provided"
 
-  const userPrompt = `You are drafting a concise, professional follow-up email.\n\nContext:\n- Candidate email: ${userEmail}\n- Company: ${companyName}\n- Role: ${positionTitle}\n- Contact: ${contactName ?? "Hiring manager"}\n- Days since application: ${intervalDays}\n- Application date: ${appliedAt ?? "Unknown"}\n- Notes: ${notesText}\n- Job description excerpt: ${jobDescriptionExcerpt ?? "Not provided"}\n- Resume text:\n${resumeContext}\n\nWrite a friendly, confident follow-up email encouraging a response and including specifics about the user that can be a strength to this role from the resume content. Return only the email body.`
+  const userPrompt = `You are drafting a concise, professional follow-up email.\n\nContext:\n- Candidate email: ${userEmail}\n- Company: ${companyName}\n- Role: ${positionTitle}\n- Contact: ${contactName ?? "Hiring manager"}\n- Days since application: ${daysSinceApplication}\n- Application date: ${appliedAt ?? "Unknown"}\n- Notes: ${notesText}\n- Job description excerpt: ${jobDescriptionExcerpt ?? "Not provided"}\n- Resume text:\n${resumeContext}\n\nWrite a friendly, confident follow-up email encouraging a response and including specifics about the user that can be a strength to this role from the resume content. Return only the email body.`
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

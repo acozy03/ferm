@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import { differenceInCalendarDays } from "date-fns"
 import { Loader2, Wand2, Copy } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -19,11 +20,10 @@ import { useToast } from "@/components/ui/use-toast"
 
 interface FollowUpDraftDialogProps {
   application: JobApplication
-  intervalDays: number
   disabled?: boolean
 }
 
-export function FollowUpDraftDialog({ application, intervalDays, disabled }: FollowUpDraftDialogProps) {
+export function FollowUpDraftDialog({ application, disabled }: FollowUpDraftDialogProps) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
@@ -32,6 +32,10 @@ export function FollowUpDraftDialog({ application, intervalDays, disabled }: Fol
   const generateDraft = useCallback(async () => {
     setIsGenerating(true)
     try {
+      const appliedAt = application.application_date ? new Date(application.application_date) : null
+      const daysSinceApplication = appliedAt
+        ? Math.max(0, differenceInCalendarDays(new Date(), appliedAt))
+        : 0
       const response = await fetch("/api/follow-ups/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -43,7 +47,7 @@ export function FollowUpDraftDialog({ application, intervalDays, disabled }: Fol
           notes: application.notes,
           jobDescription: application.job_description,
           appliedAt: application.application_date,
-          intervalDays: Math.max(intervalDays, 1),
+          daysSinceApplication,
         }),
       })
 
@@ -65,7 +69,7 @@ export function FollowUpDraftDialog({ application, intervalDays, disabled }: Fol
     } finally {
       setIsGenerating(false)
     }
-  }, [application, intervalDays, toast])
+  }, [application, toast])
 
   const handleCopy = useCallback(() => {
     if (!draft) return

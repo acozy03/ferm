@@ -7,87 +7,93 @@ import { CheckCircle2, Clock, Mail } from "lucide-react"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/use-toast"
-import { useSettings } from "@/components/settings-provider"
-import { useSupabase } from "@/components/supabase-provider"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import type { ApplicationFollowUp, JobApplication } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
-import { getDateOrNull, getDateOrNow } from "@/lib/date"
+import { getDateOrNull } from "@/lib/date"
 
 import { FollowUpDraftDialog } from "@/components/follow-up-draft-dialog"
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
-const DEFAULT_INTERVAL = 7
-const MAX_INTERVAL = 60
-
 type FollowUpRow = {
   application: JobApplication
   followUp: ApplicationFollowUp | undefined
-  intervalDays: number
   enabled: boolean
   nextReminder: Date | null
   lastSent: Date | null
   status: "due" | "upcoming" | "disabled"
 }
 
-function computeNextReminder(
-  application: JobApplication,
-  intervalDays: number,
-  followUp: ApplicationFollowUp | undefined,
-): Date | null {
+function computeNextReminder(followUp: ApplicationFollowUp | undefined): Date | null {
   if (!followUp?.enabled) {
     return null
   }
 
-  if (followUp.next_follow_up_date) {
-    const parsed = getDateOrNull(followUp.next_follow_up_date)
-    if (parsed) {
-      return parsed
-    }
+  return getDateOrNull(followUp.next_follow_up_date ?? null)
+}
+
+function formatDateForInput(date: Date | null): string {
+  if (!date) {
+    return ""
   }
 
-  const baselineSource = followUp?.last_notified_at ?? application.application_date
-  const baseline = getDateOrNow(baselineSource)
-  const candidate = new Date(baseline)
-  candidate.setDate(candidate.getDate() + intervalDays)
-  return candidate
+  return format(date, "yyyy-MM-dd")
+}
+
+function isoStringToDateInput(value: string | null | undefined): string {
+  const parsed = getDateOrNull(value ?? null)
+  return formatDateForInput(parsed)
+}
+
+function localDateInputToISOString(value: string | undefined): string | null {
+  if (!value) {
+    return null
+  }
+
+  const [rawYear, rawMonth, rawDay] = value.split("-")
+  const year = Number.parseInt(rawYear ?? "", 10)
+  const month = Number.parseInt(rawMonth ?? "", 10)
+  const day = Number.parseInt(rawDay ?? "", 10)
+
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+    return null
+  }
+
+  const localDate = new Date(year, month - 1, day, 0, 0, 0, 0)
+  return Number.isNaN(localDate.getTime()) ? null : localDate.toISOString()
 }
 
 export default function FollowUpsPage() {
   const { toast } = useToast()
   const { applications, isLoading: isLoadingApplications, error } = useJobApplications({ limit: 200 })
   const { followUps, isLoading: isLoadingFollowUps, mutate } = useApplicationFollowUps()
-  const { settings } = useSettings()
-  const { user } = useSupabase()
-  const [draftIntervals, setDraftIntervals] = useState<Record<string, number>>({})
+  const [draftDates, setDraftDates] = useState<Record<string, string>>({})
   const [pending, setPending] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    const next: Record<string, number> = {}
+    const next: Record<string, string> = {}
     applications.forEach((application) => {
       const followUp = followUps.find((item) => item.job_application_id === application.id)
-      next[application.id] = followUp?.interval_days ?? DEFAULT_INTERVAL
+      next[application.id] = isoStringToDateInput(followUp?.next_follow_up_date ?? null)
     })
-    setDraftIntervals(next)
+    setDraftDates(next)
   }, [applications, followUps])
 
   const rows = useMemo<FollowUpRow[]>(() => {
     const now = Date.now()
     return applications.map((application) => {
       const followUp = followUps.find((item) => item.job_application_id === application.id)
-      const intervalDays = draftIntervals[application.id] ?? followUp?.interval_days ?? DEFAULT_INTERVAL
       const enabled = followUp?.enabled ?? false
-      const nextReminder = computeNextReminder(application, intervalDays, followUp)
+      const nextReminder = computeNextReminder(followUp)
       const lastSent = getDateOrNull(followUp?.last_notified_at ?? null)
       let status: FollowUpRow["status"] = "disabled"
       if (enabled && nextReminder) {
@@ -99,14 +105,13 @@ export default function FollowUpsPage() {
       return {
         application,
         followUp,
-        intervalDays,
         enabled,
         nextReminder,
         lastSent,
         status,
       }
     })
-  }, [applications, draftIntervals, followUps])
+  }, [applications, followUps])
 
   const enabledRows = rows.filter((row) => row.enabled)
   const dueRows = enabledRows.filter((row) => row.status === "due")
@@ -125,7 +130,7 @@ export default function FollowUpsPage() {
   }, [])
 
   const updateFollowUp = useCallback(
-    async (applicationId: string, enabled: boolean, intervalDays: number) => {
+    async (applicationId: string, enabled: boolean, nextReminder: string | null) => {
       setPendingState(applicationId, true)
       try {
         const response = await fetch("/api/follow-ups", {
@@ -134,7 +139,7 @@ export default function FollowUpsPage() {
           body: JSON.stringify({
             job_application_id: applicationId,
             enabled,
-            interval_days: intervalDays,
+            next_follow_up_date: nextReminder,
           }),
         })
 
@@ -155,84 +160,43 @@ export default function FollowUpsPage() {
     [mutate, setPendingState, toast],
   )
 
-  const sendReminder = useCallback(
-    async (application: JobApplication, recipientOverride?: string) => {
-      console.log("ENTER sendReminder", { appId: application.id })
-
-      const normalize = (v?: string | null) => {
-        const t = (v ?? "").trim()
-        return t.length ? t : null
-      }
-
-      const sEmail = normalize(settings?.email)
-      const uEmail = normalize(user?.email)
-      const rEmail = normalize(recipientOverride)
-
-      // use || so empty strings don't short-circuit
-      const recipient = rEmail || sEmail || uEmail
-
-      console.log("resolved recipient", { recipient, sEmail, uEmail })
-      if (!recipient) {
-        toast({
-          title: "Add your email",
-          description: "Update your profile email in Settings to receive follow-up reminders.",
-          variant: "destructive",
-        })
-        return
-      }
-      console.log("right before pending state")
-      setPendingState(application.id, true)
-      try {
-        console.log("Reached")
-        const response = await fetch("/api/follow-ups/remind", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            job_application_id: application.id,
-            recipient,
-          }),
-        })
-
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({ error: "Failed to send reminder" }))
-          throw new Error(body.error ?? "Failed to send reminder")
+  const handleDateCommit = useCallback(
+    (applicationId: string, enabled: boolean, nextDateValue: string, previousDateValue: string) => {
+      if (!nextDateValue) {
+        if (enabled) {
+          toast({
+            title: "Reminder date required",
+            description: "Choose a date to receive your follow-up reminder.",
+            variant: "destructive",
+          })
+          setDraftDates((previous) => ({ ...previous, [applicationId]: previousDateValue }))
+          return
         }
 
-        toast({
-          title: "Reminder sent",
-          description: `We just emailed you a nudge to follow up with ${application.company_name}.`,
-        })
-        await mutate()
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to send reminder"
-        toast({ title: "Reminder failed", description: message, variant: "destructive" })
-      } finally {
-        setPendingState(application.id, false)
-      }
-    },
-    [mutate, setPendingState, settings.email, toast, user?.email],
-  )
+        if (!previousDateValue) {
+          return
+        }
 
-  const handleIntervalCommit = useCallback(
-    (applicationId: string, enabled: boolean, nextInterval: number, previousInterval?: number) => {
-      if (Number.isNaN(nextInterval) || nextInterval < 1 || nextInterval > MAX_INTERVAL) {
-        setDraftIntervals((previous) => ({
-          ...previous,
-          [applicationId]: previousInterval ?? DEFAULT_INTERVAL,
-        }))
+        void updateFollowUp(applicationId, enabled, null)
+        return
+      }
+
+      if (nextDateValue === previousDateValue) {
+        return
+      }
+
+      const iso = localDateInputToISOString(nextDateValue)
+      if (!iso) {
         toast({
-          title: "Invalid interval",
-          description: `Choose a cadence between 1 and ${MAX_INTERVAL} days.`,
+          title: "Invalid date",
+          description: "Enter a valid reminder date.",
           variant: "destructive",
         })
+        setDraftDates((previous) => ({ ...previous, [applicationId]: previousDateValue }))
         return
       }
 
-      if (previousInterval === nextInterval) {
-        return
-      }
-
-      void updateFollowUp(applicationId, enabled, nextInterval)
+      void updateFollowUp(applicationId, enabled, iso)
     },
     [toast, updateFollowUp],
   )
@@ -326,7 +290,7 @@ export default function FollowUpsPage() {
                           <TableHead>Role</TableHead>
                           <TableHead className="hidden lg:table-cell">Applied</TableHead>
                           <TableHead className="hidden lg:table-cell">Status</TableHead>
-                          <TableHead>Interval (days)</TableHead>
+                          <TableHead>Reminder date</TableHead>
                           <TableHead>Next reminder</TableHead>
                           <TableHead className="hidden xl:table-cell">Last reminder</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
@@ -334,8 +298,9 @@ export default function FollowUpsPage() {
                       </TableHeader>
                       <TableBody>
                         {rows.map((row) => {
-                          const draftInterval = draftIntervals[row.application.id] ?? row.intervalDays
+                          const draftDate = draftDates[row.application.id] ?? isoStringToDateInput(row.followUp?.next_follow_up_date ?? null)
                           const isPending = pending[row.application.id]
+                          const storedDate = isoStringToDateInput(row.followUp?.next_follow_up_date ?? null)
                           return (
                             <TableRow
                               key={row.application.id}
@@ -363,43 +328,54 @@ export default function FollowUpsPage() {
                                   <Switch
                                     checked={row.enabled}
                                     onCheckedChange={(checked) => {
-                                      const interval = draftIntervals[row.application.id] ?? row.intervalDays
-                                      if (checked === row.enabled && row.followUp?.interval_days === interval) {
+                                      if (checked === row.enabled) {
                                         return
                                       }
-                                      setDraftIntervals((previous) => ({ ...previous, [row.application.id]: interval }))
-                                      void updateFollowUp(row.application.id, checked, interval)
+
+                                      const existingDate = draftDates[row.application.id] ?? storedDate
+                                      let nextDateValue = existingDate
+
+                                      if (checked && !nextDateValue) {
+                                        const today = formatDateForInput(new Date())
+                                        nextDateValue = today
+                                        setDraftDates((previous) => ({ ...previous, [row.application.id]: today }))
+                                      }
+
+                                      const iso = localDateInputToISOString(nextDateValue)
+
+                                      if (checked && !iso) {
+                                        toast({
+                                          title: "Invalid date",
+                                          description: "Enter a valid reminder date before enabling.",
+                                          variant: "destructive",
+                                        })
+                                        return
+                                      }
+
+                                      void updateFollowUp(row.application.id, checked, iso)
                                     }}
                                     disabled={isPending}
                                   />
                                   <div className="space-y-1">
                                     <Label
-                                      htmlFor={`interval-${row.application.id}`}
+                                      htmlFor={`reminder-${row.application.id}`}
                                       className="text-xs text-muted-foreground"
                                     >
-                                      Every
+                                      Remind me on
                                     </Label>
                                     <Input
-                                      id={`interval-${row.application.id}`}
-                                      type="number"
-                                      min={1}
-                                      max={MAX_INTERVAL}
-                                      value={draftInterval}
+                                      id={`reminder-${row.application.id}`}
+                                      type="date"
+                                      value={draftDate}
                                       onChange={(event) => {
-                                        const raw = Number.parseInt(event.target.value, 10)
-                                        const value = Number.isNaN(raw) ? 0 : raw
-                                        setDraftIntervals((previous) => ({ ...previous, [row.application.id]: value }))
+                                        const { value } = event.target
+                                        setDraftDates((previous) => ({ ...previous, [row.application.id]: value }))
                                       }}
                                       onBlur={() => {
-                                        const value = draftIntervals[row.application.id] ?? row.intervalDays
-                                        handleIntervalCommit(
-                                          row.application.id,
-                                          row.enabled,
-                                          value,
-                                          row.followUp?.interval_days,
-                                        )
+                                        const value = draftDates[row.application.id] ?? ""
+                                        handleDateCommit(row.application.id, row.enabled, value, storedDate)
                                       }}
-                                      className="h-9 w-20"
+                                      className="h-9 w-36"
                                       disabled={isPending}
                                     />
                                   </div>
@@ -420,28 +396,7 @@ export default function FollowUpsPage() {
                                 {row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"}
                               </TableCell>
                               <TableCell className="flex items-center justify-end gap-2">
-                                <FollowUpDraftDialog
-                                  application={row.application}
-                                  intervalDays={draftInterval}
-                                  disabled={!row.enabled}
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={isPending}
-                                  onClick={() => {
-    console.log("CLICK", { enabled: row.enabled, id: row.application.id })
-    if (!row.enabled) {
-      console.log("BLOCKED: reminders are OFF for", row.application.id)
-      // keep the toast if you want, but this proves the guard is tripping
-      return
-    }
-    console.log("CALLING sendReminder for", row.application.id)
-    void sendReminder(row.application)
-  }}
->
-                                  Send reminder
-                                </Button>
+                                <FollowUpDraftDialog application={row.application} disabled={!row.enabled} />
                               </TableCell>
                             </TableRow>
                           )

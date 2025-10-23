@@ -9,29 +9,18 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
-import type { ApplicationFollowUp, JobApplication } from "@/lib/types/database"
+import type { ApplicationFollowUp } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
-import { getDateOrNow, getDateOrNull } from "@/lib/date"
+import { getDateOrNull } from "@/lib/date"
 
 const MAX_VISIBLE_REMINDERS = 4
 
-function computeNextReminder(application: JobApplication, followUp: ApplicationFollowUp): Date | null {
+function computeNextReminder(followUp: ApplicationFollowUp): Date | null {
   if (!followUp.enabled) {
     return null
   }
 
-  if (followUp.next_follow_up_date) {
-    const parsed = getDateOrNull(followUp.next_follow_up_date)
-    if (parsed) {
-      return parsed
-    }
-  }
-
-  const baselineSource = followUp.last_notified_at ?? application.application_date
-  const baseline = getDateOrNow(baselineSource)
-  const candidate = new Date(baseline)
-  candidate.setDate(candidate.getDate() + followUp.interval_days)
-  return candidate
+  return getDateOrNull(followUp.next_follow_up_date ?? null)
 }
 
 type ReminderStatus = "overdue" | "soon" | "scheduled"
@@ -97,7 +86,7 @@ export function UpcomingReminders() {
           return null
         }
 
-        const nextReminder = computeNextReminder(application, followUp)
+        const nextReminder = computeNextReminder(followUp)
         if (!nextReminder) {
           return null
         }
@@ -130,7 +119,6 @@ export function UpcomingReminders() {
           application,
           nextReminder,
           status,
-          intervalDays: followUp.interval_days,
           countdownLabel,
         }
       })
@@ -202,7 +190,7 @@ export function UpcomingReminders() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>Repeats every {reminder.intervalDays} days</span>
+                      <span>We&rsquo;ll email you on this day in your local time.</span>
                     </div>
                   </div>
                 </div>
