@@ -1,17 +1,24 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
 import { CheckCircle2, Clock, Mail } from "lucide-react"
 
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/components/ui/use-toast"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -33,6 +40,12 @@ type FollowUpRow = {
   status: "due" | "upcoming" | "disabled"
 }
 
+type ReminderDialogState = {
+  application: JobApplication
+  date: Date | null
+  isEnabling: boolean
+}
+
 function computeNextReminder(followUp: ApplicationFollowUp | undefined): Date | null {
   if (!followUp?.enabled) {
     return null
@@ -41,34 +54,12 @@ function computeNextReminder(followUp: ApplicationFollowUp | undefined): Date | 
   return getDateOrNull(followUp.next_follow_up_date ?? null)
 }
 
-function formatDateForInput(date: Date | null): string {
+function dateToLocalISOString(date: Date | null): string | null {
   if (!date) {
-    return ""
-  }
-
-  return format(date, "yyyy-MM-dd")
-}
-
-function isoStringToDateInput(value: string | null | undefined): string {
-  const parsed = getDateOrNull(value ?? null)
-  return formatDateForInput(parsed)
-}
-
-function localDateInputToISOString(value: string | undefined): string | null {
-  if (!value) {
     return null
   }
 
-  const [rawYear, rawMonth, rawDay] = value.split("-")
-  const year = Number.parseInt(rawYear ?? "", 10)
-  const month = Number.parseInt(rawMonth ?? "", 10)
-  const day = Number.parseInt(rawDay ?? "", 10)
-
-  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
-    return null
-  }
-
-  const localDate = new Date(year, month - 1, day, 0, 0, 0, 0)
+  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0)
   return Number.isNaN(localDate.getTime()) ? null : localDate.toISOString()
 }
 
@@ -76,17 +67,8 @@ export default function FollowUpsPage() {
   const { toast } = useToast()
   const { applications, isLoading: isLoadingApplications, error } = useJobApplications({ limit: 200 })
   const { followUps, isLoading: isLoadingFollowUps, mutate } = useApplicationFollowUps()
-  const [draftDates, setDraftDates] = useState<Record<string, string>>({})
   const [pending, setPending] = useState<Record<string, boolean>>({})
-
-  useEffect(() => {
-    const next: Record<string, string> = {}
-    applications.forEach((application) => {
-      const followUp = followUps.find((item) => item.job_application_id === application.id)
-      next[application.id] = isoStringToDateInput(followUp?.next_follow_up_date ?? null)
-    })
-    setDraftDates(next)
-  }, [applications, followUps])
+  const [reminderDialog, setReminderDialog] = useState<ReminderDialogState | null>(null)
 
   const rows = useMemo<FollowUpRow[]>(() => {
     const now = Date.now()
@@ -160,45 +142,34 @@ export default function FollowUpsPage() {
     [mutate, setPendingState, toast],
   )
 
-  const handleDateCommit = useCallback(
-    (applicationId: string, enabled: boolean, nextDateValue: string, previousDateValue: string) => {
-      if (!nextDateValue) {
-        if (enabled) {
-          toast({
-            title: "Reminder date required",
-            description: "Choose a date to receive your follow-up reminder.",
-            variant: "destructive",
-          })
-          setDraftDates((previous) => ({ ...previous, [applicationId]: previousDateValue }))
-          return
-        }
+  const openReminderDialog = useCallback((row: FollowUpRow, options?: { isEnabling?: boolean }) => {
+    const fallbackDate = row.nextReminder
+      ? new Date(row.nextReminder)
+      : row.followUp?.next_follow_up_date
+        ? getDateOrNull(row.followUp.next_follow_up_date)
+        : new Date()
 
-        if (!previousDateValue) {
-          return
-        }
+    setReminderDialog({
+      application: row.application,
+      date: fallbackDate ?? new Date(),
+      isEnabling: options?.isEnabling ?? false,
+    })
+  }, [])
 
-        void updateFollowUp(applicationId, enabled, null)
+  const handleEnableToggle = useCallback(
+    (row: FollowUpRow, checked: boolean) => {
+      if (checked === row.enabled) {
         return
       }
 
-      if (nextDateValue === previousDateValue) {
+      if (checked) {
+        openReminderDialog(row, { isEnabling: true })
         return
       }
 
-      const iso = localDateInputToISOString(nextDateValue)
-      if (!iso) {
-        toast({
-          title: "Invalid date",
-          description: "Enter a valid reminder date.",
-          variant: "destructive",
-        })
-        setDraftDates((previous) => ({ ...previous, [applicationId]: previousDateValue }))
-        return
-      }
-
-      void updateFollowUp(applicationId, enabled, iso)
+      void updateFollowUp(row.application.id, false, null)
     },
-    [toast, updateFollowUp],
+    [openReminderDialog, updateFollowUp],
   )
 
   const summaryCards = [
@@ -273,9 +244,18 @@ export default function FollowUpsPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {isLoading ? (
-                  <div className="space-y-3">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {Array.from({ length: 4 }).map((_, index) => (
-                      <Skeleton key={index} className="h-16 w-full" />
+                      <Card key={index} className="border-dashed">
+                        <CardHeader>
+                          <Skeleton className="h-5 w-24" />
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-4 w-2/3" />
+                          <Skeleton className="h-10 w-full" />
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 ) : rows.length === 0 ? (
@@ -283,126 +263,91 @@ export default function FollowUpsPage() {
                     Add job applications to start planning your follow-up cadence.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Role</TableHead>
-                          <TableHead className="hidden lg:table-cell">Applied</TableHead>
-                          <TableHead className="hidden lg:table-cell">Status</TableHead>
-                          <TableHead>Reminder date</TableHead>
-                          <TableHead>Next reminder</TableHead>
-                          <TableHead className="hidden xl:table-cell">Last reminder</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rows.map((row) => {
-                          const draftDate = draftDates[row.application.id] ?? isoStringToDateInput(row.followUp?.next_follow_up_date ?? null)
-                          const isPending = pending[row.application.id]
-                          const storedDate = isoStringToDateInput(row.followUp?.next_follow_up_date ?? null)
-                          return (
-                            <TableRow
-                              key={row.application.id}
-                              className={cn(row.status === "due" && "bg-destructive/5")}
-                            >
-                              <TableCell className="max-w-xs">
-                                <div className="font-medium line-clamp-1">{row.application.company_name}</div>
-                                <div className="text-sm text-muted-foreground line-clamp-2">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {rows.map((row) => {
+                      const isPending = pending[row.application.id]
+                      const appliedDate = getDateOrNull(row.application.application_date)
+                      const appliedLabel = appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
+                      const nextReminderLabel = row.enabled && row.nextReminder
+                        ? row.status === "due"
+                          ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
+                          : format(row.nextReminder, "MMM d, yyyy")
+                        : "Not scheduled"
+                      const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
+
+                      return (
+                        <Card
+                          key={row.application.id}
+                          className={cn(
+                            "flex h-full flex-col border transition",
+                            row.status === "due" && "border-destructive/60 shadow-[0_0_0_1px] shadow-destructive/10",
+                          )}
+                        >
+                          <CardHeader className="space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <CardTitle className="text-lg font-semibold">
+                                  {row.application.company_name}
+                                </CardTitle>
+                                <p className="text-sm text-muted-foreground">
                                   {row.application.position_title}
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                                {(() => {
-                                  const appliedDate = getDateOrNull(row.application.application_date)
-                                  return appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
-                                })()}
-                              </TableCell>
-                              <TableCell className="hidden lg:table-cell">
-                                <Badge variant="outline" className={getStatusBadgeTone(row.status)}>
-                                  {row.status === "due" ? "Due" : row.status === "upcoming" ? "Scheduled" : "Off"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-3">
+                                </p>
+                              </div>
+                              <Badge variant="outline" className={getStatusBadgeTone(row.status)}>
+                                {row.status === "due"
+                                  ? "Follow-up due"
+                                  : row.status === "upcoming"
+                                    ? "Scheduled"
+                                    : "Off"}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="flex flex-1 flex-col justify-between space-y-4">
+                            <div className="space-y-3 text-sm">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground">Applied</span>
+                                <span className="font-medium">{appliedLabel}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground">Next reminder</span>
+                                <span className="font-medium text-right">{nextReminderLabel}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-muted-foreground">Last reminder</span>
+                                <span className="font-medium">{lastReminderLabel}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3 border-t pt-4">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
                                   <Switch
                                     checked={row.enabled}
-                                    onCheckedChange={(checked) => {
-                                      if (checked === row.enabled) {
-                                        return
-                                      }
-
-                                      const existingDate = draftDates[row.application.id] ?? storedDate
-                                      let nextDateValue = existingDate
-
-                                      if (checked && !nextDateValue) {
-                                        const today = formatDateForInput(new Date())
-                                        nextDateValue = today
-                                        setDraftDates((previous) => ({ ...previous, [row.application.id]: today }))
-                                      }
-
-                                      const iso = localDateInputToISOString(nextDateValue)
-
-                                      if (checked && !iso) {
-                                        toast({
-                                          title: "Invalid date",
-                                          description: "Enter a valid reminder date before enabling.",
-                                          variant: "destructive",
-                                        })
-                                        return
-                                      }
-
-                                      void updateFollowUp(row.application.id, checked, iso)
-                                    }}
+                                    onCheckedChange={(checked) => handleEnableToggle(row, checked)}
                                     disabled={isPending}
                                   />
-                                  <div className="space-y-1">
-                                    <Label
-                                      htmlFor={`reminder-${row.application.id}`}
-                                      className="text-xs text-muted-foreground"
-                                    >
-                                      Remind me on
-                                    </Label>
-                                    <Input
-                                      id={`reminder-${row.application.id}`}
-                                      type="date"
-                                      value={draftDate}
-                                      onChange={(event) => {
-                                        const { value } = event.target
-                                        setDraftDates((previous) => ({ ...previous, [row.application.id]: value }))
-                                      }}
-                                      onBlur={() => {
-                                        const value = draftDates[row.application.id] ?? ""
-                                        handleDateCommit(row.application.id, row.enabled, value, storedDate)
-                                      }}
-                                      className="h-9 w-36"
-                                      disabled={isPending}
-                                    />
-                                  </div>
+                                  <span className="text-sm font-medium">Automatic reminder</span>
                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                {row.enabled && row.nextReminder ? (
-                                  <span className="text-sm font-medium">
-                                    {row.status === "due"
-                                      ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
-                                      : format(row.nextReminder, "MMM d, yyyy")}
-                                  </span>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">Not scheduled</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
-                                {row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"}
-                              </TableCell>
-                              <TableCell className="flex items-center justify-end gap-2">
-                                <FollowUpDraftDialog application={row.application} disabled={!row.enabled} />
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })}
-                      </TableBody>
-                    </Table>
+                                <Button
+                                  size="sm"
+                                  variant={row.enabled ? "outline" : "default"}
+                                  onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
+                                  disabled={isPending}
+                                >
+                                  {row.enabled ? "Edit reminder" : "Schedule reminder"}
+                                </Button>
+                              </div>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-sm text-muted-foreground">
+                                  Generate an email when you’re ready to follow up.
+                                </p>
+                                <FollowUpDraftDialog application={row.application} disabled={!row.enabled || isPending} />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -416,6 +361,72 @@ export default function FollowUpsPage() {
           )}
         </div>
       </main>
+
+      <Dialog
+        open={Boolean(reminderDialog)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReminderDialog(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>
+              {reminderDialog?.isEnabling ? "Schedule your next reminder" : "Update reminder"}
+            </DialogTitle>
+            <DialogDescription>
+              {reminderDialog
+                ? `Choose when ferm.dev should remind you about ${reminderDialog.application.company_name}.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Calendar
+              mode="single"
+              selected={reminderDialog?.date ?? undefined}
+              defaultMonth={reminderDialog?.date ?? undefined}
+              onSelect={(date) => {
+                setReminderDialog((previous) => (previous ? { ...previous, date: date ?? previous.date } : previous))
+              }}
+              className="rounded-md border"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setReminderDialog(null)}
+              disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!reminderDialog) {
+                  return
+                }
+
+                const iso = dateToLocalISOString(reminderDialog.date)
+
+                if (!iso) {
+                  toast({
+                    title: "Select a date",
+                    description: "Pick when you’d like to be reminded.",
+                    variant: "destructive",
+                  })
+                  return
+                }
+
+                void updateFollowUp(reminderDialog.application.id, true, iso)
+                setReminderDialog(null)
+              }}
+              disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+            >
+              Save reminder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

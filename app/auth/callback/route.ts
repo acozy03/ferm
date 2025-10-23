@@ -43,8 +43,13 @@ export async function GET(req: NextRequest) {
 
   const code = url.searchParams.get("code");
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
+    try {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        return NextResponse.redirect(new URL("/auth?error=oauth", baseUrl));
+      }
+    } catch (error) {
+      console.error("Failed to exchange OAuth code for Supabase session", error);
       return NextResponse.redirect(new URL("/auth?error=oauth", baseUrl));
     }
   }
