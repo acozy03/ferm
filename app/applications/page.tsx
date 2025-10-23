@@ -14,14 +14,13 @@ import { ArrowRight } from "lucide-react"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useActivityLog } from "@/lib/hooks/use-activity-log"
-import { useSettings } from "@/components/settings-provider"
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import { formatStatusLabel, getStatusBadgeClass, getStatusStage, isActiveStage } from "@/lib/status"
+import { getDateOrNull } from "@/lib/date"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 export default function ApplicationsPage() {
-  const { settings } = useSettings()
   const { applications, isLoading, error } = useJobApplications({ limit: 100, include_interviews: true })
   const { interviews: upcomingInterviews } = useInterviews({ upcoming_only: true })
   const { activities, isLoading: isLoadingActivity } = useActivityLog()
@@ -34,39 +33,40 @@ export default function ApplicationsPage() {
         day: "numeric",
         hour: "numeric",
         minute: "2-digit",
-        timeZone: settings.timezone,
       }),
-    [settings.timezone],
+    [],
   )
 
   const pipelineSummary = useMemo(() => {
     const now = Date.now()
     const active = applications.filter((app) => isActiveStage(getStatusStage(app.status))).length
     const recentSubmissions = applications.filter((app) => {
-      const appliedAt = new Date(app.application_date).getTime()
-      return !Number.isNaN(appliedAt) && now - appliedAt <= SEVEN_DAYS_MS
+      const appliedAt = getDateOrNull(app.application_date)
+      return appliedAt ? now - appliedAt.getTime() <= SEVEN_DAYS_MS : false
     }).length
     const pendingResponse = applications.filter((app) => app.status === "Applied").length
 
     const followUpRecords = followUps.filter((item) => item.enabled && item.next_follow_up_date)
     const followUpsDue = followUpRecords.filter((item) => {
-      if (!item.next_follow_up_date) return false
-      return new Date(item.next_follow_up_date).getTime() <= now
+      const nextDate = getDateOrNull(item.next_follow_up_date)
+      return nextDate ? nextDate.getTime() <= now : false
     }).length
     const nextFollowUp = followUpRecords
       .filter((item) => {
-        if (!item.next_follow_up_date) return false
-        return new Date(item.next_follow_up_date).getTime() > now
+        const nextDate = getDateOrNull(item.next_follow_up_date)
+        return nextDate ? nextDate.getTime() > now : false
       })
       .sort((a, b) => {
-        const left = a.next_follow_up_date ? new Date(a.next_follow_up_date).getTime() : Number.POSITIVE_INFINITY
-        const right = b.next_follow_up_date ? new Date(b.next_follow_up_date).getTime() : Number.POSITIVE_INFINITY
+        const left = getDateOrNull(a.next_follow_up_date)?.getTime() ?? Number.POSITIVE_INFINITY
+        const right = getDateOrNull(b.next_follow_up_date)?.getTime() ?? Number.POSITIVE_INFINITY
         return left - right
       })[0]
 
-    const sortedUpcoming = [...upcomingInterviews].sort(
-      (a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime(),
-    )
+    const sortedUpcoming = [...upcomingInterviews].sort((a, b) => {
+      const left = getDateOrNull(a.scheduled_date)?.getTime() ?? Number.POSITIVE_INFINITY
+      const right = getDateOrNull(b.scheduled_date)?.getTime() ?? Number.POSITIVE_INFINITY
+      return left - right
+    })
     const nextInterview = sortedUpcoming[0]
 
     return [
@@ -81,9 +81,12 @@ export default function ApplicationsPage() {
       {
         label: "Interviews scheduled",
         value: upcomingInterviews.length,
-        helper: nextInterview
-          ? `Next: ${interviewDateFormatter.format(new Date(nextInterview.scheduled_date))}`
-          : "No interviews scheduled",
+        helper: (() => {
+          const nextInterviewDate = nextInterview ? getDateOrNull(nextInterview.scheduled_date) : null
+          return nextInterviewDate
+            ? `Next: ${interviewDateFormatter.format(nextInterviewDate)}`
+            : "No interviews scheduled"
+        })(),
       },
       {
         label: "Awaiting responses",
@@ -91,9 +94,12 @@ export default function ApplicationsPage() {
         helper:
           followUpsDue > 0
             ? `${followUpsDue} reminder${followUpsDue === 1 ? "" : "s"} ready for follow-up`
-            : nextFollowUp?.next_follow_up_date
-              ? `Next reminder ${formatDistanceToNow(new Date(nextFollowUp.next_follow_up_date), { addSuffix: true })}`
-              : "All follow-ups are up to date",
+            : (() => {
+                const nextFollowUpDate = getDateOrNull(nextFollowUp?.next_follow_up_date ?? null)
+                return nextFollowUpDate
+                  ? `Next reminder ${formatDistanceToNow(nextFollowUpDate, { addSuffix: true })}`
+                  : "All follow-ups are up to date"
+              })(),
       },
     ]
   }, [applications, followUps, upcomingInterviews, interviewDateFormatter])
@@ -223,22 +229,16 @@ export default function ApplicationsPage() {
                         followUp: item,
                         application: applicationMap.get(item.job_application_id),
                       }))
-                      .filter((entry) => entry.application && entry.followUp.next_follow_up_date)
-                      .sort((a, b) => {
-                        const left = a.followUp.next_follow_up_date
-                          ? new Date(a.followUp.next_follow_up_date).getTime()
-                          : Number.POSITIVE_INFINITY
-                        const right = b.followUp.next_follow_up_date
-                          ? new Date(b.followUp.next_follow_up_date).getTime()
-                          : Number.POSITIVE_INFINITY
+                  .filter((entry) => entry.application && entry.followUp.next_follow_up_date)
+                  .sort((a, b) => {
+                        const left = getDateOrNull(a.followUp.next_follow_up_date)?.getTime() ?? Number.POSITIVE_INFINITY
+                        const right = getDateOrNull(b.followUp.next_follow_up_date)?.getTime() ?? Number.POSITIVE_INFINITY
                         return left - right
                       })
                       .slice(0, 3)
                       .map((entry) => {
                         const { application, followUp } = entry
-                        const dueDate = followUp.next_follow_up_date
-                          ? new Date(followUp.next_follow_up_date)
-                          : null
+                        const dueDate = getDateOrNull(followUp.next_follow_up_date)
                         const isDue = dueDate ? dueDate.getTime() <= Date.now() : false
                         return (
                           <div key={followUp.id} className="rounded-lg border p-3 space-y-1">

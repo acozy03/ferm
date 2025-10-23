@@ -14,6 +14,7 @@ import { JobScoreIndicator } from "@/components/job-score-indicator"
 import type { JobApplication, JobApplicationStatus } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
+import { getDateOrNull } from "@/lib/date"
 
 interface JobApplicationCardProps {
   application: JobApplication
@@ -26,7 +27,11 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    const parsed = getDateOrNull(dateString)
+    if (!parsed) {
+      return "Date unavailable"
+    }
+    return parsed.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",

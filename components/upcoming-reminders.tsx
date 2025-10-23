@@ -1,40 +1,34 @@
 "use client"
 
-import Link from "next/link"
 import { useMemo } from "react"
-import { formatDistanceToNow, isValid, parseISO } from "date-fns"
-import { BellRing, CalendarClock, Clock, Mail } from "lucide-react"
+import { BellRing, CalendarClock, Mail } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useSettings } from "@/components/settings-provider"
 
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import type { ApplicationFollowUp, JobApplication } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
+import { getDateOrNow, getDateOrNull } from "@/lib/date"
 
 const MAX_VISIBLE_REMINDERS = 4
 
-function computeNextReminder(
-  application: JobApplication,
-  followUp: ApplicationFollowUp,
-): Date | null {
+function computeNextReminder(application: JobApplication, followUp: ApplicationFollowUp): Date | null {
   if (!followUp.enabled) {
     return null
   }
 
   if (followUp.next_follow_up_date) {
-    const parsed = parseISO(followUp.next_follow_up_date)
-    if (isValid(parsed)) {
+    const parsed = getDateOrNull(followUp.next_follow_up_date)
+    if (parsed) {
       return parsed
     }
   }
 
   const baselineSource = followUp.last_notified_at ?? application.application_date
-  const baseline = isValid(new Date(baselineSource)) ? new Date(baselineSource) : new Date()
+  const baseline = getDateOrNow(baselineSource)
   const candidate = new Date(baseline)
   candidate.setDate(candidate.getDate() + followUp.interval_days)
   return candidate
@@ -63,7 +57,6 @@ const reminderThemes: Record<ReminderStatus, ReminderTheme> = {
 }
 
 export function UpcomingReminders() {
-  const { settings } = useSettings()
   const { followUps, isLoading: isLoadingFollowUps, error } = useApplicationFollowUps()
   const {
     applications,
@@ -76,9 +69,8 @@ export function UpcomingReminders() {
       new Intl.DateTimeFormat("en-US", {
         month: "short",
         day: "numeric",
-        timeZone: settings.timezone,
       }),
-    [settings.timezone],
+    [],
   )
 
   const timeFormatter = useMemo(
@@ -87,9 +79,8 @@ export function UpcomingReminders() {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
-        timeZone: settings.timezone,
       }),
-    [settings.timezone],
+    [],
   )
 
   const isLoading = isLoadingFollowUps || isLoadingApplications

@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { format, formatDistanceToNow, isValid, parseISO } from "date-fns"
+import { format, formatDistanceToNow } from "date-fns"
 import { CheckCircle2, Clock, Mail } from "lucide-react"
 
 import { Header } from "@/components/header"
@@ -21,6 +21,7 @@ import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import type { ApplicationFollowUp, JobApplication } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
+import { getDateOrNull, getDateOrNow } from "@/lib/date"
 
 import { FollowUpDraftDialog } from "@/components/follow-up-draft-dialog"
 export const dynamic = "force-dynamic"
@@ -49,14 +50,14 @@ function computeNextReminder(
   }
 
   if (followUp.next_follow_up_date) {
-    const parsed = parseISO(followUp.next_follow_up_date)
-    if (isValid(parsed)) {
+    const parsed = getDateOrNull(followUp.next_follow_up_date)
+    if (parsed) {
       return parsed
     }
   }
 
   const baselineSource = followUp?.last_notified_at ?? application.application_date
-  const baseline = isValid(new Date(baselineSource)) ? new Date(baselineSource) : new Date()
+  const baseline = getDateOrNow(baselineSource)
   const candidate = new Date(baseline)
   candidate.setDate(candidate.getDate() + intervalDays)
   return candidate
@@ -87,7 +88,7 @@ export default function FollowUpsPage() {
       const intervalDays = draftIntervals[application.id] ?? followUp?.interval_days ?? DEFAULT_INTERVAL
       const enabled = followUp?.enabled ?? false
       const nextReminder = computeNextReminder(application, intervalDays, followUp)
-      const lastSent = followUp?.last_notified_at ? new Date(followUp.last_notified_at) : null
+      const lastSent = getDateOrNull(followUp?.last_notified_at ?? null)
       let status: FollowUpRow["status"] = "disabled"
       if (enabled && nextReminder) {
         status = nextReminder.getTime() <= now ? "due" : "upcoming"
@@ -347,7 +348,10 @@ export default function FollowUpsPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                                {format(new Date(row.application.application_date), "MMM d, yyyy")}
+                                {(() => {
+                                  const appliedDate = getDateOrNull(row.application.application_date)
+                                  return appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
+                                })()}
                               </TableCell>
                               <TableCell className="hidden lg:table-cell">
                                 <Badge variant="outline" className={getStatusBadgeTone(row.status)}>

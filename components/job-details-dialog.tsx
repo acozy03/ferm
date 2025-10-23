@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { MapPin, DollarSign, Calendar, FileText, Edit, Save, X } from "lucide-react"
 import type { JobApplication as DbJobApplication } from "@/lib/types/database"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
+import { getDateOrNull } from "@/lib/date"
 
 type JobDetailsDialogProps = {
   application: DbJobApplication
@@ -38,7 +39,11 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
   const hasStructuredSections = Boolean(jobDescription || qualificationLines.length > 0 || responsibilityLines.length > 0)
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    const parsed = getDateOrNull(dateString)
+    if (!parsed) {
+      return "Date unavailable"
+    }
+    return parsed.toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -70,9 +75,13 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
     setIsEditing(false)
   }
 
-  const daysSinceApplied = Math.floor(
-    (Date.now() - new Date(application.application_date).getTime()) / (1000 * 60 * 60 * 24),
-  )
+  const computedDaysSinceApplied = (() => {
+    const appliedDate = getDateOrNull(application.application_date)
+    if (!appliedDate) {
+      return null
+    }
+    return Math.floor((Date.now() - appliedDate.getTime()) / (1000 * 60 * 60 * 24))
+  })()
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -119,7 +128,9 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
               </div>
               <div className="text-sm">
                 <span className="text-muted-foreground">Days since applied:</span>
-                <span className="ml-2">{daysSinceApplied} days</span>
+                <span className="ml-2">
+                  {computedDaysSinceApplied != null ? `${computedDaysSinceApplied} days` : "Date unavailable"}
+                </span>
               </div>
             </div>
           </div>

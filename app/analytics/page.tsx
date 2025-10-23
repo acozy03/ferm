@@ -21,6 +21,7 @@ import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useActivityLog } from "@/lib/hooks/use-activity-log"
+import { getDateOrNull } from "@/lib/date"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const SANKEY_BASE_NODE = "Applications Submitted"
@@ -112,8 +113,8 @@ export default function AnalyticsPage() {
   const staleFollowUpIds = applications
     .filter((app) => {
       if (app.status !== "Applied") return false
-      const appliedAt = new Date(app.application_date)
-      return Number.isNaN(appliedAt.getTime()) ? false : Date.now() - appliedAt.getTime() > SEVEN_DAYS_MS
+      const appliedAt = getDateOrNull(app.application_date)
+      return appliedAt ? Date.now() - appliedAt.getTime() > SEVEN_DAYS_MS : false
     })
     .map((app) => app.id)
   const staleFollowUps = staleFollowUpIds.length

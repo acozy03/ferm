@@ -12,6 +12,7 @@ import { Building2, Mail, NotebookPen } from "lucide-react"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { formatStatusLabel, getStatusStage, isActiveStage } from "@/lib/status"
 import type { PipelineStage } from "@/lib/status"
+import { getDateOrNull } from "@/lib/date"
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -64,8 +65,8 @@ export default function CompaniesPage() {
       existing.latestUpdate = Math.max(existing.latestUpdate, safeUpdatedAt)
 
       if (application.status === "Applied") {
-        const appliedAt = new Date(application.application_date).getTime()
-        if (!Number.isNaN(appliedAt) && Date.now() - appliedAt > SEVEN_DAYS_MS) {
+        const appliedAt = getDateOrNull(application.application_date)
+        if (appliedAt && Date.now() - appliedAt.getTime() > SEVEN_DAYS_MS) {
           existing.followUpDue = true
         }
       }

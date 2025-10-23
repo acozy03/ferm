@@ -34,6 +34,7 @@ import { useSettings } from "@/components/settings-provider"
 import { ApplicationActionsMenu } from "@/components/application-actions-menu"
 import { defaultViewOptions } from "@/lib/settings"
 import { cn } from "@/lib/utils"
+import { getDateOrNull } from "@/lib/date"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
 
 const serializeFilters = (filters: JobApplicationFilters) =>
@@ -189,22 +190,26 @@ export default function Dashboard() {
         month: "short",
         day: "numeric",
         year: "numeric",
-        timeZone: settings.timezone,
       }),
-    [settings.timezone],
+    [],
   )
 
   const timelineItems = useMemo(() => {
-    return [...applications].sort(
-      (a, b) => new Date(a.application_date).getTime() - new Date(b.application_date).getTime(),
-    )
+    return [...applications].sort((a, b) => {
+      const left = getDateOrNull(a.application_date)?.getTime() ?? Number.POSITIVE_INFINITY
+      const right = getDateOrNull(b.application_date)?.getTime() ?? Number.POSITIVE_INFINITY
+      return left - right
+    })
   }, [applications])
 
   const relativeDayFormatter = useMemo(() => new Intl.RelativeTimeFormat("en", { numeric: "auto" }), [])
 
   const formatDaysSinceApplied = useCallback(
     (dateString: string) => {
-      const appliedDate = new Date(dateString)
+      const appliedDate = getDateOrNull(dateString)
+      if (!appliedDate) {
+        return "Date unavailable"
+      }
       const now = new Date()
       const millisecondsInDay = 1000 * 60 * 60 * 24
       const diff = Math.round((appliedDate.getTime() - now.getTime()) / millisecondsInDay)
@@ -216,6 +221,17 @@ export default function Dashboard() {
       return relativeDayFormatter.format(diff, "day")
     },
     [relativeDayFormatter],
+  )
+
+  const formatApplicationDate = useCallback(
+    (dateString: string) => {
+      const parsed = getDateOrNull(dateString)
+      if (!parsed) {
+        return "Date unavailable"
+      }
+      return timelineDateFormatter.format(parsed)
+    },
+    [timelineDateFormatter],
   )
 
   const totalPages = Math.max(1, totalPagesFromResponse || 1)
@@ -619,7 +635,7 @@ export default function Dashboard() {
                                   <TableCell>
                                     <div className="flex flex-col">
                                       <span className="text-sm font-medium">
-                                        {timelineDateFormatter.format(new Date(application.application_date))}
+                                        {formatApplicationDate(application.application_date)}
                                       </span>
                                       <span className="text-xs text-muted-foreground">
                                         {formatDaysSinceApplied(application.application_date)}
@@ -739,7 +755,7 @@ export default function Dashboard() {
                                   </div>
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                   <span>
-                                    Applied {timelineDateFormatter.format(new Date(application.application_date))}
+                                    Applied {formatApplicationDate(application.application_date)}
                                   </span>
                                   <span>•</span>
                                   <span>{formatDaysSinceApplied(application.application_date)}</span>

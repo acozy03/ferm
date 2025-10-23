@@ -25,7 +25,6 @@ import {
   defaultViewOptions,
   digestFrequencyOptions,
   themeOptions,
-  timezoneOptions,
   type DigestFrequency,
   type SettingsState,
   type ThemePreference,
@@ -182,24 +181,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
                         </SelectTrigger>
                         <SelectContent>
                           {themeOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="timezone">Time zone</Label>
-                      <Select
-                        value={draft.timezone}
-                        onValueChange={(value) => updateDraft("timezone", value)}
-                      >
-                        <SelectTrigger id="timezone">
-                          <SelectValue placeholder="Select time zone" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {timezoneOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>

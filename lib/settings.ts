@@ -2,17 +2,6 @@ import type { JobApplicationStatus } from "@/lib/types/database"
 
 export const SETTINGS_STORAGE_KEY = "ferm.settings"
 
-export const timezoneOptions = [
-  { label: "Pacific Time (PT)", value: "America/Los_Angeles" },
-  { label: "Mountain Time (MT)", value: "America/Denver" },
-  { label: "Central Time (CT)", value: "America/Chicago" },
-  { label: "Eastern Time (ET)", value: "America/New_York" },
-  { label: "Greenwich Mean Time (GMT)", value: "Europe/London" },
-  { label: "Central European Time (CET)", value: "Europe/Berlin" },
-  { label: "India Standard Time (IST)", value: "Asia/Kolkata" },
-  { label: "Singapore Time (SGT)", value: "Asia/Singapore" },
-] as const
-
 export const themeOptions = [
   { label: "System", value: "system" },
   { label: "Light", value: "light" },
@@ -46,7 +35,6 @@ export interface SettingsState {
   email: string
   jobFocus: string
   theme: ThemePreference
-  timezone: string
   defaultView: string
   defaultSort: string
   digestFrequency: DigestFrequency
@@ -66,7 +54,6 @@ export const defaultSettings: SettingsState = {
   email: "",
   jobFocus: "",
   theme: "system",
-  timezone: "America/Los_Angeles",
   defaultView: "pipeline",
   defaultSort: "recent",
   digestFrequency: "weekly",
