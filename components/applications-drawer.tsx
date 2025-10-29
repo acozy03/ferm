@@ -25,6 +25,12 @@ import {
 import type { PipelineStage } from "@/lib/status"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+type SortOption = {
+  value: string
+  label: string
+  sort: JobApplicationSort
+}
+
 type FilterChip =
   | { type: "status"; value: string; label: string }
   | { type: "priority"; value: Priority; label: string }
@@ -40,10 +46,30 @@ type ApplicationsDrawerProps = {
   sort: JobApplicationSort
   onApplicationUpdate: () => void
   onFiltersChange: (filters: JobApplicationFilters) => void
+  onSortChange: (sort: JobApplicationSort) => void
 }
 
 const DRAWER_PAGE_SIZE = 12
 const priorityOptions: Priority[] = ["Low", "Medium", "High"]
+const sortOptions: SortOption[] = [
+  { value: "created_at:desc", label: "Recently added", sort: { field: "created_at", direction: "desc" } },
+  { value: "created_at:asc", label: "Oldest added", sort: { field: "created_at", direction: "asc" } },
+  { value: "updated_at:desc", label: "Recently updated", sort: { field: "updated_at", direction: "desc" } },
+  { value: "updated_at:asc", label: "Least recently updated", sort: { field: "updated_at", direction: "asc" } },
+  {
+    value: "application_date:desc",
+    label: "Most recent application date",
+    sort: { field: "application_date", direction: "desc" },
+  },
+  {
+    value: "application_date:asc",
+    label: "Oldest application date",
+    sort: { field: "application_date", direction: "asc" },
+  },
+  { value: "priority:desc", label: "Priority (High to Low)", sort: { field: "priority", direction: "desc" } },
+  { value: "priority:asc", label: "Priority (Low to High)", sort: { field: "priority", direction: "asc" } },
+  { value: "company_name:asc", label: "Company name (A–Z)", sort: { field: "company_name", direction: "asc" } },
+]
 
 export function ApplicationsDrawer({
   open,
@@ -52,12 +78,17 @@ export function ApplicationsDrawer({
   sort,
   onApplicationUpdate,
   onFiltersChange,
+  onSortChange,
 }: ApplicationsDrawerProps) {
   const [searchTerm, setSearchTerm] = useState(filters.search ?? "")
   const [page, setPage] = useState(1)
   const [statusBuilder, setStatusBuilder] = useState<PipelineStage | undefined>(undefined)
 
   const trimmedSearch = useMemo(() => searchTerm.trim(), [searchTerm])
+  const selectedSortValue = useMemo(() => {
+    const key = `${sort.field}:${sort.direction}`
+    return sortOptions.some((option) => option.value === key) ? key : sortOptions[0]?.value ?? ""
+  }, [sort.direction, sort.field])
 
   useEffect(() => {
     if (!open) {
@@ -87,6 +118,14 @@ export function ApplicationsDrawer({
 
     setPage(1)
   }, [open, filterSignature])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    setPage(1)
+  }, [open, sort.direction, sort.field])
 
   const combinedFilters: JobApplicationFilters = {
     ...filters,
@@ -265,6 +304,16 @@ export function ApplicationsDrawer({
     setPage((current) => (current < (total_pages || 1) ? current + 1 : current))
   }
 
+  const handleSortSelect = (value: string) => {
+    const option = sortOptions.find((item) => item.value === value)
+    if (!option) {
+      return
+    }
+
+    setPage(1)
+    onSortChange(option.sort)
+  }
+
   const hasActiveFilters = activeFilters.length > 0
 
   return (
@@ -291,24 +340,44 @@ export function ApplicationsDrawer({
         <div className="border-t">
           <div className="flex flex-col gap-4 p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="relative w-full lg:max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  placeholder="Search applications by role, company, notes, and more"
-                  className="pl-9 pr-10"
-                />
-                {searchTerm ? (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-                  >
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">Clear search</span>
-                  </button>
-                ) : null}
+              <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+                <div className="relative w-full lg:max-w-md">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    placeholder="Search applications by role, company, notes, and more"
+                    className="pl-9 pr-10"
+                  />
+                  {searchTerm ? (
+                    <button
+                      type="button"
+                      onClick={clearSearch}
+                      className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Clear search</span>
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-col gap-1 lg:w-64">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Sort applications
+                  </span>
+                  <Select value={selectedSortValue} onValueChange={handleSortSelect}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sortOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="text-sm text-muted-foreground">

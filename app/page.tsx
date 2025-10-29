@@ -278,6 +278,19 @@ export default function Dashboard() {
     })
   }
 
+  const handleSortChange = useCallback(
+    (nextSort: JobApplicationSort) => {
+      if (nextSort.field === sort.field && nextSort.direction === sort.direction) {
+        return
+      }
+
+      setSort(nextSort)
+      setPage(1)
+      commitState({ sort: nextSort, page: 1 })
+    },
+    [commitState, sort.direction, sort.field],
+  )
+
   const handleViewChange = (nextView: DashboardView) => {
     if (nextView === view) {
       return
@@ -836,6 +849,7 @@ export default function Dashboard() {
         sort={sort}
         onApplicationUpdate={handleApplicationUpdate}
         onFiltersChange={handleFilterChange}
+        onSortChange={handleSortChange}
       />
     </div>
   )

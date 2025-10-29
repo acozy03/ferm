@@ -3,11 +3,8 @@
 import { useMemo, useRef } from "react"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, Target, Clock3 } from "lucide-react"
 import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip } from "recharts"
 import { toPng } from "html-to-image"
 import {
@@ -19,11 +16,7 @@ import {
 
 import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
-import { useInterviews } from "@/lib/hooks/use-interviews"
-import { useActivityLog } from "@/lib/hooks/use-activity-log"
-import { getDateOrNull } from "@/lib/date"
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const SANKEY_BASE_NODE = "Applications Submitted"
 type SankeyNodeWithCount = {
   name: string
@@ -102,70 +95,12 @@ export default function AnalyticsPage() {
   const sankeyContainerRef = useRef<HTMLDivElement>(null)
   const { stats, isLoading: statsLoading } = useDashboardStats()
   const { applications, isLoading: appsLoading } = useJobApplications({ limit: 200, include_status_history: true })
-  const { interviews: upcomingInterviews } = useInterviews({ upcoming_only: true })
-  const { activities, isLoading: activityLoading } = useActivityLog()
 
   const totalApplications = stats?.total_applications ?? 0
   const interviewConversion = stats && stats.applied > 0 ? Math.round((stats.interviews / stats.applied) * 100) : 0
   const offerRate = stats && totalApplications > 0 ? Math.round((stats.offers / totalApplications) * 100) : 0
   const activePipeline = applications.filter((app) => isActiveStage(getStatusStage(app.status))).length
   const awaitingResponse = applications.filter((app) => app.status === "Applied").length
-  const staleFollowUpIds = applications
-    .filter((app) => {
-      if (app.status !== "Applied") return false
-      const appliedAt = getDateOrNull(app.application_date)
-      return appliedAt ? Date.now() - appliedAt.getTime() > SEVEN_DAYS_MS : false
-    })
-    .map((app) => app.id)
-  const staleFollowUps = staleFollowUpIds.length
-
-  const statusCounts = useMemo(
-    () =>
-      applications.reduce(
-        (acc, application) => {
-          const stage = getStatusStage(application.status)
-
-          switch (stage) {
-            case "applied":
-              acc.applied += 1
-              break
-            case "interview":
-              acc.interview += 1
-              break
-            case "offer":
-              acc.offer += 1
-              break
-            case "accepted":
-              acc.accepted += 1
-              break
-            case "rejected":
-              acc.rejected += 1
-              break
-            case "ghosted":
-              acc.ghosted += 1
-              break
-            case "withdrawn":
-              acc.withdrawn += 1
-              break
-            default:
-              break
-          }
-
-          return acc
-        },
-        {
-          applied: 0,
-          interview: 0,
-          offer: 0,
-          accepted: 0,
-          rejected: 0,
-          ghosted: 0,
-          withdrawn: 0,
-        },
-      ),
-    [applications],
-  )
-
   const sankeyData = useMemo(() => {
     const baseNode = SANKEY_BASE_NODE
     const baseColor = getStatusChartColor("Applied")
@@ -318,63 +253,6 @@ export default function AnalyticsPage() {
     [activePipeline, appsLoading, awaitingResponse, interviewConversion, offerRate, stats],
   )
 
-  const funnelStages = useMemo(
-    () => [
-      { stage: "Applied", value: stats?.applied ?? 0 },
-      { stage: "Interview", value: stats?.interviews ?? 0 },
-      { stage: "Offer", value: stats?.offers ?? 0 },
-      { stage: "Accepted", value: stats?.accepted ?? 0 },
-    ],
-    [stats?.accepted, stats?.applied, stats?.interviews, stats?.offers],
-  )
-
-  const momentumInsights = useMemo(
-    () => [
-      {
-        icon: TrendingUp,
-        text: `Response rate is ${stats?.response_rate ?? 0}% with ${stats?.interviews ?? 0} interviews on the calendar.`,
-      },
-      {
-        icon: Target,
-        text: `${upcomingInterviews.length} upcoming interview${upcomingInterviews.length === 1 ? "" : "s"} scheduled; prioritise prep for the nearest date.`,
-      },
-      {
-        icon: Clock3,
-        text: (() => {
-          const followUpText =
-            awaitingResponse > 0
-              ? `${staleFollowUps} application${staleFollowUps === 1 ? "" : "s"} have been waiting more than a week. Time for a follow-up.`
-              : "All pending applications have received recent follow-ups."
-          if (statusCounts.ghosted > 0) {
-            return `${followUpText} ${statusCounts.ghosted} application${statusCounts.ghosted === 1 ? " has" : "s have"} been marked as ghosted.`
-          }
-          return followUpText
-        })(),
-      },
-    ],
-    [
-      awaitingResponse,
-      staleFollowUps,
-      stats?.interviews,
-      stats?.response_rate,
-      statusCounts.ghosted,
-      upcomingInterviews.length,
-    ],
-  )
-
-  const recentWindow = Date.now() - SEVEN_DAYS_MS
-  const recentActivities = activities.filter((activity) => new Date(activity.created_at).getTime() >= recentWindow)
-  const weeklyRecap = useMemo(() => {
-    const createdCount = recentActivities.filter((activity) => activity.action_type === "application_created").length
-    const interviewsScheduled = recentActivities.filter((activity) => activity.action_type === "interview_scheduled").length
-    const statusChanges = recentActivities.filter((activity) => activity.action_type === "status_change").length
-
-    return [
-      `Applications added in the last 7 days: ${createdCount}.`,
-      `Interviews scheduled this week: ${interviewsScheduled}.`,
-      `Status updates logged: ${statusChanges}.`,
-    ]
-  }, [recentActivities])
 
   return (
     <div className="min-h-screen bg-background">
@@ -491,62 +369,7 @@ export default function AnalyticsPage() {
             </div>
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Pipeline conversion</CardTitle>
-                <Badge variant="secondary">Current snapshot</Badge>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {statsLoading ? (
-                  Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-8 w-full" />)
-                ) : (
-                  funnelStages.map((stage, index) => {
-                    const baseline = funnelStages[0]?.value || 1
-                    const percentage = index === 0 ? 100 : Math.round((stage.value / baseline) * 100)
-                    return (
-                      <div key={stage.stage} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium text-foreground">{stage.stage}</span>
-                          <span className="text-muted-foreground">{percentage}%</span>
-                        </div>
-                        <Progress value={percentage} className="h-2" />
-                      </div>
-                    )
-                  })
-                )}
-              </CardContent>
-            </Card>
 
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Momentum indicators</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm text-muted-foreground">
-                {momentumInsights.map(({ icon: Icon, text }) => (
-                  <div key={text} className="flex items-start gap-3">
-                    <Icon className="h-4 w-4 mt-1 text-primary" />
-                    <p className="text-pretty">{text}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </section>
-
-          <section>
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly recap</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                {activityLoading ? (
-                  Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-4 w-2/3" />)
-                ) : (
-                  weeklyRecap.map((item) => <p key={item}>- {item}</p>)
-                )}
-              </CardContent>
-            </Card>
-          </section>
         </div>
       </main>
     </div>
