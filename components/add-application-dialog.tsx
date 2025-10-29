@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Plus } from "lucide-react"
+import { CalendarIcon, Loader2, Plus } from "lucide-react"
 import { format } from "date-fns"
 import {
   Select,
@@ -21,10 +21,27 @@ import {
 } from "@/components/ui/select"
 import type { CreateJobApplicationData, Priority, EmploymentType } from "@/lib/types/database"
 import { SequentialStatusSelect } from "@/components/status-select"
+import { useSupabase } from "@/components/supabase-provider"
 
 interface AddApplicationDialogProps {
   trigger?: React.ReactNode
   onAdd: (application: CreateJobApplicationData) => void
+}
+
+type ParsedJobResponse = {
+  is_valid_job_posting?: boolean
+  reason?: string | null
+  company_name?: string | null
+  position_title?: string | null
+  location?: string | null
+  salary_range?: string | null
+  employment_type?: EmploymentType | null
+  contact_person?: string | null
+  contact_email?: string | null
+  job_description?: string | null
+  qualifications?: string | null
+  job_responsibilities?: string | null
+  error?: string
 }
 
 const priorityOptions: { value: Priority; label: string }[] = [
@@ -41,6 +58,7 @@ const employmentTypeOptions: { value: EmploymentType; label: string }[] = [
 ]
 
 export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogProps) {
+  const { session } = useSupabase()
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState<CreateJobApplicationData & { appliedDate: Date | undefined }>({
     company_name: "",
@@ -59,6 +77,21 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
     qualifications: "",
     job_responsibilities: "",
   })
+  const [isAutofilling, setIsAutofilling] = useState(false)
+  const [autofillStatus, setAutofillStatus] = useState<"idle" | "success" | "error">("idle")
+  const [autofillMessage, setAutofillMessage] = useState<string | null>(null)
+  const [autofillUsage, setAutofillUsage] = useState<{ limit: number | null; remaining: number | null }>({
+    limit: null,
+    remaining: null,
+  })
+  const [lastAutofilledUrl, setLastAutofilledUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (lastAutofilledUrl && formData.job_url !== lastAutofilledUrl) {
+      setAutofillStatus("idle")
+      setAutofillMessage(null)
+    }
+  }, [formData.job_url, lastAutofilledUrl])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,6 +144,122 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
 
   const updateFormData = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleAutofillFromUrl = async () => {
+    const trimmedUrl = formData.job_url.trim()
+
+    if (!trimmedUrl) {
+      setAutofillStatus("error")
+      setAutofillMessage("Add a job posting URL first.")
+      return
+    }
+
+    if (trimmedUrl !== formData.job_url) {
+      updateFormData("job_url", trimmedUrl)
+    }
+
+    if (!session?.access_token) {
+      setAutofillStatus("error")
+      setAutofillMessage("You need to be signed in to scan a job posting.")
+      return
+    }
+
+    setIsAutofilling(true)
+    setAutofillStatus("idle")
+    setAutofillMessage(null)
+    setAutofillUsage({ limit: null, remaining: null })
+
+    try {
+      const response = await fetch("/api/scrape-job", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ job_url: trimmedUrl }),
+      })
+
+      const parseHeaderNumber = (value: string | null) => {
+        if (!value) return null
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? parsed : null
+      }
+
+      const usageInfo = {
+        limit: parseHeaderNumber(response.headers.get("X-Usage-Limit")),
+        remaining: parseHeaderNumber(response.headers.get("X-Usage-Remaining")),
+      }
+      setAutofillUsage(usageInfo)
+
+      let dataRaw: unknown
+      try {
+        dataRaw = await response.json()
+      } catch {
+        throw new Error("Unexpected response from the server.")
+      }
+
+      const data: ParsedJobResponse =
+        typeof dataRaw === "object" && dataRaw !== null ? (dataRaw as ParsedJobResponse) : {}
+
+      if (!response.ok) {
+        setAutofillStatus("error")
+        setAutofillMessage(
+          typeof data.error === "string" && data.error.length > 0
+            ? data.error
+            : "Failed to analyze the job posting.",
+        )
+        setLastAutofilledUrl(trimmedUrl)
+        return
+      }
+
+      if (!data.is_valid_job_posting) {
+        setAutofillStatus("error")
+        setAutofillMessage(
+          typeof data.reason === "string" && data.reason.length > 0
+            ? data.reason
+            : "We couldn't detect a job posting at that URL.",
+        )
+        setLastAutofilledUrl(trimmedUrl)
+        return
+      }
+
+      setFormData((prev) => {
+        const next = { ...prev }
+        const apply = <K extends keyof typeof prev>(key: K, value: string | null) => {
+          if (!value) return
+          const normalized = value.trim()
+          if (!normalized) return
+          next[key] = normalized as (typeof prev)[K]
+        }
+
+        apply("company_name", data.company_name ?? null)
+        apply("position_title", data.position_title ?? null)
+        apply("location", data.location ?? null)
+        apply("salary_range", data.salary_range ?? null)
+        apply("contact_person", data.contact_person ?? null)
+        apply("contact_email", data.contact_email ?? null)
+        apply("job_description", data.job_description ?? null)
+        apply("qualifications", data.qualifications ?? null)
+        apply("job_responsibilities", data.job_responsibilities ?? null)
+
+        if (typeof data.employment_type === "string" && data.employment_type.length > 0) {
+          next.employment_type = data.employment_type as (typeof prev)["employment_type"]
+        }
+
+        return next
+      })
+
+      setAutofillStatus("success")
+      setAutofillMessage("Job posting details imported. Review and confirm before saving.")
+      setLastAutofilledUrl(trimmedUrl)
+    } catch (error) {
+      setAutofillStatus("error")
+      setAutofillMessage(error instanceof Error ? error.message : "Failed to analyze the job posting.")
+      setLastAutofilledUrl(trimmedUrl)
+    } finally {
+      setIsAutofilling(false)
+    }
   }
 
   return (
@@ -238,13 +387,43 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
             </div>
             <div className="space-y-2">
               <Label htmlFor="jobUrl">Job Posting URL</Label>
-              <Input
-                id="jobUrl"
-                type="url"
-                value={formData.job_url}
-                onChange={(e) => updateFormData("job_url", e.target.value)}
-                placeholder="https://company.com/careers/job-id"
-              />
+              <div className="flex items-start gap-2">
+                <Input
+                  id="jobUrl"
+                  type="url"
+                  value={formData.job_url}
+                  onChange={(e) => updateFormData("job_url", e.target.value)}
+                  placeholder="https://company.com/careers/job-id"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleAutofillFromUrl}
+                  disabled={isAutofilling || !formData.job_url.trim()}
+                  className="gap-2"
+                >
+                  {isAutofilling ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Scanning…
+                    </>
+                  ) : (
+                    "Autofill"
+                  )}
+                </Button>
+              </div>
+              {autofillStatus === "success" && autofillMessage && (
+                <p className="text-xs text-muted-foreground">{autofillMessage}</p>
+              )}
+              {autofillStatus === "error" && autofillMessage && (
+                <p className="text-xs text-destructive">{autofillMessage}</p>
+              )}
+              {autofillStatus !== "idle" && autofillUsage.limit != null && autofillUsage.remaining != null && (
+                <p className="text-xs text-muted-foreground">
+                  Used {autofillUsage.limit - autofillUsage.remaining} of {autofillUsage.limit} quick adds today.
+                </p>
+              )}
             </div>
           </div>
 
