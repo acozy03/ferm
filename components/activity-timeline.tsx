@@ -82,7 +82,7 @@ export function ActivityTimeline() {
     })
   }, [activities, trimmedSearch])
 
-  const limitedActivities = activities.slice(0, 3)
+  const limitedActivities = activities.slice(0, 6)
   const hasMoreActivity = activities.length > limitedActivities.length
 
   const renderActivityItem = (item: ActivityLogWithApplication) => {
@@ -141,7 +141,7 @@ export function ActivityTimeline() {
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
+              {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="mt-1 h-4 w-4 animate-pulse rounded bg-muted" />
                   <div className="flex-1 space-y-2">
