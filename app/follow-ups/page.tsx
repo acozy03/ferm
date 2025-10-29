@@ -302,7 +302,11 @@ export default function FollowUpsPage() {
                             </div>
 
                             <div className="flex flex-col gap-3 border-t pt-4">
-                              <div className="flex flex-wrap items-center justify-end gap-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <FollowUpDraftDialog
+                                  application={row.application}
+                                  disabled={!row.enabled || isPending}
+                                />
                                 <Button
                                   size="sm"
                                   variant={row.enabled ? "outline" : "default"}
@@ -311,7 +315,6 @@ export default function FollowUpsPage() {
                                 >
                                   Set reminder
                                 </Button>
-                                <FollowUpDraftDialog application={row.application} disabled={!row.enabled || isPending} />
                               </div>
                             </div>
                           </CardContent>
@@ -340,8 +343,8 @@ export default function FollowUpsPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
+        <DialogContent className="flex flex-col gap-4 sm:max-w-[420px]">
+          <DialogHeader className="text-center">
             <DialogTitle>
               {reminderDialog?.isEnabling ? "Schedule your next reminder" : "Update reminder"}
             </DialogTitle>
@@ -351,7 +354,7 @@ export default function FollowUpsPage() {
                 : ""}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="flex flex-1 items-center justify-center">
             <Calendar
               mode="single"
               selected={reminderDialog?.date ?? undefined}
@@ -359,7 +362,7 @@ export default function FollowUpsPage() {
               onSelect={(date) => {
                 setReminderDialog((previous) => (previous ? { ...previous, date: date ?? previous.date } : previous))
               }}
-              className="rounded-md border"
+              className="w-full max-w-[360px] rounded-md border p-4"
             />
           </div>
           <DialogFooter className="gap-2">
