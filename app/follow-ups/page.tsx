@@ -17,7 +17,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Switch } from "@/components/ui/switch"
 import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -155,22 +154,6 @@ export default function FollowUpsPage() {
       isEnabling: options?.isEnabling ?? false,
     })
   }, [])
-
-  const handleEnableToggle = useCallback(
-    (row: FollowUpRow, checked: boolean) => {
-      if (checked === row.enabled) {
-        return
-      }
-
-      if (checked) {
-        openReminderDialog(row, { isEnabling: true })
-        return
-      }
-
-      void updateFollowUp(row.application.id, false, null)
-    },
-    [openReminderDialog, updateFollowUp],
-  )
 
   const summaryCards = [
     {
@@ -319,28 +302,15 @@ export default function FollowUpsPage() {
                             </div>
 
                             <div className="flex flex-col gap-3 border-t pt-4">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                  <Switch
-                                    checked={row.enabled}
-                                    onCheckedChange={(checked) => handleEnableToggle(row, checked)}
-                                    disabled={isPending}
-                                  />
-                                  <span className="text-sm font-medium">Automatic reminder</span>
-                                </div>
+                              <div className="flex flex-wrap items-center justify-end gap-2">
                                 <Button
                                   size="sm"
                                   variant={row.enabled ? "outline" : "default"}
                                   onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
                                   disabled={isPending}
                                 >
-                                  {row.enabled ? "Edit reminder" : "Schedule reminder"}
+                                  Set reminder
                                 </Button>
-                              </div>
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-sm text-muted-foreground">
-                                  Generate an email when you’re ready to follow up.
-                                </p>
                                 <FollowUpDraftDialog application={row.application} disabled={!row.enabled || isPending} />
                               </div>
                             </div>
