@@ -19,6 +19,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/components/ui/use-toast"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
@@ -45,6 +52,15 @@ type ReminderDialogState = {
   isEnabling: boolean
 }
 
+type SortValue = "status" | "next" | "applied" | "company"
+
+const sortOptions: { label: string; value: SortValue }[] = [
+  { label: "Status (due first)", value: "status" },
+  { label: "Next reminder", value: "next" },
+  { label: "Applied date", value: "applied" },
+  { label: "Company name", value: "company" },
+]
+
 function computeNextReminder(followUp: ApplicationFollowUp | undefined): Date | null {
   if (!followUp?.enabled) {
     return null
@@ -68,6 +84,7 @@ export default function FollowUpsPage() {
   const { followUps, isLoading: isLoadingFollowUps, mutate } = useApplicationFollowUps()
   const [pending, setPending] = useState<Record<string, boolean>>({})
   const [reminderDialog, setReminderDialog] = useState<ReminderDialogState | null>(null)
+  const [sortBy, setSortBy] = useState<SortValue>("status")
 
   const rows = useMemo<FollowUpRow[]>(() => {
     const now = Date.now()
@@ -103,6 +120,45 @@ export default function FollowUpsPage() {
       const right = b.nextReminder ? b.nextReminder.getTime() : Number.POSITIVE_INFINITY
       return left - right
     })
+
+  const sortedRows = useMemo(() => {
+    const items = [...rows]
+    switch (sortBy) {
+      case "status": {
+        const priority: Record<FollowUpRow["status"], number> = { due: 0, upcoming: 1, disabled: 2 }
+        return items.sort((a, b) => {
+          const statusDiff = priority[a.status] - priority[b.status]
+          if (statusDiff !== 0) {
+            return statusDiff
+          }
+
+          const left = a.nextReminder ? a.nextReminder.getTime() : Number.POSITIVE_INFINITY
+          const right = b.nextReminder ? b.nextReminder.getTime() : Number.POSITIVE_INFINITY
+          return left - right
+        })
+      }
+      case "next":
+        return items.sort((a, b) => {
+          const left = a.nextReminder ? a.nextReminder.getTime() : Number.POSITIVE_INFINITY
+          const right = b.nextReminder ? b.nextReminder.getTime() : Number.POSITIVE_INFINITY
+          return left - right
+        })
+      case "applied":
+        return items.sort((a, b) => {
+          const left = getDateOrNull(a.application.application_date)?.getTime() ?? 0
+          const right = getDateOrNull(b.application.application_date)?.getTime() ?? 0
+          return right - left
+        })
+      case "company":
+        return items.sort((a, b) => {
+          const left = a.application.company_name ?? ""
+          const right = b.application.company_name ?? ""
+          return left.localeCompare(right)
+        })
+      default:
+        return items
+    }
+  }, [rows, sortBy])
 
   const isLoading = isLoadingApplications || isLoadingFollowUps
 
@@ -246,81 +302,101 @@ export default function FollowUpsPage() {
                     Add job applications to start planning your follow-up cadence.
                   </p>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {rows.map((row) => {
-                      const isPending = pending[row.application.id]
-                      const appliedDate = getDateOrNull(row.application.application_date)
-                      const appliedLabel = appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
-                      const nextReminderLabel = row.enabled && row.nextReminder
-                        ? row.status === "due"
-                          ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
-                          : format(row.nextReminder, "MMM d, yyyy")
-                        : "Not scheduled"
-                      const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm text-muted-foreground">Arrange your follow-ups to focus on what matters first.</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">Sort by</span>
+                        <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortValue)}>
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {sortOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {sortedRows.map((row) => {
+                        const isPending = pending[row.application.id]
+                        const appliedDate = getDateOrNull(row.application.application_date)
+                        const appliedLabel = appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
+                        const nextReminderLabel = row.enabled && row.nextReminder
+                          ? row.status === "due"
+                            ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
+                            : format(row.nextReminder, "MMM d, yyyy")
+                          : "Not scheduled"
+                        const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
 
-                      return (
-                        <Card
-                          key={row.application.id}
-                          className={cn(
-                            "flex h-full flex-col border transition",
-                            row.status === "due" && "border-destructive/60 shadow-[0_0_0_1px] shadow-destructive/10",
-                          )}
-                        >
-                          <CardHeader className="space-y-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="space-y-1">
-                                <CardTitle className="text-lg font-semibold">
-                                  {row.application.company_name}
-                                </CardTitle>
-                                <p className="text-sm text-muted-foreground">
-                                  {row.application.position_title}
-                                </p>
+                        return (
+                          <Card
+                            key={row.application.id}
+                            className={cn(
+                              "flex h-full flex-col border transition",
+                              row.status === "due" && "border-destructive/60 shadow-[0_0_0_1px] shadow-destructive/10",
+                            )}
+                          >
+                            <CardHeader className="space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <CardTitle className="text-lg font-semibold">
+                                    {row.application.company_name}
+                                  </CardTitle>
+                                  <p className="text-sm text-muted-foreground">
+                                    {row.application.position_title}
+                                  </p>
+                                </div>
+                                <Badge variant="outline" className={getStatusBadgeTone(row.status)}>
+                                  {row.status === "due"
+                                    ? "Follow-up due"
+                                    : row.status === "upcoming"
+                                      ? "Scheduled"
+                                      : "Off"}
+                                </Badge>
                               </div>
-                              <Badge variant="outline" className={getStatusBadgeTone(row.status)}>
-                                {row.status === "due"
-                                  ? "Follow-up due"
-                                  : row.status === "upcoming"
-                                    ? "Scheduled"
-                                    : "Off"}
-                              </Badge>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="flex flex-1 flex-col justify-between space-y-4">
-                            <div className="space-y-3 text-sm">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground">Applied</span>
-                                <span className="font-medium">{appliedLabel}</span>
+                            </CardHeader>
+                            <CardContent className="flex flex-1 flex-col justify-between space-y-4">
+                              <div className="space-y-3 text-sm">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">Applied</span>
+                                  <span className="font-medium">{appliedLabel}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">Next reminder</span>
+                                  <span className="font-medium text-right">{nextReminderLabel}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">Last reminder</span>
+                                  <span className="font-medium">{lastReminderLabel}</span>
+                                </div>
                               </div>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground">Next reminder</span>
-                                <span className="font-medium text-right">{nextReminderLabel}</span>
-                              </div>
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-muted-foreground">Last reminder</span>
-                                <span className="font-medium">{lastReminderLabel}</span>
-                              </div>
-                            </div>
 
-                            <div className="flex flex-col gap-3 border-t pt-4">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <FollowUpDraftDialog
-                                  application={row.application}
-                                  disabled={!row.enabled || isPending}
-                                />
-                                <Button
-                                  size="sm"
-                                  variant={row.enabled ? "outline" : "default"}
-                                  onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
-                                  disabled={isPending}
-                                >
-                                  Set reminder
-                                </Button>
+                              <div className="flex flex-col gap-3 border-t pt-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <FollowUpDraftDialog
+                                    application={row.application}
+                                    disabled={!row.enabled || isPending}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
+                                    disabled={isPending}
+                                  >
+                                    Set reminder
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
               </CardContent>
