@@ -29,7 +29,7 @@ const activityColors = {
 }
 
 export function ActivityTimeline() {
-  const { activities, isLoading, error } = useActivityLog()
+  const { activities, totalCount, isLoading, error } = useActivityLog()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const trimmedSearch = searchTerm.trim().toLowerCase()
@@ -170,7 +170,7 @@ export function ActivityTimeline() {
           {activities.length > 0 ? (
             <div className="mt-4 flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
-                Showing {Math.min(limitedActivities.length, activities.length)} of {activities.length} updates
+                Showing {limitedActivities.length} of {totalCount} updates
               </p>
               <Button variant="ghost" size="sm" onClick={() => setIsDrawerOpen(true)}>
                 View all activity

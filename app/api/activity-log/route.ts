@@ -23,12 +23,15 @@ export async function GET(request: NextRequest) {
 
     const limit = Number.parseInt(searchParams.get("limit") || "50")
 
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from("activity_log")
-      .select(`
+      .select(
+        `
         *,
         job_applications(company_name, position_title)
-      `)
+      `,
+        { count: "exact" },
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(limit)
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ data, totalCount: count ?? data.length })
   } catch (error) {
     console.error("Failed to load activity log", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
