@@ -425,12 +425,7 @@ export default function Dashboard() {
       <Header />
       <main className="pt-24 p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-balance">Job Applications</h2>
-              <p className="text-muted-foreground text-pretty">Track and manage your job application pipeline</p>
-            </div>
-          </div>
+       
 
           <StatsOverview />
 

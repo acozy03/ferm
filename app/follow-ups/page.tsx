@@ -248,33 +248,7 @@ export default function FollowUpsPage() {
             </p>
           </header>
 
-          <section>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(isLoading ? Array.from({ length: 3 }) : summaryCards).map((item, index) => (
-                <Card key={item ? item.label : index}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {item ? item.label : <Skeleton className="h-4 w-24" />}
-                    </CardTitle>
-                    {item && <item.icon className="h-5 w-5 text-primary" />}
-                  </CardHeader>
-                  <CardContent>
-                    {item ? (
-                      <>
-                        <div className="text-2xl font-semibold">{item.value}</div>
-                        <p className="text-sm text-muted-foreground mt-2">{item.helper}</p>
-                      </>
-                    ) : (
-                      <div className="space-y-3">
-                        <Skeleton className="h-8 w-16" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
+     
 
           <section>
             <Card>

@@ -387,7 +387,7 @@ export default function ResumePage() {
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold">Resume manager</h1>
             <p className="text-muted-foreground text-pretty">
-              Store a single source of truth for your resume. Upload a new file any time you need to replace it—the previous copy
+              Upload a new file any time you need to replace it, the previous copy
               will be removed automatically.
             </p>
           </div>
