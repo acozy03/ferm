@@ -70,15 +70,15 @@ export function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="bg-primary/10 text-primary hover:bg-primary/15"
+                      className="bg-primary/5 text-primary hover:bg-primary/20"
                       aria-label="Open workspace menu"
                     >
                       <Sprout className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-56">
-                    <DropdownMenuLabel>ferm.dev</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+                    {/* <DropdownMenuLabel>ferm.dev</DropdownMenuLabel> */}
+                    {/* <DropdownMenuSeparator /> */}
                     {NAV_ITEMS.map((item) => {
                       const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
 
@@ -95,12 +95,12 @@ export function Header() {
                     })}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Link
+                {/* <Link
                   href="/"
                   className="text-xl font-semibold text-balance hover:text-primary transition-colors"
                 >
                   ferm.dev
-                </Link>
+                </Link> */}
               </div>
             </div>
             <nav className="hidden md:flex items-center justify-center gap-6 text-sm">

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { addDays, format } from "date-fns"
+import { format } from "date-fns"
 import { z } from "zod"
 import { Resend } from "resend"
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
   const { data: followUp, error: followUpError } = await supabase
     .from("application_follow_ups")
-    .select("id, interval_days, enabled")
+    .select("id, enabled, next_follow_up_date")
     .eq("job_application_id", job_application_id)
     .eq("user_id", userId)
     .maybeSingle()
@@ -176,14 +176,12 @@ export async function POST(request: NextRequest) {
   }
 
   const now = new Date()
-  const nextDate = addDays(now, followUp.interval_days)
-  const formattedNext = format(nextDate, "MMM d, yyyy")
 
   const { data, error } = await supabase
     .from("application_follow_ups")
     .update({
       last_notified_at: now.toISOString(),
-      next_follow_up_date: nextDate.toISOString(),
+      next_follow_up_date: null,
       updated_at: now.toISOString(),
     })
     .eq("id", followUp.id)
@@ -194,5 +192,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ data: { ...data, next_follow_up_readable: formattedNext } })
+  const nextReadable = data.next_follow_up_date
+    ? format(new Date(data.next_follow_up_date), "MMM d, yyyy")
+    : null
+
+  return NextResponse.json({ data: { ...data, next_follow_up_readable: nextReadable } })
 }

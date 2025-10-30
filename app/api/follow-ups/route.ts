@@ -10,10 +10,8 @@ export const dynamic = "force-dynamic"
 const UpdateFollowUpSchema = z.object({
   job_application_id: z.string().uuid(),
   enabled: z.boolean(),
-  next_follow_up_date: z.string().datetime({ offset: true }).nullable().optional(),
+  next_follow_up_date: z.union([z.string().min(1), z.null()]).optional(),
 })
-
-const DEFAULT_INTERVAL = 7
 
 export async function GET(request: NextRequest) {
   const auth = await getAuthedClient(request)
@@ -88,7 +86,6 @@ export async function POST(request: NextRequest) {
     user_id: userId,
     job_application_id,
     enabled,
-    interval_days: existing?.interval_days ?? DEFAULT_INTERVAL,
     next_follow_up_date: normalizedDate,
     last_notified_at: existing?.last_notified_at ?? null,
     updated_at: now.toISOString(),

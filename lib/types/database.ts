@@ -116,7 +116,6 @@ export interface ApplicationFollowUp {
   user_id: string
   job_application_id: string
   enabled: boolean
-  interval_days: number
   next_follow_up_date: string | null
   last_notified_at?: string | null
   created_at: string
