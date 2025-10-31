@@ -297,7 +297,7 @@ export function ApplicationsDrawer({
                   <Input
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    placeholder="Search applications by role, company, notes, and more"
+                    placeholder="Search applications..."
                     className="pl-9 pr-10"
                   />
                   {searchTerm ? (

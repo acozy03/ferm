@@ -107,7 +107,7 @@ export function UpcomingReminders() {
           countdownLabel =
             overdueDays === 1 ? "Overdue by 1 day" : `Overdue by ${overdueDays} days`
         } else if (difference <= dayMs) {
-          countdownLabel = "Due today"
+          countdownLabel = "<24hrs remaining"
         } else {
           const daysLeft = Math.ceil(remainingDays)
           countdownLabel =
@@ -185,7 +185,7 @@ export function UpcomingReminders() {
                     <div className="flex items-center gap-2">
                       <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>
-                        {dateFormatter.format(reminder.nextReminder)} at {timeFormatter.format(reminder.nextReminder)}
+                        {dateFormatter.format(reminder.nextReminder)} at {"9:00 AM EST"}
                       </span>
                     </div>
                    

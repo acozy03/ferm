@@ -70,10 +70,14 @@ export function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="bg-primary/5 text-primary hover:bg-primary/20"
+                      className="bg-primary/0 text-primary hover:bg-primary/20"
                       aria-label="Open workspace menu"
                     >
-                      <Sprout className="h-5 w-5" />
+                       <img
+      src="/logo_cropped.png"
+      alt="ferm.dev logo"
+      className="h-9 w-5 sm:h-6 sm:w-6"
+    />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-56">

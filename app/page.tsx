@@ -440,7 +440,7 @@ export default function Dashboard() {
     <Input
       value={searchTerm}
       onChange={handleSearchChange}
-      placeholder="Search applications by role, company, notes, and more"
+      placeholder="Search applications..."
       className="w-full pl-9 pr-9"
     />
     {searchTerm ? (
