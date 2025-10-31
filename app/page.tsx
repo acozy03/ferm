@@ -773,17 +773,6 @@ export default function Dashboard() {
                     </TabsContent>
                   </Tabs>
 
-                  <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      {isLoading
-                        ? "Loading applications..."
-                        : `Showing ${applications.length} of ${count} applications`}
-                    </p>
-
-                    <div className="text-xs text-muted-foreground">
-                      {filters.search ? `Filtered by "${filters.search}"` : `Sorted by ${sort.field} (${sort.direction})`}
-                    </div>
-                  </div>
               </div>
             </div>
           </div>

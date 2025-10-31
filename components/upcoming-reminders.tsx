@@ -188,10 +188,7 @@ export function UpcomingReminders() {
                         {dateFormatter.format(reminder.nextReminder)} at {timeFormatter.format(reminder.nextReminder)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>We&rsquo;ll email you on this day in your local time.</span>
-                    </div>
+                   
                   </div>
                 </div>
               )
