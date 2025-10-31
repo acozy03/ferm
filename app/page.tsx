@@ -1,17 +1,7 @@
 "use client"
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import {
-  CalendarClock,
-  ChevronLeft,
-  ChevronRight,
-  LayoutPanelLeft,
-  ListChecks,
-  Plus,
-  Search,
-  Table2,
-  X,
-} from "lucide-react"
+import { CalendarClock, LayoutPanelLeft, ListChecks, Plus, Search, Table2, X } from "lucide-react"
 
 import { Header } from "@/components/header"
 import { JobApplicationCard } from "@/components/job-application-card"
@@ -36,6 +26,7 @@ import { defaultViewOptions } from "@/lib/settings"
 import { cn } from "@/lib/utils"
 import { getDateOrNull } from "@/lib/date"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 const serializeFilters = (filters: JobApplicationFilters) =>
   createSearchParamsWithFilters(new URLSearchParams(), filters).toString()
@@ -46,7 +37,7 @@ const sortPreferenceMap: Record<string, JobApplicationSort> = {
   upcoming: { field: "application_date", direction: "asc" },
   priority: { field: "priority", direction: "asc" },
 }
-const DASHBOARD_PAGE_SIZE = 5
+const DEFAULT_DASHBOARD_LIMIT = 25
 
 type DashboardView = (typeof defaultViewOptions)[number]["value"]
 
@@ -95,18 +86,14 @@ export default function Dashboard() {
     return preferredSort
   }, [preferredSort, searchParams])
 
-  const pageFromParams = useMemo(() => {
-    const value = Number.parseInt(searchParams.get("page") ?? "1", 10)
-    return Number.isNaN(value) || value < 1 ? 1 : value
-  }, [searchParams])
-
   const [filters, setFilters] = useState<JobApplicationFilters>(filtersFromParams)
   const [sort, setSort] = useState<JobApplicationSort>(sortFromParams)
-  const [page, setPage] = useState(pageFromParams)
   const [selectedApplications, setSelectedApplications] = useState<string[]>([])
   const [isApplicationsDrawerOpen, setIsApplicationsDrawerOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState(filters.search ?? "")
   const [view, setView] = useState<DashboardView>(viewFromParams)
+  const [resultsLimit, setResultsLimit] = useState(DEFAULT_DASHBOARD_LIMIT)
+  const filtersSignature = useMemo(() => serializeFilters(filters), [filters])
 
   useEffect(() => {
     setFilters((previous) => {
@@ -130,27 +117,20 @@ export default function Dashboard() {
     })
   }, [sortFromParams])
 
-  useEffect(() => {
-    setPage((previous) => (previous === pageFromParams ? previous : pageFromParams))
-  }, [pageFromParams])
-
   const commitState = useCallback(
     (next?: {
       filters?: JobApplicationFilters
       sort?: JobApplicationSort
-      page?: number
       view?: DashboardView
     }) => {
       const nextFilters = next?.filters ?? filters
       const nextSort = next?.sort ?? sort
-      const nextPage = next?.page ?? page
       const nextView = next?.view ?? view
 
       const params = createSearchParamsWithFilters(searchParams, nextFilters)
 
       params.delete("sort_field")
       params.delete("sort_direction")
-      params.delete("page")
       params.delete("view")
 
       const isSortFieldDefault = nextSort.field === preferredSort.field
@@ -163,9 +143,6 @@ export default function Dashboard() {
       if (!isSortDirectionDefault || !isSortFieldDefault) {
         params.set("sort_direction", nextSort.direction)
       }
-      if (nextPage > 1) {
-        params.set("page", nextPage.toString())
-      }
       if (!isViewDefault) {
         params.set("view", nextView)
       }
@@ -173,17 +150,27 @@ export default function Dashboard() {
       const query = params.toString()
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
     },
-    [filters, sort, page, view, pathname, preferredSort, preferredView, router, searchParams],
+    [filters, sort, view, pathname, preferredSort, preferredView, router, searchParams],
   )
 
-  const { applications, isLoading, error, mutate, count, total_pages: totalPagesFromResponse } = useJobApplications({
-    page,
-    limit: DASHBOARD_PAGE_SIZE,
+  const { applications, isLoading, error, mutate, count } = useJobApplications({
+    page: 1,
+    limit: resultsLimit,
     filters,
     sort,
     include_interviews: true,
   })
-  
+
+  useEffect(() => {
+    if (!isLoading && count > 0 && resultsLimit < count) {
+      setResultsLimit(count)
+    }
+  }, [count, isLoading, resultsLimit])
+
+  useEffect(() => {
+    setResultsLimit(DEFAULT_DASHBOARD_LIMIT)
+  }, [filtersSignature, sort.direction, sort.field])
+
   const timelineDateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat("en-US", {
@@ -234,18 +221,14 @@ export default function Dashboard() {
     [timelineDateFormatter],
   )
 
-  const totalPages = Math.max(1, totalPagesFromResponse || 1)
-  const canGoPrevious = page > 1
-  const canGoNext = page < totalPages
-
   useEffect(() => {
     setSearchTerm(filters.search ?? "")
   }, [filters.search])
 
   const handleFilterChange = (newFilters: JobApplicationFilters) => {
     setFilters(newFilters)
-    setPage(1)
-    commitState({ filters: newFilters, page: 1 })
+    setResultsLimit(DEFAULT_DASHBOARD_LIMIT)
+    commitState({ filters: newFilters })
   }
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -285,8 +268,8 @@ export default function Dashboard() {
       }
 
       setSort(nextSort)
-      setPage(1)
-      commitState({ sort: nextSort, page: 1 })
+      setResultsLimit(DEFAULT_DASHBOARD_LIMIT)
+      commitState({ sort: nextSort })
     },
     [commitState, sort.direction, sort.field],
   )
@@ -297,9 +280,8 @@ export default function Dashboard() {
     }
 
     setView(nextView)
-    setPage(1)
     setSelectedApplications([])
-    commitState({ view: nextView, page: 1 })
+    commitState({ view: nextView })
   }
 
   const handleAddApplication = async (application: CreateJobApplicationData) => {
@@ -393,16 +375,6 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Failed to update application status:", error)
     }
-  }
-
-  const handlePageChange = (nextPage: number) => {
-    if (nextPage < 1 || nextPage > totalPages) {
-      return
-    }
-
-    setPage(nextPage)
-    setSelectedApplications([])
-    commitState({ page: nextPage })
   }
 
   if (error) {
@@ -525,32 +497,35 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      {isLoading ? (
-                        <div className="grid gap-4">
-                          {[...Array(3)].map((_, i) => (
-                            <div key={i} className="h-48 bg-muted animate-pulse rounded-lg" />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="grid gap-4">
-                          {applications.map((application) => (
-                            <JobApplicationCard
-                              key={application.id}
-                              application={application}
-                              isSelected={selectedApplications.includes(application.id)}
-                              onSelect={(selected) => handleSelectApplication(application.id, selected)}
-                              onUpdate={handleApplicationUpdate}
-                            />
-                          ))}
-                          {applications.length === 0 && (
-                            <div className="text-center py-12">
-                              <p className="text-muted-foreground">
-                                No applications found. Add your first application to get started!
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <div className="rounded-lg border bg-card/40">
+                        <ScrollArea className="h-[65vh]">
+                          <div className="space-y-4 p-4">
+                            {isLoading ? (
+                              <div className="grid gap-4">
+                                {[...Array(3)].map((_, i) => (
+                                  <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />
+                                ))}
+                              </div>
+                            ) : applications.length === 0 ? (
+                              <div className="py-12 text-center">
+                                <p className="text-muted-foreground">
+                                  No applications found. Add your first application to get started!
+                                </p>
+                              </div>
+                            ) : (
+                              applications.map((application) => (
+                                <JobApplicationCard
+                                  key={application.id}
+                                  application={application}
+                                  isSelected={selectedApplications.includes(application.id)}
+                                  onSelect={(selected) => handleSelectApplication(application.id, selected)}
+                                  onUpdate={handleApplicationUpdate}
+                                />
+                              ))
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
                     </TabsContent>
 
                     <TabsContent value="table" className="space-y-4">
@@ -561,124 +536,125 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      {isLoading ? (
-                        <div className="space-y-2">
-                          {[...Array(4)].map((_, index) => (
-                            <div key={index} className="h-12 rounded-md border bg-muted animate-pulse" />
-                          ))}
-                        </div>
-                      ) : applications.length === 0 ? (
-                        <div className="text-center py-12">
-                          <p className="text-muted-foreground">
-                            No applications found. Adjust your filters or add a new application.
-                          </p>
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Role</TableHead>
-                              <TableHead>Status</TableHead>
-                             
-                              <TableHead className="w-[150px] text-center">Match score</TableHead>
-                              <TableHead>Applied</TableHead>
-                              <TableHead className="hidden lg:table-cell">Location</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {applications.map((application) => {
-                              const isSelected = selectedApplications.includes(application.id)
-                              return (
-                                <TableRow
-                                  key={application.id}
-                                  data-state={isSelected ? "selected" : undefined}
-                                  className={cn(
-                                    "cursor-pointer transition-colors hover:bg-accent/50",
-                                    isSelected && "bg-muted",
-                                  )}
-                                  onClick={(event) => {
-                                    if (event.defaultPrevented) return
+                      <div className="rounded-lg border bg-card/40">
+                        <ScrollArea className="h-[65vh]">
+                          <div className="min-w-full p-4">
+                            {isLoading ? (
+                              <div className="space-y-2">
+                                {[...Array(4)].map((_, index) => (
+                                  <div key={index} className="h-12 rounded-md border bg-muted animate-pulse" />
+                                ))}
+                              </div>
+                            ) : applications.length === 0 ? (
+                              <div className="py-12 text-center">
+                                <p className="text-muted-foreground">
+                                  No applications found. Adjust your filters or add a new application.
+                                </p>
+                              </div>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Role</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="w-[150px] text-center">Match score</TableHead>
+                                    <TableHead>Applied</TableHead>
+                                    <TableHead className="hidden lg:table-cell">Location</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {applications.map((application) => {
+                                    const isSelected = selectedApplications.includes(application.id)
+                                    return (
+                                      <TableRow
+                                        key={application.id}
+                                        data-state={isSelected ? "selected" : undefined}
+                                        className={cn(
+                                          "cursor-pointer transition-colors hover:bg-accent/50",
+                                          isSelected && "bg-muted",
+                                        )}
+                                        onClick={(event) => {
+                                          if (event.defaultPrevented) return
 
-                                    const target = event.target as HTMLElement
-                                    if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
-                                      return
-                                    }
+                                          const target = event.target as HTMLElement
+                                          if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
+                                            return
+                                          }
 
-                                    handleSelectApplication(application.id, !isSelected)
-                                  }}
-                                >
-                                  <TableCell className="w-[32%] max-w-[18rem]">
-                                    <div className="space-y-1 min-w-0">
-                                      <p
-                                        className="font-medium leading-tight text-sm truncate"
-                                        title={application.position_title}
+                                          handleSelectApplication(application.id, !isSelected)
+                                        }}
                                       >
-                                        {application.position_title}
-                                      </p>
-                                      <p
-                                        className="text-xs text-muted-foreground truncate"
-                                        title={application.company_name}
-                                      >
-                                        {application.company_name}
-                                      </p>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
-                                      {formatStatusLabel(application.status)}
-                                    </Badge>
-                                  </TableCell>
-                              
-                                  <TableCell className="text-justify">
-                                    <div className="flex justify-center">
-                                      <JobScoreIndicator
-                                        score={application.resume_match_score ?? null}
-                                        createdAt={application.created_at}
-                                        size={48}
-                                        showDescription={false}
-                                      />
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex flex-col">
-                                      <span className="text-sm font-medium">
-                                        {formatApplicationDate(application.application_date)}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {formatDaysSinceApplied(application.application_date)}
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="hidden lg:table-cell max-w-[14rem]">
-                                    {application.location ? (
-                                      <span
-                                        className="block text-sm truncate"
-                                        title={application.location}
-                                      >
-                                        {application.location}
-                                      </span>
-                                    ) : (
-                                      <span className="text-xs text-muted-foreground">—</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex justify-end">
-                                      <ApplicationActionsMenu
-                                        application={application}
-                                        onStatusUpdate={(status, note) =>
-                                          handleStatusChange(application.id, status, note)
-                                        }
-                                        onApplicationUpdate={handleApplicationUpdate}
-                                      />
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              )
-                            })}
-                          </TableBody>
-                        </Table>
-                      )}
+                                        <TableCell className="w-[32%] max-w-[18rem]">
+                                          <div className="min-w-0 space-y-1">
+                                            <p
+                                              className="text-sm font-medium leading-tight truncate"
+                                              title={application.position_title}
+                                            >
+                                              {application.position_title}
+                                            </p>
+                                            <p
+                                              className="text-xs text-muted-foreground truncate"
+                                              title={application.company_name}
+                                            >
+                                              {application.company_name}
+                                            </p>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
+                                            {formatStatusLabel(application.status)}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-justify">
+                                          <div className="flex justify-center">
+                                            <JobScoreIndicator
+                                              score={application.resume_match_score ?? null}
+                                              createdAt={application.created_at}
+                                              size={48}
+                                              showDescription={false}
+                                            />
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex flex-col">
+                                            <span className="text-sm font-medium">
+                                              {formatApplicationDate(application.application_date)}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                              {formatDaysSinceApplied(application.application_date)}
+                                            </span>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="hidden max-w-[14rem] lg:table-cell">
+                                          {application.location ? (
+                                            <span className="block truncate text-sm" title={application.location}>
+                                              {application.location}
+                                            </span>
+                                          ) : (
+                                            <span className="text-xs text-muted-foreground">—</span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                          <div className="flex justify-end">
+                                            <ApplicationActionsMenu
+                                              application={application}
+                                              onStatusUpdate={(status, note) =>
+                                                handleStatusChange(application.id, status, note)
+                                              }
+                                              onApplicationUpdate={handleApplicationUpdate}
+                                            />
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    )
+                                  })}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
                     </TabsContent>
 
                     <TabsContent value="timeline" className="space-y-6">
@@ -689,107 +665,111 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      {isLoading ? (
-                        <div className="space-y-4">
-                          {[...Array(4)].map((_, index) => (
-                            <div key={index} className="h-20 rounded-md border bg-muted animate-pulse" />
-                          ))}
-                        </div>
-                      ) : timelineItems.length === 0 ? (
-                        <div className="text-center py-12">
-                          <p className="text-muted-foreground">
-                            No applications to display yet. Apply to a role to start your timeline.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="relative mx-auto w-full max-w-4xl space-y-6">
-                          <div className="absolute left-1.5 top-0 h-full w-px bg-border" aria-hidden />
-                          {timelineItems.map((application) => {
-                            const isSelected = selectedApplications.includes(application.id)
+                      <div className="rounded-lg border bg-card/40">
+                        <ScrollArea className="h-[65vh]">
+                          <div className="relative mx-auto w-full max-w-4xl space-y-6 p-6">
+                            {isLoading ? (
+                              <div className="space-y-4">
+                                {[...Array(4)].map((_, index) => (
+                                  <div key={index} className="h-20 rounded-md border bg-muted animate-pulse" />
+                                ))}
+                              </div>
+                            ) : timelineItems.length === 0 ? (
+                              <div className="py-12 text-center">
+                                <p className="text-muted-foreground">
+                                  No applications to display yet. Apply to a role to start your timeline.
+                                </p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="absolute left-1.5 top-6 bottom-6 w-px bg-border" aria-hidden />
+                                {timelineItems.map((application) => {
+                                  const isSelected = selectedApplications.includes(application.id)
 
-                            return (
-                              <div key={application.id} className="relative pl-6">
-                                <span className="absolute left-0 top-2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-primary" />
-                                <div
-                                  className={cn(
-                                    "flex flex-col gap-2 rounded-lg border bg-card/50 p-4 transition-colors hover:bg-accent/50",
-                                    isSelected && "border-primary/40 bg-muted",
-                                  )}
-                                  onClick={(event) => {
-                                    if (event.defaultPrevented) return
+                                  return (
+                                    <div key={application.id} className="relative pl-6">
+                                      <span className="absolute left-0 top-2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-primary" />
+                                      <div
+                                        className={cn(
+                                          "flex flex-col gap-2 rounded-lg border bg-card/50 p-4 transition-colors hover:bg-accent/50",
+                                          isSelected && "border-primary/40 bg-muted",
+                                        )}
+                                        onClick={(event) => {
+                                          if (event.defaultPrevented) return
 
-                                    const target = event.target as HTMLElement
-                                    if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
-                                      return
-                                    }
-
-                                    handleSelectApplication(application.id, !isSelected)
-                                  }}
-                                >
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                                    <div className="min-w-0">
-                                      <p className="font-medium leading-tight line-clamp-2 break-words">
-                                        {application.position_title}
-                                      </p>
-                                      <p
-                                        className="text-sm text-muted-foreground line-clamp-1 break-words"
-                                        title={application.company_name}
-                                      >
-                                        {application.company_name}
-                                      </p>
-                                    </div>
-                                    
-                                      <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
-                                          {formatStatusLabel(application.status)}
-                                        </Badge>
-                                        
-                                        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
-                                      <JobScoreIndicator
-                                        score={application.resume_match_score ?? null}
-                                        createdAt={application.created_at}
-                                        size={48}
-                                        showDescription={false}
-                                      />
-                                      <ApplicationActionsMenu
-                                          application={application}
-                                          onStatusUpdate={(status, note) =>
-                                            handleStatusChange(application.id, status, note)
+                                          const target = event.target as HTMLElement
+                                          if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
+                                            return
                                           }
-                                          onApplicationUpdate={handleApplicationUpdate}
-                                        />
+
+                                          handleSelectApplication(application.id, !isSelected)
+                                        }}
+                                      >
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                                          <div className="min-w-0">
+                                            <p className="line-clamp-2 break-words font-medium leading-tight">
+                                              {application.position_title}
+                                            </p>
+                                            <p
+                                              className="line-clamp-1 break-words text-sm text-muted-foreground"
+                                              title={application.company_name}
+                                            >
+                                              {application.company_name}
+                                            </p>
+                                          </div>
+
+                                          <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
+                                              {formatStatusLabel(application.status)}
+                                            </Badge>
+
+                                            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
+                                              <JobScoreIndicator
+                                                score={application.resume_match_score ?? null}
+                                                createdAt={application.created_at}
+                                                size={48}
+                                                showDescription={false}
+                                              />
+                                              <ApplicationActionsMenu
+                                                application={application}
+                                                onStatusUpdate={(status, note) =>
+                                                  handleStatusChange(application.id, status, note)
+                                                }
+                                                onApplicationUpdate={handleApplicationUpdate}
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                          <span>Applied {formatApplicationDate(application.application_date)}</span>
+                                          <span>•</span>
+                                          <span>{formatDaysSinceApplied(application.application_date)}</span>
+                                          {application.location && (
+                                            <>
+                                              <span>•</span>
+                                              <span
+                                                className="inline-block max-w-[14rem] truncate"
+                                                title={application.location}
+                                              >
+                                                {application.location}
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+                                        {application.notes && (
+                                          <p className="line-clamp-3 break-words text-sm text-muted-foreground">
+                                            {application.notes}
+                                          </p>
+                                        )}
                                       </div>
                                     </div>
-                                  </div>
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                  <span>
-                                    Applied {formatApplicationDate(application.application_date)}
-                                  </span>
-                                  <span>•</span>
-                                  <span>{formatDaysSinceApplied(application.application_date)}</span>
-                                  {application.location && (
-                                    <>
-                                      <span>•</span>
-                                      <span
-                                        className="inline-block max-w-[14rem] truncate"
-                                        title={application.location}
-                                      >
-                                        {application.location}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                                {application.notes && (
-                                  <p className="text-sm text-muted-foreground line-clamp-3 break-words">
-                                    {application.notes}
-                                  </p>
-                                )}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
+                                  )
+                                })}
+                              </>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
                     </TabsContent>
                   </Tabs>
 
@@ -797,38 +777,11 @@ export default function Dashboard() {
                     <p className="text-sm text-muted-foreground">
                       {isLoading
                         ? "Loading applications..."
-                        : `Showing ${applications.length > 0 ? (page - 1) * DASHBOARD_PAGE_SIZE + 1 : 0}-${
-                            (page - 1) * DASHBOARD_PAGE_SIZE + applications.length
-                          } of ${count} applications`}
+                        : `Showing ${applications.length} of ${count} applications`}
                     </p>
 
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="text-xs text-muted-foreground sm:ml-1">
-                          Page {totalPages === 0 ? 1 : page} of {totalPages || 1}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handlePageChange(page - 1)}
-                          disabled={!canGoPrevious || isLoading}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          <span className="sr-only">Previous page</span>
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handlePageChange(page + 1)}
-                          disabled={!canGoNext || isLoading}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                          <span className="sr-only">Next page</span>
-                        </Button>
-                        
-                      </div>
+                    <div className="text-xs text-muted-foreground">
+                      {filters.search ? `Filtered by "${filters.search}"` : `Sorted by ${sort.field} (${sort.direction})`}
                     </div>
                   </div>
               </div>
@@ -842,7 +795,6 @@ export default function Dashboard() {
         onOpenChange={setIsApplicationsDrawerOpen}
         filters={filters}
         sort={sort}
-        onApplicationUpdate={handleApplicationUpdate}
         onFiltersChange={handleFilterChange}
         onSortChange={handleSortChange}
       />

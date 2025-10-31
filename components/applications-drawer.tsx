@@ -1,7 +1,7 @@
 "use client"
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react"
-import { ChevronLeft, ChevronRight, Filter, Search, X } from "lucide-react"
+import { Filter, Search, X } from "lucide-react"
 
 import {
   Drawer,
@@ -16,8 +16,6 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import type { JobApplicationFilters, JobApplicationSort, Priority } from "@/lib/types/database"
-import { useJobApplications } from "@/lib/hooks/use-job-applications"
-import { JobApplicationCard } from "@/components/job-application-card"
 import {
   formatStatusFilterLabel,
   STATUS_STAGE_FILTER_OPTIONS,
@@ -44,12 +42,10 @@ type ApplicationsDrawerProps = {
   onOpenChange: (open: boolean) => void
   filters: JobApplicationFilters
   sort: JobApplicationSort
-  onApplicationUpdate: () => void
   onFiltersChange: (filters: JobApplicationFilters) => void
   onSortChange: (sort: JobApplicationSort) => void
 }
 
-const DRAWER_PAGE_SIZE = 12
 const priorityOptions: Priority[] = ["Low", "Medium", "High"]
 const sortOptions: SortOption[] = [
   { value: "created_at:desc", label: "Recently added", sort: { field: "created_at", direction: "desc" } },
@@ -76,12 +72,10 @@ export function ApplicationsDrawer({
   onOpenChange,
   filters,
   sort,
-  onApplicationUpdate,
   onFiltersChange,
   onSortChange,
 }: ApplicationsDrawerProps) {
   const [searchTerm, setSearchTerm] = useState(filters.search ?? "")
-  const [page, setPage] = useState(1)
   const [statusBuilder, setStatusBuilder] = useState<PipelineStage | undefined>(undefined)
 
   const trimmedSearch = useMemo(() => searchTerm.trim(), [searchTerm])
@@ -96,52 +90,13 @@ export function ApplicationsDrawer({
     }
 
     setSearchTerm(filters.search ?? "")
-    setPage(1)
   }, [open, filters.search])
 
-  const filterSignature = useMemo(
-    () =>
-      JSON.stringify({
-        status: filters.status,
-        priority: filters.priority,
-        company_name: filters.company_name,
-        date_from: filters.date_from,
-        date_to: filters.date_to,
-      }),
-    [filters.company_name, filters.date_from, filters.date_to, filters.priority, filters.status],
-  )
-
   useEffect(() => {
-    if (!open) {
-      return
+    if ((filters.status ?? []).length === 0) {
+      setStatusBuilder(undefined)
     }
-
-    setPage(1)
-  }, [open, filterSignature])
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    setPage(1)
-  }, [open, sort.direction, sort.field])
-
-  const combinedFilters: JobApplicationFilters = {
-    ...filters,
-    search: trimmedSearch.length > 0 ? trimmedSearch : undefined,
-  }
-
-  const { applications, isLoading, count, total_pages } = useJobApplications({
-    page,
-    limit: DRAWER_PAGE_SIZE,
-    filters: combinedFilters,
-    sort,
-    include_interviews: true,
-  })
-
-  const totalPages = total_pages || 1
-  const isEmpty = !isLoading && applications.length === 0
+  }, [filters.status])
 
   const activeFilters = useMemo<FilterChip[]>(() => {
     const chips: FilterChip[] = []
@@ -181,19 +136,22 @@ export function ApplicationsDrawer({
     const value = event.target.value
     setSearchTerm(value)
 
-    setPage(1)
+    const trimmed = value.trim()
+    const normalized = trimmed.length > 0 ? trimmed : undefined
+
+    onFiltersChange({
+      ...filters,
+      search: normalized,
+    })
   }
 
   const clearSearch = () => {
     setSearchTerm("")
-    setPage(1)
+    onFiltersChange({
+      ...filters,
+      search: undefined,
+    })
   }
-
-  useEffect(() => {
-    if ((filters.status ?? []).length === 0) {
-      setStatusBuilder(undefined)
-    }
-  }, [filters.status])
 
   const handleStatusAdd = (status: string) => {
     const current = filters.status ?? []
@@ -207,7 +165,6 @@ export function ApplicationsDrawer({
       ...filters,
       status: nextStatuses,
     })
-    setPage(1)
   }
 
   const handleStatusRemove = (status: string) => {
@@ -218,7 +175,6 @@ export function ApplicationsDrawer({
       ...filters,
       status: nextStatuses.length > 0 ? nextStatuses : undefined,
     })
-    setPage(1)
   }
 
   const handlePriorityToggle = (priority: Priority) => {
@@ -230,7 +186,6 @@ export function ApplicationsDrawer({
       ...filters,
       priority: nextPriorities.length > 0 ? nextPriorities : undefined,
     })
-    setPage(1)
   }
 
   const handleCompanyChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -241,7 +196,6 @@ export function ApplicationsDrawer({
       ...filters,
       company_name: cleaned.length > 0 ? cleaned : undefined,
     })
-    setPage(1)
   }
 
   const handleDateChange = (key: "date_from" | "date_to") => (event: ChangeEvent<HTMLInputElement>) => {
@@ -251,57 +205,55 @@ export function ApplicationsDrawer({
       ...filters,
       [key]: value.length > 0 ? value : undefined,
     })
-    setPage(1)
   }
 
   const clearAllFilters = () => {
     setSearchTerm("")
     onFiltersChange({})
-    setPage(1)
     setStatusBuilder(undefined)
   }
 
   const handleRemoveFilter = (chip: FilterChip) => {
     if (chip.type === "status") {
-      const remaining = (filters.status ?? []).filter((status) => status !== chip.value)
-      onFiltersChange({
-        ...filters,
-        status: remaining.length > 0 ? remaining : undefined,
-      })
-    } else if (chip.type === "priority") {
-      const remaining = (filters.priority ?? []).filter((priority) => priority !== chip.value)
-      onFiltersChange({
-        ...filters,
-        priority: remaining.length > 0 ? remaining : undefined,
-      })
-    } else if (chip.type === "company_name") {
+      handleStatusRemove(chip.value)
+      return
+    }
+
+    if (chip.type === "priority") {
+      const current = filters.priority ?? []
+      if (current.includes(chip.value)) {
+        handlePriorityToggle(chip.value)
+      }
+      return
+    }
+
+    if (chip.type === "company_name") {
       onFiltersChange({
         ...filters,
         company_name: undefined,
       })
-    } else if (chip.type === "date_from") {
+      return
+    }
+
+    if (chip.type === "date_from") {
       onFiltersChange({
         ...filters,
         date_from: undefined,
       })
-    } else if (chip.type === "date_to") {
+      return
+    }
+
+    if (chip.type === "date_to") {
       onFiltersChange({
         ...filters,
         date_to: undefined,
       })
-    } else if (chip.type === "search") {
-      setSearchTerm("")
+      return
     }
 
-    setPage(1)
-  }
-
-  const goToPreviousPage = () => {
-    setPage((current) => (current > 1 ? current - 1 : current))
-  }
-
-  const goToNextPage = () => {
-    setPage((current) => (current < (total_pages || 1) ? current + 1 : current))
+    if (chip.type === "search") {
+      clearSearch()
+    }
   }
 
   const handleSortSelect = (value: string) => {
@@ -310,7 +262,6 @@ export function ApplicationsDrawer({
       return
     }
 
-    setPage(1)
     onSortChange(option.sort)
   }
 
@@ -322,7 +273,7 @@ export function ApplicationsDrawer({
         <DrawerHeader className="relative pb-2 pr-12 sm:pr-16">
           <DrawerTitle>Application library</DrawerTitle>
           <DrawerDescription>
-            Browse, search, and update any application without leaving your dashboard.
+            Adjust filters and sorting to tailor which applications appear on your dashboard.
           </DrawerDescription>
           <DrawerClose asChild>
             <Button
@@ -339,7 +290,7 @@ export function ApplicationsDrawer({
 
         <div className="border-t">
           <div className="flex flex-col gap-4 p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4">
               <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
                 <div className="relative w-full lg:max-w-md">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -380,36 +331,46 @@ export function ApplicationsDrawer({
                 </div>
               </div>
 
-              <div className="text-sm text-muted-foreground">
-                <span>
-                  {count} applications · Page {page}/{totalPages}
-                </span>
+              <div className="rounded-lg border bg-background/60 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Filter className="h-4 w-4" />
+                    Refine results
+                    {hasActiveFilters ? (
+                      <Badge variant="secondary" className="ml-1">
+                        {activeFilters.length}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    disabled={!hasActiveFilters}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
               </div>
+
+              {hasActiveFilters ? (
+                <div className="flex flex-wrap gap-2">
+                  {activeFilters.map((chip) => (
+                    <Badge key={`${chip.type}:${chip.value}`} variant="secondary" asChild>
+                      <button type="button" className="flex items-center gap-1" onClick={() => handleRemoveFilter(chip)}>
+                        {chip.label}
+                        <X className="h-3 w-3" />
+                        <span className="sr-only">Remove {chip.label}</span>
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            <div className="rounded-lg border bg-background/60 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Filter className="h-4 w-4" />
-                  Refine results
-                  {hasActiveFilters ? (
-                    <Badge variant="secondary" className="ml-1">
-                      {activeFilters.length}
-                    </Badge>
-                  ) : null}
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearAllFilters}
-                  disabled={!hasActiveFilters}
-                >
-                  Clear filters
-                </Button>
-              </div>
-
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <ScrollArea className="h-[60vh] pr-4">
+              <div className="space-y-6 pb-6">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
                   <div className="mt-2 space-y-3">
@@ -517,86 +478,10 @@ export function ApplicationsDrawer({
                   </div>
                 </div>
               </div>
-            </div>
-
-            {hasActiveFilters ? (
-              <div className="flex flex-wrap gap-2">
-                {activeFilters.map((chip) => (
-                  <Badge key={`${chip.type}:${chip.value}`} variant="secondary" asChild>
-                    <button
-                      type="button"
-                      className="flex items-center gap-1"
-                      onClick={() => handleRemoveFilter(chip)}
-                    >
-                      {chip.label}
-                      <X className="h-3 w-3" />
-                      <span className="sr-only">Remove {chip.label}</span>
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            ) : null}
-
-            <ScrollArea className="h-[60vh] pr-4">
-              <div className="space-y-4">
-                {isLoading ? (
-                  Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="h-36 animate-pulse rounded-lg border bg-muted/40" />
-                  ))
-                ) : isEmpty ? (
-                  <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center">
-                    <div>
-                      <p className="font-medium">No applications match these filters</p>
-                      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                        Adjust your filters or reset them to see more results.
-                      </p>
-                    </div>
-                    {hasActiveFilters ? (
-                      <Button type="button" variant="outline" size="sm" onClick={clearAllFilters}>
-                        Reset filters
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : (
-                  applications.map((application) => (
-                    <JobApplicationCard
-                      key={application.id}
-                      application={application}
-                      onUpdate={onApplicationUpdate}
-                    />
-                  ))
-                )}
-              </div>
             </ScrollArea>
-
-            <div className="flex justify-end">
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={goToPreviousPage}
-                  disabled={page <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Previous page</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={goToNextPage}
-                  disabled={page >= totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Next page</span>
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </DrawerContent>
     </Drawer>
   )
 }
-
