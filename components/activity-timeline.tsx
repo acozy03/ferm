@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Calendar, CheckCircle, Clock, MessageSquare, Plus, Search, X } from "lucide-react"
+import { Calendar, CheckCircle, Clock, History, MessageSquare, Plus, Search, X } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -136,7 +136,12 @@ export function ActivityTimeline() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent Activity</CardTitle>
+          <CardTitle className="flex items-center justify-between gap-3 text-base">
+            <span className="flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              Recent Activity
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
