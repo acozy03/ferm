@@ -5,6 +5,7 @@ import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { AnimatedNumber } from "@/components/animated-number"
 import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip } from "recharts"
 import { toPng } from "html-to-image"
 import {
@@ -231,26 +232,33 @@ export default function AnalyticsPage() {
     () => [
       {
         label: "Overall response rate",
-        value: stats ? `${stats.response_rate}%` : "–",
+        value: typeof stats?.response_rate === "number" ? stats.response_rate : null,
+        suffix: "%",
         helper: `${stats?.interviews ?? 0} interviews scheduled`,
+        isLoading: statsLoading,
       },
       {
         label: "Interview conversion",
-        value: stats ? `${interviewConversion}%` : "–",
+        value: stats ? interviewConversion : null,
+        suffix: "%",
         helper: `${stats?.applied ?? 0} applications reached interview stage`,
+        isLoading: statsLoading,
       },
       {
         label: "Offer momentum",
-        value: stats ? `${offerRate}%` : "–",
+        value: stats ? offerRate : null,
+        suffix: "%",
         helper: `${stats?.offers ?? 0} offers • ${stats?.accepted ?? 0} accepted`,
+        isLoading: statsLoading,
       },
       {
         label: "Active pipeline",
-        value: appsLoading ? "–" : activePipeline,
+        value: appsLoading ? null : activePipeline,
         helper: `${awaitingResponse} awaiting response`,
+        isLoading: appsLoading,
       },
     ],
-    [activePipeline, appsLoading, awaitingResponse, interviewConversion, offerRate, stats],
+    [activePipeline, appsLoading, awaitingResponse, interviewConversion, offerRate, stats, statsLoading],
   )
 
 
@@ -353,14 +361,18 @@ export default function AnalyticsPage() {
                   </CardHeader>
                   <CardContent>
                     {(() => {
-                      const shouldSkeleton =
-                        (statsLoading && item.label !== "Active pipeline") ||
-                        (item.label === "Active pipeline" && appsLoading)
-                      if (shouldSkeleton) {
+                      if (item.isLoading) {
                         return <Skeleton className="h-8 w-16" />
                       }
 
-                      return <div className="text-2xl font-semibold">{item.value}</div>
+                      return (
+                        <AnimatedNumber
+                          className="text-2xl font-semibold"
+                          value={item.value}
+                          suffix={item.suffix}
+                          duration={900}
+                        />
+                      )
                     })()}
                     <p className="text-sm text-muted-foreground mt-2">{item.helper}</p>
                   </CardContent>

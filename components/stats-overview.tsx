@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, Clock, CheckCircle, XCircle } from "lucide-react"
 import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats"
+import { AnimatedNumber } from "@/components/animated-number"
 
 export function StatsOverview() {
   const { stats, isLoading, error } = useDashboardStats()
@@ -45,8 +46,10 @@ export function StatsOverview() {
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.total_applications}</div>
-          <p className="text-xs text-muted-foreground">{stats.applied} pending response</p>
+          <AnimatedNumber className="text-2xl font-bold" value={stats.total_applications} />
+          <p className="text-xs text-muted-foreground">
+            <AnimatedNumber value={stats.applied} fallback={0} /> pending response
+          </p>
         </CardContent>
       </Card>
 
@@ -56,8 +59,10 @@ export function StatsOverview() {
           <Clock className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.interviews}</div>
-          <p className="text-xs text-muted-foreground">{stats.upcoming_interviews} upcoming</p>
+          <AnimatedNumber className="text-2xl font-bold" value={stats.interviews} />
+          <p className="text-xs text-muted-foreground">
+            <AnimatedNumber value={stats.upcoming_interviews} fallback={0} /> upcoming
+          </p>
         </CardContent>
       </Card>
 
@@ -67,8 +72,10 @@ export function StatsOverview() {
           <CheckCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.offers}</div>
-          <p className="text-xs text-muted-foreground">{stats.accepted} accepted</p>
+          <AnimatedNumber className="text-2xl font-bold" value={stats.offers} />
+          <p className="text-xs text-muted-foreground">
+            <AnimatedNumber value={stats.accepted} fallback={0} /> accepted
+          </p>
         </CardContent>
       </Card>
 
@@ -78,8 +85,10 @@ export function StatsOverview() {
           <XCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.response_rate}%</div>
-          <p className="text-xs text-muted-foreground">{stats.rejected} rejections</p>
+          <AnimatedNumber className="text-2xl font-bold" value={stats.response_rate} suffix="%" />
+          <p className="text-xs text-muted-foreground">
+            <AnimatedNumber value={stats.rejected} fallback={0} /> rejections
+          </p>
         </CardContent>
       </Card>
     </div>

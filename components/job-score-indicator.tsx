@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useCallback } from "react"
 import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useAnimatedNumber } from "@/hooks/use-animated-number"
 
 interface JobScoreIndicatorProps {
   score?: number | null
@@ -29,13 +30,20 @@ export function JobScoreIndicator({
   align = "start",
 }: JobScoreIndicatorProps) {
   const parsedScore = typeof score === "number" ? clamp(score, 0, 100) : null
-  const normalized = parsedScore === null ? 0 : parsedScore / 100
+  const animatedScore = useAnimatedNumber(parsedScore ?? null, { duration: 900 })
+
+  const formatAnimatedScore = useCallback(
+    (value: number) => {
+      const rounded = Math.round(value * 10) / 10
+      return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)
+    },
+    [],
+  )
 
   const formattedScore = useMemo(() => {
     if (parsedScore === null) return null
-    const rounded = Math.round(parsedScore * 10) / 10
-    return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)
-  }, [parsedScore])
+    return formatAnimatedScore(animatedScore)
+  }, [animatedScore, formatAnimatedScore, parsedScore])
 
   const createdAtTime = useMemo(() => {
     if (!createdAt) return null
@@ -63,9 +71,13 @@ export function JobScoreIndicator({
   const radius = useMemo(() => (size - 8) / 2, [size])
 
   const strokeDashoffset = useMemo(() => {
-    const progress = clamp(normalized, 0, 1)
+    if (parsedScore === null) {
+      return circumference
+    }
+
+    const progress = clamp(animatedScore / 100, 0, 1)
     return circumference - circumference * progress
-  }, [circumference, normalized])
+  }, [animatedScore, circumference, parsedScore])
 
   const alignmentClasses = align === "end" ? "items-center justify-end" : "items-center"
   const textAlignment = align === "end" ? "text-right" : "text-left"
