@@ -120,21 +120,37 @@
 }
 
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     @apply border-border outline-ring/50;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    scrollbar-color: transparent transparent !important;
   }
-  html {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  html,
+  body {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    scrollbar-color: transparent transparent !important;
   }
   body {
     @apply bg-background text-foreground;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
   }
   html::-webkit-scrollbar,
-  body::-webkit-scrollbar {
-    display: none;
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none !important;
+  }
+  *::-webkit-scrollbar-thumb,
+  *::-webkit-scrollbar-track {
+    background: transparent !important;
+    border: none !important;
+  }
+  [data-slot='scroll-area-scrollbar'],
+  [data-slot='scroll-area-thumb'],
+  [data-slot='scroll-area-corner'] {
+    display: none !important;
   }
 }
 
