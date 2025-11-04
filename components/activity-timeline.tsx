@@ -1,12 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Calendar, CheckCircle, Clock, History, MessageSquare, Plus, Search, X } from "lucide-react"
+import { useMemo } from "react"
+import { Calendar, CheckCircle, Clock, History, MessageSquare, Plus } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ActivityDetailsDialog } from "@/components/activity-details-dialog"
 import { useActivityLog } from "@/lib/hooks/use-activity-log"
@@ -30,10 +27,6 @@ const activityColors = {
 
 export function ActivityTimeline() {
   const { activities, totalCount, isLoading, error } = useActivityLog()
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const trimmedSearch = searchTerm.trim().toLowerCase()
-  const hasSearchFilter = trimmedSearch.length > 0
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
@@ -61,29 +54,7 @@ export function ActivityTimeline() {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   }
 
-  const filteredActivities = useMemo(() => {
-    if (!trimmedSearch) {
-      return activities
-    }
-
-    return activities.filter((activity) => {
-      const jobTitle = activity.job_applications?.position_title ?? activity.job_position_snapshot ?? ""
-      const companyName = activity.job_applications?.company_name ?? activity.job_company_snapshot ?? ""
-
-      return [
-        activity.description,
-        jobTitle,
-        companyName,
-        activity.action_type.replace(/_/g, " "),
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(trimmedSearch)
-    })
-  }, [activities, trimmedSearch])
-
-  const limitedActivities = activities.slice(0, 3)
-  const hasMoreActivity = activities.length > limitedActivities.length
+  const filteredActivities = useMemo(() => activities, [activities])
 
   const renderActivityItem = (item: ActivityLogWithApplication) => {
     const Icon = activityIcons[item.action_type] || Clock
@@ -133,17 +104,17 @@ export function ActivityTimeline() {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-3 text-base">
-            <span className="flex items-center gap-2">
-              <History className="h-4 w-4 text-muted-foreground" />
-              Recent Activity
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+    <Card className="flex h-full flex-col">
+      <CardHeader className="shrink-0">
+        <CardTitle className="flex items-center justify-between gap-3 text-base">
+          <span className="flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            Recent Activity
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full pr-3">
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
@@ -164,92 +135,18 @@ export function ActivityTimeline() {
               <span>No recent activity</span>
             </div>
           ) : (
-            <div className="relative space-y-3">
-              {limitedActivities.map((item) => renderActivityItem(item))}
-              {hasMoreActivity ? (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" />
-              ) : null}
+            <div className="space-y-3">
+              {filteredActivities.map((item) => renderActivityItem(item))}
             </div>
           )}
 
           {activities.length > 0 ? (
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                Showing {limitedActivities.length} of {totalCount} updates
-              </p>
-              <Button variant="ghost" size="sm" onClick={() => setIsDrawerOpen(true)}>
-                View all activity
-              </Button>
-            </div>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Showing {Math.min(filteredActivities.length, totalCount)} of {totalCount} updates
+            </p>
           ) : null}
-        </CardContent>
-      </Card>
-
-      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} direction="right">
-        <DrawerContent position="right" className="sm:max-w-3xl">
-          <DrawerHeader className="relative pb-2 pr-12 sm:pr-16">
-            <DrawerTitle>Activity history</DrawerTitle>
-            <DrawerDescription>Search every update tracked for your applications.</DrawerDescription>
-            <DrawerClose asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close activity drawer</span>
-              </Button>
-            </DrawerClose>
-          </DrawerHeader>
-          <div className="border-t">
-            <div className="flex flex-col gap-4 p-4">
-              <div className="relative w-full sm:max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Filter activity"
-                  className="pl-9 pr-10"
-                />
-                {searchTerm ? (
-                  <button
-                    type="button"
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-                  >
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">Clear search</span>
-                  </button>
-                ) : null}
-              </div>
-
-              <ScrollArea className="h-[60vh] pr-4">
-                <div className="space-y-3">
-                  {filteredActivities.length === 0 ? (
-                    <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center">
-                      <div>
-                        <p className="font-medium">No activity found</p>
-                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                          Try a different search term to find specific updates.
-                        </p>
-                      </div>
-                      {hasSearchFilter ? (
-                        <Button type="button" variant="outline" size="sm" onClick={() => setSearchTerm("")}>
-                          Clear search
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : (
-                    filteredActivities.map((item) => renderActivityItem(item))
-                  )}
-                </div>
-              </ScrollArea>
-
-            </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
-    </>
+        </ScrollArea>
+      </CardContent>
+    </Card>
   )
 }

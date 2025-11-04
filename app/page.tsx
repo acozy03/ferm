@@ -1,7 +1,7 @@
 "use client"
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { CalendarClock, LayoutPanelLeft, ListChecks, Plus, Search, Table2, X } from "lucide-react"
+import { CalendarClock, Filter, LayoutPanelLeft, Plus, Search, Table2, X } from "lucide-react"
 
 import { Header } from "@/components/header"
 import { JobApplicationCard } from "@/components/job-application-card"
@@ -393,22 +393,26 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Header />
-      <main className="pt-24 p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-       
+      <main className="flex-1 overflow-hidden px-6 pt-24">
+        <div className="mx-auto flex h-full max-w-7xl flex-col space-y-6 overflow-hidden">
+          <div className="shrink-0">
+            <StatsOverview />
+          </div>
 
-          <StatsOverview />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-6">
-              <UpcomingReminders />
-              <ActivityTimeline />
+          <div className="grid h-full grid-cols-1 gap-6 overflow-hidden lg:grid-cols-3">
+            <div className="flex flex-col gap-6 overflow-hidden lg:col-span-1">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <UpcomingReminders />
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <ActivityTimeline />
+              </div>
             </div>
 
-            <div className="lg:col-span-2 space-y-6">
-              <div className="space-y-4 pb-20">
+            <div className="flex min-h-0 flex-col gap-6 overflow-hidden lg:col-span-2">
+              <div className="flex h-full min-h-0 flex-col space-y-4 pb-6">
                   <Tabs
                     value={view}
                     onValueChange={(next) => {
@@ -481,15 +485,15 @@ export default function Dashboard() {
       className="gap-2"
       onClick={() => setIsApplicationsDrawerOpen(true)}
     >
-      <ListChecks className="h-4 w-4" />
-      Application Library
+      <Filter className="h-4 w-4" />
+      Filters
     </Button>
   </div>
 </div>
 
 
 
-                    <TabsContent value="pipeline" className="space-y-4">
+                    <TabsContent value="pipeline" className="flex h-full flex-col space-y-4">
                       <BulkActions
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -497,8 +501,8 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      <div className="rounded-lg border bg-card/40">
-                        <ScrollArea className="h-[65vh]">
+                      <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
+                        <ScrollArea className="h-full">
                           <div className="space-y-4 p-4">
                             {isLoading ? (
                               <div className="grid gap-4">
@@ -528,7 +532,7 @@ export default function Dashboard() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="table" className="space-y-4">
+                    <TabsContent value="table" className="flex h-full flex-col space-y-4">
                       <BulkActions
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -536,8 +540,8 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      <div className="rounded-lg border bg-card/40">
-                        <ScrollArea className="h-[65vh]">
+                      <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
+                        <ScrollArea className="h-full">
                           <div className="min-w-full p-4">
                             {isLoading ? (
                               <div className="space-y-2">
@@ -657,7 +661,7 @@ export default function Dashboard() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="timeline" className="space-y-6">
+                    <TabsContent value="timeline" className="flex h-full flex-col space-y-6">
                       <BulkActions
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -665,8 +669,8 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      <div className="rounded-lg border bg-card/40">
-                        <ScrollArea className="h-[65vh]">
+                      <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
+                        <ScrollArea className="h-full">
                           <div className="relative mx-auto w-full max-w-4xl space-y-6 p-6">
                             {isLoading ? (
                               <div className="space-y-4">

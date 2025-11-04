@@ -1,11 +1,12 @@
 "use client"
 
 import { useMemo } from "react"
-import { BellRing, CalendarClock, Mail } from "lucide-react"
+import { BellRing, CalendarClock } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -58,16 +59,6 @@ export function UpcomingReminders() {
       new Intl.DateTimeFormat("en-US", {
         month: "short",
         day: "numeric",
-      }),
-    [],
-  )
-
-  const timeFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
       }),
     [],
   )
@@ -128,73 +119,73 @@ export function UpcomingReminders() {
   }, [applications, followUps])
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="flex h-full flex-col">
+      <CardHeader className="shrink-0">
         <CardTitle className="flex items-center justify-between gap-3 text-base">
           <span className="flex items-center gap-2">
             <BellRing className="h-4 w-4 text-muted-foreground" />
             Upcoming Reminders
           </span>
-   
-        </CardTitle>
-    
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? (
-          <div className="space-y-3">
-            {[...Array(3)].map((_, index) => (
-              <div key={index} className="rounded-lg border bg-muted/20 p-4">
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-40" />
-                  <Skeleton className="h-3 w-28" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : loadError ? (
-          <p className="text-sm text-destructive">Error loading reminders</p>
-        ) : reminders.length === 0 ? (
-          <div className="rounded-lg border border-dashed bg-muted/10 p-6 text-center text-sm text-muted-foreground">
-            No reminders scheduled yet. Enable follow-up reminders on your applications to see them here.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {reminders.map((reminder) => {
-              const theme = reminderThemes[reminder.status]
-              return (
-                <div
-                  key={reminder.id}
-                  className="rounded-lg border bg-card/70 p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-card-foreground">
-                        {reminder.application.company_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {reminder.application.position_title}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className={cn("border", theme.badge)}>
-                      {reminder.countdownLabel}
-                    </Badge>
-                  </div>
 
-                  <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-                    <div className="flex items-center gap-2">
-                      <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>
-                        {dateFormatter.format(reminder.nextReminder)} at {"9:00 AM EST"}
-                      </span>
+        </CardTitle>
+
+      </CardHeader>
+      <CardContent className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full pr-3">
+          <div className="space-y-4">
+            {isLoading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, index) => (
+                  <div key={index} className="rounded-lg border bg-muted/20 p-4">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-40" />
+                      <Skeleton className="h-3 w-28" />
                     </div>
-                   
                   </div>
-                </div>
-              )
-            })}
+                ))}
+              </div>
+            ) : loadError ? (
+              <p className="text-sm text-destructive">Error loading reminders</p>
+            ) : reminders.length === 0 ? (
+              <div className="rounded-lg border border-dashed bg-muted/10 p-6 text-center text-sm text-muted-foreground">
+                No reminders scheduled yet. Enable follow-up reminders on your applications to see them here.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {reminders.map((reminder) => {
+                  const theme = reminderThemes[reminder.status]
+                  return (
+                    <div key={reminder.id} className="rounded-lg border bg-card/70 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-card-foreground">
+                            {reminder.application.company_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {reminder.application.position_title}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className={cn("border", theme.badge)}>
+                          {reminder.countdownLabel}
+                        </Badge>
+                      </div>
+
+                      <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                        <div className="flex items-center gap-2">
+                          <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>
+                            {dateFormatter.format(reminder.nextReminder)} at {"9:00 AM EST"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </ScrollArea>
       </CardContent>
     </Card>
   )

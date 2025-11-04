@@ -272,7 +272,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none sm:overflow-visible sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Add New Job Application</DialogTitle>
         </DialogHeader>

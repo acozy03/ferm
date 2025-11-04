@@ -1,7 +1,7 @@
 "use client"
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react"
-import { Filter, Search, X } from "lucide-react"
+import { ChangeEvent, useMemo } from "react"
+import { ArrowDownAZ, ArrowUpAZ, Filter, X } from "lucide-react"
 
 import {
   Drawer,
@@ -16,23 +16,14 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import type { JobApplicationFilters, JobApplicationSort, Priority } from "@/lib/types/database"
-import {
-  formatStatusFilterLabel,
-  STATUS_STAGE_FILTER_OPTIONS,
-} from "@/lib/status"
+import { formatStatusFilterLabel, STATUS_STAGE_FILTER_OPTIONS } from "@/lib/status"
 import type { PipelineStage } from "@/lib/status"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-type SortOption = {
-  value: string
-  label: string
-  sort: JobApplicationSort
-}
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 type FilterChip =
   | { type: "status"; value: string; label: string }
   | { type: "priority"; value: Priority; label: string }
-  | { type: "company_name"; value: string; label: string }
   | { type: "date_from"; value: string; label: string }
   | { type: "date_to"; value: string; label: string }
   | { type: "search"; value: string; label: string }
@@ -46,25 +37,17 @@ type ApplicationsDrawerProps = {
   onSortChange: (sort: JobApplicationSort) => void
 }
 
+type SortFieldOption = {
+  value: JobApplicationSort["field"]
+  label: string
+}
+
 const priorityOptions: Priority[] = ["Low", "Medium", "High"]
-const sortOptions: SortOption[] = [
-  { value: "created_at:desc", label: "Recently added", sort: { field: "created_at", direction: "desc" } },
-  { value: "created_at:asc", label: "Oldest added", sort: { field: "created_at", direction: "asc" } },
-  { value: "updated_at:desc", label: "Recently updated", sort: { field: "updated_at", direction: "desc" } },
-  { value: "updated_at:asc", label: "Least recently updated", sort: { field: "updated_at", direction: "asc" } },
-  {
-    value: "application_date:desc",
-    label: "Most recent application date",
-    sort: { field: "application_date", direction: "desc" },
-  },
-  {
-    value: "application_date:asc",
-    label: "Oldest application date",
-    sort: { field: "application_date", direction: "asc" },
-  },
-  { value: "priority:desc", label: "Priority (High to Low)", sort: { field: "priority", direction: "desc" } },
-  { value: "priority:asc", label: "Priority (Low to High)", sort: { field: "priority", direction: "asc" } },
-  { value: "company_name:asc", label: "Company name (A–Z)", sort: { field: "company_name", direction: "asc" } },
+const sortFieldOptions: SortFieldOption[] = [
+  { value: "created_at", label: "Date added" },
+  { value: "updated_at", label: "Last updated" },
+  { value: "application_date", label: "Application date" },
+  { value: "priority", label: "Priority" },
 ]
 
 export function ApplicationsDrawer({
@@ -75,28 +58,12 @@ export function ApplicationsDrawer({
   onFiltersChange,
   onSortChange,
 }: ApplicationsDrawerProps) {
-  const [searchTerm, setSearchTerm] = useState(filters.search ?? "")
-  const [statusBuilder, setStatusBuilder] = useState<PipelineStage | undefined>(undefined)
-
-  const trimmedSearch = useMemo(() => searchTerm.trim(), [searchTerm])
-  const selectedSortValue = useMemo(() => {
-    const key = `${sort.field}:${sort.direction}`
-    return sortOptions.some((option) => option.value === key) ? key : sortOptions[0]?.value ?? ""
-  }, [sort.direction, sort.field])
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    setSearchTerm(filters.search ?? "")
-  }, [open, filters.search])
-
-  useEffect(() => {
-    if ((filters.status ?? []).length === 0) {
-      setStatusBuilder(undefined)
-    }
-  }, [filters.status])
+  const trimmedSearch = (filters.search ?? "").trim()
+  const selectedSortField = useMemo(() => {
+    return sortFieldOptions.some((option) => option.value === sort.field)
+      ? sort.field
+      : sortFieldOptions[0]?.value ?? "created_at"
+  }, [sort.field])
 
   const activeFilters = useMemo<FilterChip[]>(() => {
     const chips: FilterChip[] = []
@@ -107,14 +74,6 @@ export function ApplicationsDrawer({
 
     for (const priority of filters.priority ?? []) {
       chips.push({ type: "priority", value: priority, label: `${priority} priority` })
-    }
-
-    if (filters.company_name) {
-      chips.push({
-        type: "company_name",
-        value: filters.company_name,
-        label: `Company: ${filters.company_name}`,
-      })
     }
 
     if (filters.date_from) {
@@ -132,48 +91,12 @@ export function ApplicationsDrawer({
     return chips
   }, [filters, trimmedSearch])
 
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value
-    setSearchTerm(value)
-
-    const trimmed = value.trim()
-    const normalized = trimmed.length > 0 ? trimmed : undefined
+  const handleStatusChange = (next: string[]) => {
+    const normalized = next.filter(Boolean) as PipelineStage[]
 
     onFiltersChange({
       ...filters,
-      search: normalized,
-    })
-  }
-
-  const clearSearch = () => {
-    setSearchTerm("")
-    onFiltersChange({
-      ...filters,
-      search: undefined,
-    })
-  }
-
-  const handleStatusAdd = (status: string) => {
-    const current = filters.status ?? []
-    if (current.includes(status)) {
-      return
-    }
-
-    const nextStatuses = [...current, status]
-
-    onFiltersChange({
-      ...filters,
-      status: nextStatuses,
-    })
-  }
-
-  const handleStatusRemove = (status: string) => {
-    const current = filters.status ?? []
-    const nextStatuses = current.filter((item) => item !== status)
-
-    onFiltersChange({
-      ...filters,
-      status: nextStatuses.length > 0 ? nextStatuses : undefined,
+      status: normalized.length > 0 ? normalized : undefined,
     })
   }
 
@@ -188,16 +111,6 @@ export function ApplicationsDrawer({
     })
   }
 
-  const handleCompanyChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value
-    const cleaned = value.trim()
-
-    onFiltersChange({
-      ...filters,
-      company_name: cleaned.length > 0 ? cleaned : undefined,
-    })
-  }
-
   const handleDateChange = (key: "date_from" | "date_to") => (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
 
@@ -208,14 +121,18 @@ export function ApplicationsDrawer({
   }
 
   const clearAllFilters = () => {
-    setSearchTerm("")
     onFiltersChange({})
-    setStatusBuilder(undefined)
   }
 
   const handleRemoveFilter = (chip: FilterChip) => {
     if (chip.type === "status") {
-      handleStatusRemove(chip.value)
+      const current = filters.status ?? []
+      const nextStatuses = current.filter((item) => item !== chip.value)
+
+      onFiltersChange({
+        ...filters,
+        status: nextStatuses.length > 0 ? nextStatuses : undefined,
+      })
       return
     }
 
@@ -224,14 +141,6 @@ export function ApplicationsDrawer({
       if (current.includes(chip.value)) {
         handlePriorityToggle(chip.value)
       }
-      return
-    }
-
-    if (chip.type === "company_name") {
-      onFiltersChange({
-        ...filters,
-        company_name: undefined,
-      })
       return
     }
 
@@ -252,17 +161,34 @@ export function ApplicationsDrawer({
     }
 
     if (chip.type === "search") {
-      clearSearch()
+      onFiltersChange({
+        ...filters,
+        search: undefined,
+      })
     }
   }
 
-  const handleSortSelect = (value: string) => {
-    const option = sortOptions.find((item) => item.value === value)
+  const handleSortFieldSelect = (value: string) => {
+    const option = sortFieldOptions.find((item) => item.value === value)
     if (!option) {
       return
     }
 
-    onSortChange(option.sort)
+    onSortChange({
+      field: option.value,
+      direction: sort.direction,
+    })
+  }
+
+  const handleSortDirectionChange = (value: string) => {
+    if (value !== "asc" && value !== "desc") {
+      return
+    }
+
+    onSortChange({
+      field: selectedSortField,
+      direction: value,
+    })
   }
 
   const hasActiveFilters = activeFilters.length > 0
@@ -271,10 +197,8 @@ export function ApplicationsDrawer({
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent position="right" className="sm:max-w-4xl">
         <DrawerHeader className="relative pb-2 pr-12 sm:pr-16">
-          <DrawerTitle>Application library</DrawerTitle>
-          <DrawerDescription>
-            Adjust filters and sorting to tailor which applications appear on your dashboard.
-          </DrawerDescription>
+          <DrawerTitle>Filters</DrawerTitle>
+          <DrawerDescription>Adjust how applications are filtered and sorted on your dashboard.</DrawerDescription>
           <DrawerClose asChild>
             <Button
               type="button"
@@ -283,7 +207,7 @@ export function ApplicationsDrawer({
               className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
-              <span className="sr-only">Close applications drawer</span>
+              <span className="sr-only">Close filters</span>
             </Button>
           </DrawerClose>
         </DrawerHeader>
@@ -291,43 +215,41 @@ export function ApplicationsDrawer({
         <div className="border-t">
           <div className="flex flex-col gap-4 p-4">
             <div className="flex flex-col gap-4">
-              <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-                <div className="relative w-full lg:max-w-md">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    placeholder="Search applications..."
-                    className="pl-9 pr-10"
-                  />
-                  {searchTerm ? (
-                    <button
-                      type="button"
-                      onClick={clearSearch}
-                      className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-                    >
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Clear search</span>
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-col gap-1 lg:w-64">
+              <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-1 lg:max-w-md">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Sort applications
                   </span>
-                  <Select value={selectedSortValue} onValueChange={handleSortSelect}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sortOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Select value={selectedSortField} onValueChange={handleSortFieldSelect}>
+                      <SelectTrigger className="sm:w-56">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortFieldOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <ToggleGroup
+                      type="single"
+                      value={sort.direction}
+                      onValueChange={handleSortDirectionChange}
+                      variant="outline"
+                      className="flex w-full flex-nowrap overflow-hidden sm:w-auto"
+                    >
+                      <ToggleGroupItem value="asc" className="flex items-center gap-2 px-3" aria-label="Sort ascending">
+                        <ArrowUpAZ className="h-4 w-4" />
+                        <span className="text-sm">Ascending</span>
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="desc" className="flex items-center gap-2 px-3" aria-label="Sort descending">
+                        <ArrowDownAZ className="h-4 w-4" />
+                        <span className="text-sm">Descending</span>
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
                 </div>
               </div>
 
@@ -373,56 +295,23 @@ export function ApplicationsDrawer({
               <div className="space-y-6 pb-6">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
-                  <div className="mt-2 space-y-3">
-                    <Select value={statusBuilder} onValueChange={(next) => setStatusBuilder(next as PipelineStage)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_STAGE_FILTER_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => statusBuilder && handleStatusAdd(statusBuilder)}
-                        disabled={!statusBuilder}
+                  <ToggleGroup
+                    type="multiple"
+                    value={(filters.status ?? []) as string[]}
+                    onValueChange={handleStatusChange}
+                    variant="outline"
+                    className="mt-2 !w-full flex-nowrap overflow-x-auto"
+                  >
+                    {STATUS_STAGE_FILTER_OPTIONS.map((option) => (
+                      <ToggleGroupItem
+                        key={option.value}
+                        value={option.value}
+                        className="whitespace-nowrap px-3 py-2 text-sm"
                       >
-                        Add status filter
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setStatusBuilder(undefined)}
-                        disabled={!statusBuilder}
-                      >
-                        Reset selection
-                      </Button>
-                    </div>
-                    {(filters.status ?? []).length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {(filters.status ?? []).map((status) => (
-                          <Badge key={status} variant="secondary" className="gap-1">
-                            {formatStatusFilterLabel(status)}
-                            <button
-                              type="button"
-                              onClick={() => handleStatusRemove(status)}
-                              className="rounded-full p-0.5 hover:bg-muted"
-                              aria-label={`Remove ${formatStatusFilterLabel(status)}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
+                        {option.label}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
                 </div>
 
                 <div>
@@ -445,16 +334,6 @@ export function ApplicationsDrawer({
                       )
                     })}
                   </div>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Company</p>
-                  <Input
-                    value={filters.company_name ?? ""}
-                    onChange={handleCompanyChange}
-                    placeholder="Filter by company name"
-                    className="mt-2"
-                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
