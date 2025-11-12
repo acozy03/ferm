@@ -406,7 +406,7 @@ export default function Dashboard() {
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <UpcomingReminders />
               </div>
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-4">
                 <ActivityTimeline />
               </div>
             </div>
