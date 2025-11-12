@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
         ${include_interviews ? ", interviews(*)" : ""}
         ${include_activity ? ", activity_log(*)" : ""}
         ${include_status_history ? ", status_history:job_application_status_history(*)" : ""}
-        , follow_up_draft:application_follow_up_drafts (generated_at)
+        , follow_up_draft:application_follow_up_drafts (generated_at, draft_text)
       `,
         { count: "exact" }
       )
@@ -210,12 +210,14 @@ export async function GET(request: NextRequest) {
           ? [followUpDraftRaw]
           : []
       const draftGeneratedAt = draftRecords[0]?.generated_at ?? null
+      const draftText = draftRecords[0]?.draft_text ?? null
 
       if (!include_status_history) {
         return {
           ...applicationWithoutDraft,
           status: normalizedStatus,
           ai_follow_up_draft_generated_at: draftGeneratedAt,
+          ai_follow_up_draft_text: draftText,
         }
       }
 
@@ -226,6 +228,7 @@ export async function GET(request: NextRequest) {
           .map((entry) => ({ ...entry, status: normalizeStatusValue(entry.status) }))
           .sort((left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime()),
         ai_follow_up_draft_generated_at: draftGeneratedAt,
+        ai_follow_up_draft_text: draftText,
       }
     })
 

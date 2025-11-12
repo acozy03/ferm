@@ -25,15 +25,21 @@ interface FollowUpDraftDialogProps {
 }
 
 export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }: FollowUpDraftDialogProps) {
+  const storedDraft = application.ai_follow_up_draft_text?.trim() ?? ""
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState("")
+  const [draft, setDraft] = useState(storedDraft)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [hasGenerated, setHasGenerated] = useState(Boolean(hasGeneratedDraft))
+  const [hasGenerated, setHasGenerated] = useState(Boolean(hasGeneratedDraft || storedDraft))
   const { toast } = useToast()
 
   useEffect(() => {
-    setHasGenerated(Boolean(hasGeneratedDraft))
-  }, [hasGeneratedDraft])
+    const nextStoredDraft = application.ai_follow_up_draft_text?.trim() ?? ""
+    setHasGenerated(Boolean(hasGeneratedDraft || nextStoredDraft))
+
+    if (!open && nextStoredDraft && nextStoredDraft !== draft) {
+      setDraft(nextStoredDraft)
+    }
+  }, [application.ai_follow_up_draft_text, draft, hasGeneratedDraft, open])
 
   const generateDraft = useCallback(async () => {
     if (hasGenerated) {
@@ -116,10 +122,12 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Button onClick={() => void generateDraft()} disabled={isGenerating || hasGenerated} className="gap-2">
-            {isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isGenerating ? "Generating" : hasGenerated ? "Draft generated" : "Generate draft"}
-          </Button>
+          {!hasGenerated && (
+            <Button onClick={() => void generateDraft()} disabled={isGenerating} className="gap-2">
+              {isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isGenerating ? "Generating" : "Generate draft"}
+            </Button>
+          )}
           <Textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -128,7 +136,7 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
           />
           <p className="text-xs text-muted-foreground">
             {hasGenerated
-              ? "AI drafts are limited to one per application. Copy your message before you leave this page."
+              ? "This draft is saved to your application. Copy your message before you leave this page."
               : "Edit anything you&rsquo;d like before sending it to your recruiter or hiring manager."}
           </p>
         </div>
@@ -137,7 +145,7 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
             {draft
               ? "Copy the draft and paste it into your email client."
               : hasGenerated
-                ? "You can only generate one draft per application."
+                ? "Your saved draft will appear here."
                 : "Generate a draft to review it here."}
           </span>
           <Button variant="ghost" size="sm" onClick={handleCopy} disabled={!draft} className="gap-2">

@@ -355,7 +355,10 @@ export default function FollowUpsPage() {
                                   <FollowUpDraftDialog
                                     application={row.application}
                                     disabled={!row.enabled || isPending}
-                                    hasGeneratedDraft={Boolean(row.application.ai_follow_up_draft_generated_at)}
+                                    hasGeneratedDraft={Boolean(
+                                      row.application.ai_follow_up_draft_generated_at ||
+                                        row.application.ai_follow_up_draft_text,
+                                    )}
                                   />
                                   <Button
                                     size="sm"

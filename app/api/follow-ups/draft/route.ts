@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
   const { data: existingDraft, error: existingDraftError } = await supabase
     .from("application_follow_up_drafts")
-    .select("id, generated_at")
+    .select("id, generated_at, draft_text")
     .eq("job_application_id", job_application_id)
     .eq("user_id", userId)
     .maybeSingle()
@@ -77,7 +77,10 @@ export async function POST(request: NextRequest) {
 
   if (existingDraft) {
     return NextResponse.json(
-      { error: "An AI follow-up draft has already been generated for this application." },
+      {
+        error: "An AI follow-up draft has already been generated for this application.",
+        data: existingDraft.draft_text ? { draft: existingDraft.draft_text } : undefined,
+      },
       { status: 409 },
     )
   }
@@ -141,7 +144,7 @@ export async function POST(request: NextRequest) {
 
   const { error: draftRecordError } = await supabase
     .from("application_follow_up_drafts")
-    .insert({ user_id: userId, job_application_id })
+    .insert({ user_id: userId, job_application_id, draft_text: draft })
 
   if (draftRecordError) {
     if (draftRecordError.code === "23505") {
