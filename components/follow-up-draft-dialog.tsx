@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { differenceInCalendarDays } from "date-fns"
 import { Loader2, Wand2, Copy } from "lucide-react"
 
@@ -21,15 +21,29 @@ import { useToast } from "@/components/ui/use-toast"
 interface FollowUpDraftDialogProps {
   application: JobApplication
   disabled?: boolean
+  hasGeneratedDraft?: boolean
 }
 
-export function FollowUpDraftDialog({ application, disabled }: FollowUpDraftDialogProps) {
+export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }: FollowUpDraftDialogProps) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [hasGenerated, setHasGenerated] = useState(Boolean(hasGeneratedDraft))
   const { toast } = useToast()
 
+  useEffect(() => {
+    setHasGenerated(Boolean(hasGeneratedDraft))
+  }, [hasGeneratedDraft])
+
   const generateDraft = useCallback(async () => {
+    if (hasGenerated) {
+      toast({
+        title: "Draft already generated",
+        description: "You can only create one AI follow-up draft per application.",
+      })
+      return
+    }
+
     setIsGenerating(true)
     try {
       const appliedAt = application.application_date ? new Date(application.application_date) : null
@@ -52,6 +66,9 @@ export function FollowUpDraftDialog({ application, disabled }: FollowUpDraftDial
       })
 
       if (!response.ok) {
+        if (response.status === 409) {
+          setHasGenerated(true)
+        }
         const body = await response.json().catch(() => ({ error: "Failed to generate follow-up" }))
         throw new Error(body.error ?? "Failed to generate follow-up")
       }
@@ -63,13 +80,14 @@ export function FollowUpDraftDialog({ application, disabled }: FollowUpDraftDial
       }
 
       setDraft(content)
+      setHasGenerated(true)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate follow-up"
       toast({ title: "Draft failed", description: message, variant: "destructive" })
     } finally {
       setIsGenerating(false)
     }
-  }, [application, toast])
+  }, [application, hasGenerated, toast])
 
   const handleCopy = useCallback(() => {
     if (!draft) return
@@ -98,9 +116,9 @@ export function FollowUpDraftDialog({ application, disabled }: FollowUpDraftDial
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Button onClick={() => void generateDraft()} disabled={isGenerating} className="gap-2">
+          <Button onClick={() => void generateDraft()} disabled={isGenerating || hasGenerated} className="gap-2">
             {isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isGenerating ? "Generating" : "Generate draft"}
+            {isGenerating ? "Generating" : hasGenerated ? "Draft generated" : "Generate draft"}
           </Button>
           <Textarea
             value={draft}
@@ -109,12 +127,18 @@ export function FollowUpDraftDialog({ application, disabled }: FollowUpDraftDial
             placeholder="Your AI-generated follow-up will appear here."
           />
           <p className="text-xs text-muted-foreground">
-            Edit anything you&rsquo;d like before sending it to your recruiter or hiring manager.
+            {hasGenerated
+              ? "AI drafts are limited to one per application. Copy your message before you leave this page."
+              : "Edit anything you&rsquo;d like before sending it to your recruiter or hiring manager."}
           </p>
         </div>
         <DialogFooter className="flex flex-row items-center justify-between gap-2 sm:flex-row">
           <span className="text-xs text-muted-foreground">
-            {draft ? "Copy the draft and paste it into your email client." : "Generate a draft to review it here."}
+            {draft
+              ? "Copy the draft and paste it into your email client."
+              : hasGenerated
+                ? "You can only generate one draft per application."
+                : "Generate a draft to review it here."}
           </span>
           <Button variant="ghost" size="sm" onClick={handleCopy} disabled={!draft} className="gap-2">
             <Copy className="h-4 w-4" />

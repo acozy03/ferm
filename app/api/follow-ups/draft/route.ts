@@ -63,6 +63,24 @@ export async function POST(request: NextRequest) {
   if (!application) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 })
   }
+
+  const { data: existingDraft, error: existingDraftError } = await supabase
+    .from("application_follow_up_drafts")
+    .select("id, generated_at")
+    .eq("job_application_id", job_application_id)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (existingDraftError) {
+    return NextResponse.json({ error: existingDraftError.message }, { status: 500 })
+  }
+
+  if (existingDraft) {
+    return NextResponse.json(
+      { error: "An AI follow-up draft has already been generated for this application." },
+      { status: 409 },
+    )
+  }
   
   const { data: profile, error: profileError } = await supabase.auth.getUser()
   
@@ -119,6 +137,21 @@ export async function POST(request: NextRequest) {
 
   if (!draft) {
     return NextResponse.json({ error: "Draft generation did not return any content" }, { status: 502 })
+  }
+
+  const { error: draftRecordError } = await supabase
+    .from("application_follow_up_drafts")
+    .insert({ user_id: userId, job_application_id })
+
+  if (draftRecordError) {
+    if (draftRecordError.code === "23505") {
+      return NextResponse.json(
+        { error: "An AI follow-up draft has already been generated for this application." },
+        { status: 409 },
+      )
+    }
+
+    return NextResponse.json({ error: draftRecordError.message }, { status: 500 })
   }
 
   return NextResponse.json({ data: { draft } })

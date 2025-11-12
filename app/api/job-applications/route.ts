@@ -163,6 +163,7 @@ export async function GET(request: NextRequest) {
         ${include_interviews ? ", interviews(*)" : ""}
         ${include_activity ? ", activity_log(*)" : ""}
         ${include_status_history ? ", status_history:job_application_status_history(*)" : ""}
+        , follow_up_draft:application_follow_up_drafts (generated_at)
       `,
         { count: "exact" }
       )
@@ -202,20 +203,29 @@ export async function GET(request: NextRequest) {
 
     const normalizedData = (data ?? []).map((application) => {
       const normalizedStatus = parseStatus(application.status).value
+      const { follow_up_draft: followUpDraftRaw, ...applicationWithoutDraft } = application
+      const draftRecords = Array.isArray(followUpDraftRaw)
+        ? followUpDraftRaw
+        : followUpDraftRaw
+          ? [followUpDraftRaw]
+          : []
+      const draftGeneratedAt = draftRecords[0]?.generated_at ?? null
 
       if (!include_status_history) {
         return {
-          ...application,
+          ...applicationWithoutDraft,
           status: normalizedStatus,
+          ai_follow_up_draft_generated_at: draftGeneratedAt,
         }
       }
 
       return {
-        ...application,
+        ...applicationWithoutDraft,
         status: normalizedStatus,
-        status_history: [...(application.status_history ?? [])]
+        status_history: [...(applicationWithoutDraft.status_history ?? [])]
           .map((entry) => ({ ...entry, status: normalizeStatusValue(entry.status) }))
           .sort((left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime()),
+        ai_follow_up_draft_generated_at: draftGeneratedAt,
       }
     })
 

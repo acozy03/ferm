@@ -43,6 +43,7 @@ export interface JobApplication {
   job_responsibilities?: string | null
   resume_match_score?: number | null
   resume_match_summary?: string | null
+  ai_follow_up_draft_generated_at?: string | null
   created_at: string
   updated_at: string
 }
