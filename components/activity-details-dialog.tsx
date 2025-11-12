@@ -3,7 +3,6 @@
 import type { ReactNode } from "react"
 import { format } from "date-fns"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
 import type { ActivityLogWithApplication } from "@/lib/types/database"
 
 const activityLabels: Record<ActivityLogWithApplication["action_type"], string> = {
@@ -53,15 +52,6 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
         </DialogHeader>
 
         <div className="space-y-6 text-sm">
-          <div className="flex flex-col gap-2 text-left">
-            <Badge variant="secondary" className="w-fit font-normal">
-              {activityLabels[activity.action_type]}
-            </Badge>
-            {!job && hasJobInfo ? (
-              <p className="text-xs text-muted-foreground">This job application has been removed.</p>
-            ) : null}
-          </div>
-
           {showValueComparison ? (
             <div className="grid grid-cols-1 gap-2 text-left sm:grid-cols-2">
               <div className="space-y-1 rounded-md border p-3">
