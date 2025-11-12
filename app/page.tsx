@@ -412,7 +412,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex min-h-0 flex-col gap-6 overflow-hidden lg:col-span-2">
-              <div className="flex h-full min-h-0 flex-col space-y-4 pb-6">
+              <div className="flex min-h-0 flex-1 flex-col gap-4 pb-4">
                   <Tabs
                     value={view}
                     onValueChange={(next) => {
@@ -420,7 +420,7 @@ export default function Dashboard() {
                         handleViewChange(next)
                       }
                     }}
-                    className="space-y-4"
+                    className="flex min-h-0 flex-1 flex-col gap-4"
                   >
                <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
   {/* Tabs */}
@@ -493,7 +493,7 @@ export default function Dashboard() {
 
 
 
-                    <TabsContent value="pipeline" className="flex h-full flex-col space-y-4">
+                    <TabsContent value="pipeline" className="flex min-h-0 flex-1 flex-col gap-4">
                       <BulkActions
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -502,7 +502,7 @@ export default function Dashboard() {
                       />
 
                       <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
-                        <ScrollArea className="h-full">
+                        <ScrollArea className="flex-1">
                           <div className="space-y-4 p-4">
                             {isLoading ? (
                               <div className="grid gap-4">
@@ -532,7 +532,7 @@ export default function Dashboard() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="table" className="flex h-full flex-col space-y-4">
+                    <TabsContent value="table" className="flex min-h-0 flex-1 flex-col gap-4">
                       <BulkActions
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -541,7 +541,7 @@ export default function Dashboard() {
                       />
 
                       <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
-                        <ScrollArea className="h-full">
+                        <ScrollArea className="flex-1">
                           <div className="min-w-full p-4">
                             {isLoading ? (
                               <div className="space-y-2">
@@ -661,7 +661,7 @@ export default function Dashboard() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="timeline" className="flex h-full flex-col space-y-6">
+                    <TabsContent value="timeline" className="flex min-h-0 flex-1 flex-col gap-6">
                       <BulkActions
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -670,7 +670,7 @@ export default function Dashboard() {
                       />
 
                       <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
-                        <ScrollArea className="h-full">
+                        <ScrollArea className="flex-1">
                           <div className="relative mx-auto w-full max-w-4xl space-y-6 p-6">
                             {isLoading ? (
                               <div className="space-y-4">

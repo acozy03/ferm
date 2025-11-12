@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react"
 
 import { cn } from "@/lib/utils"
@@ -19,6 +20,9 @@ interface ScrollToProgressOptions {
 }
 
 export function MinimalScrollRail() {
+  const pathname = usePathname()
+  const shouldHide = pathname === "/"
+
   const [progress, setProgress] = useState(0)
   const isDraggingRef = useRef(false)
   const trackRef = useRef<HTMLDivElement | null>(null)
@@ -52,10 +56,18 @@ export function MinimalScrollRail() {
   )
 
   useEffect(() => {
+    if (shouldHide) {
+      return
+    }
+
     updateProgress()
-  }, [updateProgress])
+  }, [shouldHide, updateProgress])
 
   useEffect(() => {
+    if (shouldHide) {
+      return undefined
+    }
+
     const handle = () => updateProgress()
 
     window.addEventListener("scroll", handle, { passive: true })
@@ -65,7 +77,7 @@ export function MinimalScrollRail() {
       window.removeEventListener("scroll", handle)
       window.removeEventListener("resize", handle)
     }
-  }, [updateProgress])
+  }, [shouldHide, updateProgress])
 
   const pointerToProgress = useCallback(
     (clientY: number, options: ScrollToProgressOptions = {}) => {
@@ -111,6 +123,10 @@ export function MinimalScrollRail() {
     },
     [progress, scrollToProgress],
   )
+
+  if (shouldHide) {
+    return null
+  }
 
   return (
     <div className="pointer-events-none fixed bottom-0 right-6 top-0 hidden w-8 items-center sm:flex">
