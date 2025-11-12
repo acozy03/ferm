@@ -300,19 +300,24 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+          <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:gap-6">
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
+              <Label htmlFor="status" className="whitespace-nowrap">
+                Status
+              </Label>
               <SequentialStatusSelect
                 id="status"
                 value={formData.status}
                 onChange={(status) => updateFormData("status", status)}
+                triggerClassName="w-full md:w-40"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
+              <Label htmlFor="priority" className="whitespace-nowrap">
+                Priority
+              </Label>
               <Select value={formData.priority} onValueChange={(value) => updateFormData("priority", value)}>
-                <SelectTrigger>
+                <SelectTrigger id="priority" className="w-full md:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -324,13 +329,15 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="employment_type">Employment Type</Label>
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
+              <Label htmlFor="employment_type" className="whitespace-nowrap">
+                Employment Type
+              </Label>
               <Select
                 value={formData.employment_type}
                 onValueChange={(value) => updateFormData("employment_type", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="employment_type" className="w-full md:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -48,6 +48,7 @@ const sortFieldOptions: SortFieldOption[] = [
   { value: "updated_at", label: "Last updated" },
   { value: "application_date", label: "Application date" },
   { value: "priority", label: "Priority" },
+  { value: "resume_match_score", label: "Fit score" },
 ]
 
 export function ApplicationsDrawer({
