@@ -8,7 +8,20 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { MapPin, DollarSign, Calendar, FileText, Edit, Save, X } from "lucide-react"
+import {
+  MapPin,
+  DollarSign,
+  Calendar,
+  FileText,
+  Edit,
+  Save,
+  X,
+  Briefcase,
+  Tag,
+  Link as LinkIcon,
+  User,
+  Mail,
+} from "lucide-react"
 import type { JobApplication as DbJobApplication } from "@/lib/types/database"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
 import { getDateOrNull } from "@/lib/date"
@@ -119,6 +132,18 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
                   <span>{application.salary_range}</span>
                 </div>
               )}
+              <div className="flex items-center gap-2 text-sm">
+                <Briefcase className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Employment Type:</span>
+                <span>{application.employment_type}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Priority:</span>
+                <Badge variant="secondary" className="capitalize">
+                  {application.priority.toLowerCase()}
+                </Badge>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -132,6 +157,39 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
                   {computedDaysSinceApplied != null ? `${computedDaysSinceApplied} days` : "Date unavailable"}
                 </span>
               </div>
+              {application.contact_person && (
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Contact:</span>
+                  <span>{application.contact_person}</span>
+                </div>
+              )}
+              {application.contact_email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Contact Email:</span>
+                  <a
+                    href={`mailto:${application.contact_email}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {application.contact_email}
+                  </a>
+                </div>
+              )}
+              {application.job_url && (
+                <div className="flex items-center gap-2 text-sm">
+                  <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Job Posting:</span>
+                  <a
+                    href={application.job_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    View listing
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 

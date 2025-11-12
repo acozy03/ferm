@@ -8,7 +8,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import type { JobApplication, JobApplicationStatus } from "@/lib/types/database"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type {
+  EmploymentType,
+  JobApplication,
+  JobApplicationStatus,
+  Priority,
+} from "@/lib/types/database"
 import { SequentialStatusSelect } from "@/components/status-select"
 
 interface EditApplicationDialogProps {
@@ -42,6 +54,8 @@ export function EditApplicationDialog({
     job_description: application.job_description || "",
     qualifications: application.qualifications || "",
     job_responsibilities: application.job_responsibilities || "",
+    employment_type: application.employment_type as EmploymentType,
+    priority: application.priority as Priority,
   })
 
   const isControlled = typeof controlledOpen === "boolean" && typeof onOpenChange === "function"
@@ -70,6 +84,8 @@ export function EditApplicationDialog({
         job_description: application.job_description || "",
         qualifications: application.qualifications || "",
         job_responsibilities: application.job_responsibilities || "",
+        employment_type: application.employment_type as EmploymentType,
+        priority: application.priority as Priority,
       })
     }
   }, [dialogOpen, application])
@@ -161,6 +177,49 @@ export function EditApplicationDialog({
                 value={formData.application_date}
                 onChange={(e) => setFormData({ ...formData, application_date: e.target.value })}
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select
+                value={formData.priority}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, priority: value as Priority })
+                }
+              >
+                <SelectTrigger id="priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {priorityOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="employment_type">Employment Type</Label>
+              <Select
+                value={formData.employment_type}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, employment_type: value as EmploymentType })
+                }
+              >
+                <SelectTrigger id="employment_type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {employmentTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -264,7 +323,7 @@ export function EditApplicationDialog({
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
@@ -276,3 +335,16 @@ export function EditApplicationDialog({
     </Dialog>
   )
 }
+
+const priorityOptions: { value: Priority; label: string }[] = [
+  { value: "Low", label: "Low" },
+  { value: "Medium", label: "Medium" },
+  { value: "High", label: "High" },
+]
+
+const employmentTypeOptions: { value: EmploymentType; label: string }[] = [
+  { value: "Full-time", label: "Full-time" },
+  { value: "Part-time", label: "Part-time" },
+  { value: "Contract", label: "Contract" },
+  { value: "Internship", label: "Internship" },
+]
