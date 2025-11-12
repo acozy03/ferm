@@ -501,7 +501,7 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
+                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
                         <ScrollArea className="flex-1">
                           <div className="space-y-4 p-4">
                             {isLoading ? (
@@ -540,7 +540,7 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
+                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
                         <ScrollArea className="flex-1">
                           <div className="min-w-full p-4">
                             {isLoading ? (
@@ -669,7 +669,7 @@ export default function Dashboard() {
                         onClearSelection={() => setSelectedApplications([])}
                       />
 
-                      <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card/40">
+                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
                         <ScrollArea className="flex-1">
                           <div className="relative mx-auto w-full max-w-4xl space-y-6 p-6">
                             {isLoading ? (
