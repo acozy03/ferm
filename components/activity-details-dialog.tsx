@@ -36,25 +36,25 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-lg text-center">
-        <DialogHeader className="space-y-3">
-          <DialogTitle className="text-lg">Recent activity details</DialogTitle>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="space-y-2 text-left">
+          <DialogTitle className="text-lg">{activityLabels[activity.action_type]}</DialogTitle>
+          <p className="text-sm font-medium text-pretty">
+            {hasJobInfo ? (
+              <>
+                {jobTitle ?? "Job title unavailable"}
+                {companyName ? <span className="text-muted-foreground"> - {companyName}</span> : null}
+              </>
+            ) : (
+              "No job details available."
+            )}
+          </p>
           <DialogDescription>Logged {format(timestamp, "PPpp")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 text-sm">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <p className="font-medium text-pretty">
-              {hasJobInfo ? (
-                <>
-                  {jobTitle ?? "Job title unavailable"}
-                  {companyName ? <span className="text-muted-foreground"> - {companyName}</span> : null}
-                </>
-              ) : (
-                "No job details available."
-              )}
-            </p>
-            <Badge variant="secondary" className="font-normal">
+          <div className="flex flex-col gap-2 text-left">
+            <Badge variant="secondary" className="w-fit font-normal">
               {activityLabels[activity.action_type]}
             </Badge>
             {!job && hasJobInfo ? (
