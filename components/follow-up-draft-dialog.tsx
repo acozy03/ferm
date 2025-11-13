@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { differenceInCalendarDays } from "date-fns"
-import { Loader2, Wand2, Copy } from "lucide-react"
+import { Loader2, Wand2, Copy, Check } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,9 +22,15 @@ interface FollowUpDraftDialogProps {
   application: JobApplication
   disabled?: boolean
   hasGeneratedDraft?: boolean
+  onDraftUpdated?: (update: { draft: string; generatedAt?: string | null }) => void
 }
 
-export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }: FollowUpDraftDialogProps) {
+export function FollowUpDraftDialog({
+  application,
+  disabled,
+  hasGeneratedDraft,
+  onDraftUpdated,
+}: FollowUpDraftDialogProps) {
   const storedDraft = application.ai_follow_up_draft_text?.trim() ?? ""
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(storedDraft)
@@ -33,19 +39,35 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
   const [hasGenerated, setHasGenerated] = useState(Boolean(hasGeneratedDraft || storedDraft))
   const [hasRequestedGeneration, setHasRequestedGeneration] = useState(Boolean(hasGeneratedDraft || storedDraft))
   const [isSaving, setIsSaving] = useState(false)
+  const [hasCopied, setHasCopied] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     const nextStoredDraft = application.ai_follow_up_draft_text?.trim() ?? ""
     const hasExistingDraft = Boolean(hasGeneratedDraft || nextStoredDraft)
+
+    if (open) {
+      if (hasExistingDraft) {
+        setHasGenerated(true)
+        setHasRequestedGeneration(true)
+      }
+      return
+    }
+
     setHasGenerated(hasExistingDraft)
     setHasRequestedGeneration(hasExistingDraft)
 
-    if (!open && nextStoredDraft !== savedDraft) {
+    if (nextStoredDraft !== savedDraft) {
       setDraft(nextStoredDraft)
       setSavedDraft(nextStoredDraft)
     }
   }, [application.ai_follow_up_draft_text, hasGeneratedDraft, open, savedDraft])
+
+  useEffect(() => {
+    if (!hasCopied) return
+    const timeout = window.setTimeout(() => setHasCopied(false), 2000)
+    return () => window.clearTimeout(timeout)
+  }, [hasCopied])
 
   const hasUnsavedChanges = useMemo(() => draft !== savedDraft, [draft, savedDraft])
 
@@ -89,8 +111,9 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
         if (existingDraft) {
           setDraft(existingDraft)
           setSavedDraft(existingDraft)
+          onDraftUpdated?.({ draft: existingDraft })
         } else {
-          setHasRequestedGeneration(false)
+          setHasRequestedGeneration(true)
         }
         throw new Error(body.error ?? "Failed to generate follow-up")
       }
@@ -104,13 +127,22 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
       setDraft(content)
       setSavedDraft(content)
       setHasGenerated(true)
+      onDraftUpdated?.({ draft: content, generatedAt: new Date().toISOString() })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate follow-up"
       toast({ title: "Draft failed", description: message, variant: "destructive" })
     } finally {
       setIsGenerating(false)
     }
-  }, [application, hasGenerated, toast])
+  }, [application, hasGenerated, onDraftUpdated, toast])
+
+  useEffect(() => {
+    if (!open || hasGenerated || hasRequestedGeneration || isGenerating) {
+      return
+    }
+
+    void generateDraft()
+  }, [generateDraft, hasGenerated, hasRequestedGeneration, isGenerating, open])
 
   const saveDraft = useCallback(async () => {
     if (!hasGenerated || !hasUnsavedChanges) {
@@ -142,6 +174,7 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
 
       setDraft(sanitizedDraft)
       setSavedDraft(sanitizedDraft)
+      onDraftUpdated?.({ draft: sanitizedDraft })
       toast({ title: "Draft saved" })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save draft"
@@ -149,12 +182,23 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
     } finally {
       setIsSaving(false)
     }
-  }, [application.id, draft, hasGenerated, hasUnsavedChanges, toast])
+  }, [application.id, draft, hasGenerated, hasUnsavedChanges, onDraftUpdated, toast])
 
   const handleCopy = useCallback(() => {
     if (!draft) return
-    void navigator.clipboard.writeText(draft)
-    toast({ title: "Draft copied" })
+    navigator.clipboard
+      .writeText(draft)
+      .then(() => {
+        setHasCopied(true)
+        toast({ title: "Draft copied" })
+      })
+      .catch(() => {
+        toast({
+          title: "Copy failed",
+          description: "We couldn't copy your draft. Please try again.",
+          variant: "destructive",
+        })
+      })
   }, [draft, toast])
 
   return (
@@ -178,12 +222,6 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          {!hasGenerated && !hasRequestedGeneration && (
-            <Button onClick={() => void generateDraft()} disabled={isGenerating} className="gap-2">
-              {isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isGenerating ? "Generating" : "Generate draft"}
-            </Button>
-          )}
           <div className="relative">
             <Textarea
               value={draft}
@@ -192,6 +230,12 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
               placeholder="Your AI-generated follow-up will appear here."
               className="pr-12"
             />
+            {isGenerating && !draft && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-background/80 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating your draft...
+              </div>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -199,8 +243,8 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
               disabled={!draft}
               className="absolute right-2 top-2"
             >
-              <Copy className="h-4 w-4" />
-              <span className="sr-only">Copy draft</span>
+              {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+              <span className="sr-only">{hasCopied ? "Draft copied" : "Copy draft"}</span>
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -215,7 +259,9 @@ export function FollowUpDraftDialog({ application, disabled, hasGeneratedDraft }
                 : draft
                   ? "All changes saved."
                   : "Your saved draft will appear here."
-              : "Generate a draft to review it here."}
+              : isGenerating
+                ? "Hang tight—your draft is on its way."
+                : "Your draft will appear here once it’s generated."}
           </span>
           <div className="flex items-center gap-2">
             <Button

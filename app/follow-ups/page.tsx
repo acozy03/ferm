@@ -80,11 +80,45 @@ function dateToLocalISOString(date: Date | null): string | null {
 
 export default function FollowUpsPage() {
   const { toast } = useToast()
-  const { applications, isLoading: isLoadingApplications, error } = useJobApplications({ limit: 200 })
-  const { followUps, isLoading: isLoadingFollowUps, mutate } = useApplicationFollowUps()
+  const {
+    applications,
+    isLoading: isLoadingApplications,
+    error,
+    mutate: mutateJobApplications,
+  } = useJobApplications({ limit: 200 })
+  const { followUps, isLoading: isLoadingFollowUps, mutate: mutateFollowUps } = useApplicationFollowUps()
   const [pending, setPending] = useState<Record<string, boolean>>({})
   const [reminderDialog, setReminderDialog] = useState<ReminderDialogState | null>(null)
   const [sortBy, setSortBy] = useState<SortValue>("status")
+
+  const handleDraftUpdated = useCallback(
+    (applicationId: string, update: { draft: string; generatedAt?: string | null }) => {
+      void mutateJobApplications(
+        (current) => {
+          if (!current) return current
+          return {
+            ...current,
+            data: current.data.map((application) => {
+              if (application.id !== applicationId) {
+                return application
+              }
+
+              return {
+                ...application,
+                ai_follow_up_draft_text: update.draft,
+                ai_follow_up_draft_generated_at:
+                  update.generatedAt !== undefined
+                    ? update.generatedAt
+                    : application.ai_follow_up_draft_generated_at,
+              }
+            }),
+          }
+        },
+        { revalidate: false },
+      )
+    },
+    [mutateJobApplications],
+  )
 
   const rows = useMemo<FollowUpRow[]>(() => {
     const now = Date.now()
@@ -186,7 +220,7 @@ export default function FollowUpsPage() {
         }
 
         toast({ title: "Follow-up reminder updated" })
-        await mutate()
+        await mutateFollowUps()
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to update follow-up preferences"
         toast({ title: "Update failed", description: message, variant: "destructive" })
@@ -194,7 +228,7 @@ export default function FollowUpsPage() {
         setPendingState(applicationId, false)
       }
     },
-    [mutate, setPendingState, toast],
+    [mutateFollowUps, setPendingState, toast],
   )
 
   const openReminderDialog = useCallback((row: FollowUpRow, options?: { isEnabling?: boolean }) => {
@@ -359,6 +393,7 @@ export default function FollowUpsPage() {
                                       row.application.ai_follow_up_draft_generated_at ||
                                         row.application.ai_follow_up_draft_text,
                                     )}
+                                    onDraftUpdated={(update) => handleDraftUpdated(row.application.id, update)}
                                   />
                                   <Button
                                     size="sm"

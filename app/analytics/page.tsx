@@ -17,8 +17,10 @@ import {
 
 import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
+import { cn } from "@/lib/utils"
 
 const SANKEY_BASE_NODE = "Applications Submitted"
+const ACTIVITY_LEVEL_CLASSES = ["bg-muted/60", "bg-emerald-200/70", "bg-emerald-300/80", "bg-emerald-400/80", "bg-emerald-500"]
 type SankeyNodeWithCount = {
   name: string
   color: string
@@ -261,6 +263,86 @@ export default function AnalyticsPage() {
     [activePipeline, appsLoading, awaitingResponse, interviewConversion, offerRate, stats, statsLoading],
   )
 
+  const applicationActivity = useMemo(() => {
+    if (!applications.length) {
+      return { weeks: [] as { date: string; count: number; level: number }[][], maxDailyCount: 0 }
+    }
+
+    const countsByDate = new Map<string, number>()
+
+    applications.forEach((application) => {
+      const createdAt = application.created_at ?? application.application_date
+      if (!createdAt) return
+      const timestamp = new Date(createdAt)
+      if (Number.isNaN(timestamp.getTime())) return
+      const dayKey = timestamp.toISOString().split("T")[0]
+      countsByDate.set(dayKey, (countsByDate.get(dayKey) ?? 0) + 1)
+    })
+
+    if (countsByDate.size === 0) {
+      return { weeks: [] as { date: string; count: number; level: number }[][], maxDailyCount: 0 }
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const start = new Date(today)
+    start.setDate(start.getDate() - 364)
+    while (start.getDay() !== 0) {
+      start.setDate(start.getDate() - 1)
+    }
+
+    const end = new Date(today)
+    while (end.getDay() !== 6) {
+      end.setDate(end.getDate() + 1)
+    }
+
+    const days: { date: string; count: number }[] = []
+    const cursor = new Date(start)
+    while (cursor <= end) {
+      const dateKey = cursor.toISOString().split("T")[0]
+      days.push({ date: dateKey, count: countsByDate.get(dateKey) ?? 0 })
+      cursor.setDate(cursor.getDate() + 1)
+    }
+
+    const maxDailyCount = days.reduce((max, day) => (day.count > max ? day.count : max), 0)
+    const levelForCount = (count: number) => {
+      if (count === 0 || maxDailyCount === 0) return 0
+      const scaled = Math.ceil((count / maxDailyCount) * 4)
+      return Math.min(4, Math.max(1, scaled))
+    }
+
+    const weeks: { date: string; count: number; level: number }[][] = []
+    days.forEach((day, index) => {
+      const weekIndex = Math.floor(index / 7)
+      if (!weeks[weekIndex]) {
+        weeks[weekIndex] = []
+      }
+      weeks[weekIndex].push({ ...day, level: levelForCount(day.count) })
+    })
+
+    return { weeks, maxDailyCount }
+  }, [applications])
+
+  const monthLabels = useMemo(() => {
+    return applicationActivity.weeks.map((week, index) => {
+      const firstDay = week[0]
+      if (!firstDay) return ""
+      const date = new Date(firstDay.date)
+      if (Number.isNaN(date.getTime())) return ""
+      if (date.getDate() <= 7 || index === 0) {
+        return date.toLocaleString(undefined, { month: "short" })
+      }
+      const previousWeek = applicationActivity.weeks[index - 1]
+      const previousMonth = previousWeek ? new Date(previousWeek[0].date).getMonth() : null
+      if (previousMonth !== date.getMonth()) {
+        return date.toLocaleString(undefined, { month: "short" })
+      }
+      return ""
+    })
+  }, [applicationActivity.weeks])
+
+  const hasActivityData = applicationActivity.weeks.some((week) => week.some((day) => day.count > 0))
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -347,6 +429,93 @@ export default function AnalyticsPage() {
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                     Not enough application data yet to chart your journey.
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          <section>
+            <Card>
+              <CardHeader>
+                <div className="space-y-1">
+                  <CardTitle>Application activity</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    A GitHub-style snapshot of when you&rsquo;ve been adding new roles over the past year.
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {appsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                ) : applicationActivity.weeks.length ? (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto">
+                      <div className="flex gap-1 text-[10px] text-muted-foreground pl-8 mb-1">
+                        {monthLabels.map((label, index) => (
+                          <span key={`month-${index}`} className="w-3 text-center">
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex">
+                        <div className="mr-2 flex flex-col justify-between text-[10px] text-muted-foreground py-2">
+                          <span>Mon</span>
+                          <span>Wed</span>
+                          <span>Fri</span>
+                        </div>
+                        <div className="flex gap-1">
+                          {applicationActivity.weeks.map((week, weekIndex) => (
+                            <div key={`week-${weekIndex}`} className="flex flex-col gap-1">
+                              {week.map((day, dayIndex) => {
+                                const formattedDate = new Date(day.date).toLocaleDateString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })
+                                return (
+                                  <div
+                                    key={`day-${day.date}-${dayIndex}`}
+                                    className={cn(
+                                      "h-3 w-3 rounded-sm border border-background/30",
+                                      ACTIVITY_LEVEL_CLASSES[day.level] ?? ACTIVITY_LEVEL_CLASSES[0],
+                                    )}
+                                    title={`${formattedDate}: ${day.count} application${day.count === 1 ? "" : "s"}`}
+                                    aria-label={`${formattedDate}: ${day.count} application${day.count === 1 ? "" : "s"}`}
+                                  />
+                                )
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span>Less</span>
+                        <div className="flex items-center gap-1">
+                          {ACTIVITY_LEVEL_CLASSES.map((levelClass, index) => (
+                            <div
+                              key={`legend-${index}`}
+                              className={cn("h-3 w-3 rounded-sm border border-background/30", levelClass)}
+                              aria-hidden
+                            />
+                          ))}
+                        </div>
+                        <span>More</span>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {hasActivityData
+                          ? `${applications.length} application${applications.length === 1 ? "" : "s"} added in the last 52 weeks`
+                          : "No applications tracked in the past year yet."}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Start logging applications to see your streak build up.</div>
                 )}
               </CardContent>
             </Card>
