@@ -21,9 +21,11 @@ import {
   Link as LinkIcon,
   User,
   Mail,
+  Info,
+  CalendarRange
 } from "lucide-react"
 import type { JobApplication as DbJobApplication } from "@/lib/types/database"
-import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
+import { formatStatusLabel } from "@/lib/status"
 import { getDateOrNull } from "@/lib/date"
 
 type JobDetailsDialogProps = {
@@ -102,11 +104,9 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl text-balance">{application.position_title}</DialogTitle>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-medium">{application.company_name}</span>
-            <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
-              {formatStatusLabel(application.status)}
-            </Badge>
+          <div>
+            <span className="text-lg font-medium block">{application.company_name}</span>
+         
           </div>
         </DialogHeader>
 
@@ -137,23 +137,23 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
                 <span className="text-muted-foreground">Employment Type:</span>
                 <span>{application.employment_type}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Tag className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Priority:</span>
-                <Badge variant="secondary" className="capitalize">
-                  {application.priority.toLowerCase()}
-                </Badge>
-              </div>
             </div>
 
             <div className="space-y-4">
-              <div className="text-sm">
-                <span className="text-muted-foreground">Application ID:</span>
-                <span className="ml-2 font-mono text-xs">{application.id}</span>
+              <div className="flex items-center gap-2 text-sm">
+                <Info className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Status:</span>
+                <span>{formatStatusLabel(application.status)}</span>
               </div>
-              <div className="text-sm">
+              <div className="flex items-center gap-2 text-sm">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Priority:</span>
+                <span>{application.priority}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <CalendarRange className="h-4 w-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Days since applied:</span>
-                <span className="ml-2">
+                <span>
                   {computedDaysSinceApplied != null ? `${computedDaysSinceApplied} days` : "Date unavailable"}
                 </span>
               </div>
@@ -184,7 +184,7 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
                     href={application.job_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary underline-offset-4 hover:underline"
+                    className="text-blue-500 underline underline-offset-4 "
                   >
                     View listing
                   </a>
