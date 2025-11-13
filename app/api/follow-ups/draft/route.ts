@@ -18,6 +18,11 @@ const DraftSchema = z.object({
   daysSinceApplication: z.number().int().min(0).max(365),
 })
 
+const UpdateDraftSchema = z.object({
+  job_application_id: z.string().uuid(),
+  draft: z.string(),
+})
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 
 export async function POST(request: NextRequest) {
@@ -158,4 +163,50 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ data: { draft } })
+}
+
+export async function PATCH(request: NextRequest) {
+  const auth = await getAuthedClient(request)
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
+  }
+
+  const payload = UpdateDraftSchema.safeParse(await request.json())
+  if (!payload.success) {
+    return NextResponse.json({ error: payload.error.message }, { status: 400 })
+  }
+
+  const sanitizedDraft = payload.data.draft.trim()
+  if (!sanitizedDraft) {
+    return NextResponse.json({ error: "Draft cannot be empty" }, { status: 400 })
+  }
+
+  const { supabase, userId } = auth
+  const { job_application_id } = payload.data
+
+  const { data: existingDraft, error: existingDraftError } = await supabase
+    .from("application_follow_up_drafts")
+    .select("id")
+    .eq("job_application_id", job_application_id)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (existingDraftError) {
+    return NextResponse.json({ error: existingDraftError.message }, { status: 500 })
+  }
+
+  if (!existingDraft) {
+    return NextResponse.json({ error: "Draft not found" }, { status: 404 })
+  }
+
+  const { error: updateError } = await supabase
+    .from("application_follow_up_drafts")
+    .update({ draft_text: sanitizedDraft })
+    .eq("id", existingDraft.id)
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ data: { draft: sanitizedDraft } })
 }
