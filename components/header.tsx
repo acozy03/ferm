@@ -164,8 +164,7 @@ export function Header() {
                       </DropdownMenuItem>
                     )}
                   />
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled>Signed in with Google</DropdownMenuItem>
+                 
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onSelect={(event) => {
