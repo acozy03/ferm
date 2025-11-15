@@ -21,14 +21,32 @@ interface StatusUpdateDialogProps {
   currentStatus: JobApplicationStatus
   statusHistory?: JobApplicationStatusHistory[]
   onStatusUpdate: (status: JobApplicationStatus, note?: string) => void
-  trigger: React.ReactNode
+  trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdate, trigger }: StatusUpdateDialogProps) {
+export function StatusUpdateDialog({
+  currentStatus,
+  statusHistory,
+  onStatusUpdate,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: StatusUpdateDialogProps) {
   const currentMetadata = useMemo(() => parseStatus(currentStatus), [currentStatus])
   const [selectedStatus, setSelectedStatus] = useState<JobApplicationStatus>(currentMetadata.value)
   const [note, setNote] = useState("")
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const isControlled = typeof controlledOpen === "boolean" && typeof onOpenChange === "function"
+  const dialogOpen = isControlled ? controlledOpen : uncontrolledOpen
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isControlled) {
+      onOpenChange(nextOpen)
+    } else {
+      setUncontrolledOpen(nextOpen)
+    }
+  }
 
   useEffect(() => {
     setSelectedStatus(currentMetadata.value)
@@ -42,7 +60,7 @@ export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdat
   const handleUpdate = () => {
     onStatusUpdate(selectedStatus, note)
     setNote("")
-    setOpen(false)
+    handleOpenChange(false)
   }
 
   const handleResetPipeline = () => {
@@ -51,14 +69,14 @@ export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdat
     onStatusUpdate(resetStatus, hasNote ? note : undefined)
     setSelectedStatus(resetStatus)
     setNote("")
-    setOpen(false)
+    handleOpenChange(false)
   }
 
   const resetDisabled = currentMetadata.value === "Applied"
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Update Application Status</DialogTitle>
@@ -126,7 +144,7 @@ export function StatusUpdateDialog({ currentStatus, statusHistory, onStatusUpdat
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
             <Button onClick={handleUpdate} disabled={selectedStatus === currentMetadata.value && note.trim().length === 0}>

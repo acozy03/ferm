@@ -30,6 +30,10 @@ export function ApplicationActionsMenu({
   onApplicationUpdate,
   buttonClassName,
 }: ApplicationActionsMenuProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const deleteApplication = async () => {
@@ -51,7 +55,7 @@ export function ApplicationActionsMenu({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
@@ -64,54 +68,43 @@ export function ApplicationActionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <JobDetailsDialog
-            application={application}
-            onUpdate={onApplicationUpdate}
-            trigger={
-              <DropdownMenuItem
-                onSelect={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                }}
-              >
-                View details
-              </DropdownMenuItem>
-            }
-          />
-          <StatusUpdateDialog
-            currentStatus={application.status}
-            onStatusUpdate={onStatusUpdate}
-            trigger={
-              <DropdownMenuItem
-                onSelect={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                }}
-              >
-                Update status
-              </DropdownMenuItem>
-            }
-          />
-          <EditApplicationDialog
-            application={application}
-            onUpdate={onApplicationUpdate}
-            trigger={
-              <DropdownMenuItem
-                onSelect={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                }}
-              >
-                Edit application
-              </DropdownMenuItem>
-            }
-          />
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setIsDetailsDialogOpen(true)
+              setIsMenuOpen(false)
+            }}
+          >
+            View details
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setIsStatusDialogOpen(true)
+              setIsMenuOpen(false)
+            }}
+          >
+            Update status
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setIsEditDialogOpen(true)
+              setIsMenuOpen(false)
+            }}
+          >
+            Edit application
+          </DropdownMenuItem>
           <DropdownMenuItem
             className="text-destructive"
             onSelect={(event) => {
               event.preventDefault()
               event.stopPropagation()
               setIsDeleteDialogOpen(true)
+              setIsMenuOpen(false)
             }}
           >
             Delete
@@ -119,6 +112,24 @@ export function ApplicationActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <JobDetailsDialog
+        application={application}
+        onUpdate={onApplicationUpdate}
+        open={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+      />
+      <StatusUpdateDialog
+        currentStatus={application.status}
+        onStatusUpdate={onStatusUpdate}
+        open={isStatusDialogOpen}
+        onOpenChange={setIsStatusDialogOpen}
+      />
+      <EditApplicationDialog
+        application={application}
+        onUpdate={onApplicationUpdate}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+      />
       <DeleteConfirmationDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}

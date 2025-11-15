@@ -4,7 +4,6 @@ import type React from "react"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -31,11 +30,28 @@ import { getDateOrNull } from "@/lib/date"
 type JobDetailsDialogProps = {
   application: DbJobApplication
   onUpdate: () => void
-  trigger: React.ReactNode
+  trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsDialogProps) {
-  const [open, setOpen] = useState(false)
+export function JobDetailsDialog({
+  application,
+  trigger,
+  onUpdate,
+  open: controlledOpen,
+  onOpenChange,
+}: JobDetailsDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const isControlled = typeof controlledOpen === "boolean" && typeof onOpenChange === "function"
+  const dialogOpen = isControlled ? controlledOpen : uncontrolledOpen
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isControlled) {
+      onOpenChange(nextOpen)
+    } else {
+      setUncontrolledOpen(nextOpen)
+    }
+  }
   const [isEditing, setIsEditing] = useState(false)
   const [editedNotes, setEditedNotes] = useState<string>(application.notes ?? "")
 
@@ -99,8 +115,8 @@ export function JobDetailsDialog({ application, trigger, onUpdate }: JobDetailsD
   })()
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl text-balance">{application.position_title}</DialogTitle>

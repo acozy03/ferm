@@ -24,7 +24,9 @@ interface JobApplicationCardProps {
 }
 
 export function JobApplicationCard({ application, isSelected, onSelect, onUpdate }: JobApplicationCardProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const formatDate = (dateString: string) => {
     const parsed = getDateOrNull(dateString)
@@ -134,33 +136,30 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
             <Badge className={`${getStatusBadgeClass(application.status)} shrink-0`} variant="outline">
               {formatStatusLabel(application.status)}
             </Badge>
-            <DropdownMenu>
+            <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <EditApplicationDialog
-                  application={application}
-                  onUpdate={onUpdate || (() => {})}
-                  trigger={
-                    <DropdownMenuItem
-                      onSelect={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                      }}
-                    >
-                      Edit Application
-                    </DropdownMenuItem>
-                  }
-                />
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setIsEditDialogOpen(true)
+                    setIsMenuOpen(false)
+                  }}
+                >
+                  Edit Application
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
                   onSelect={(event) => {
                     event.preventDefault()
                     event.stopPropagation()
                     setIsDeleteDialogOpen(true)
+                    setIsMenuOpen(false)
                   }}
                 >
                   Delete
@@ -238,6 +237,12 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
         description={`Are you sure you want to delete the application for ${application.position_title} at ${application.company_name}? This action cannot be undone.`}
         confirmLabel="Delete"
         onConfirm={deleteApplication}
+      />
+      <EditApplicationDialog
+        application={application}
+        onUpdate={onUpdate || (() => {})}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
       />
     </Card>
   )
