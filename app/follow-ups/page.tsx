@@ -257,7 +257,7 @@ export default function FollowUpsPage() {
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <CardHeader className="gap-4">
-                <CardTitle>Reminder schedule</CardTitle>
+              
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <Input
                     value={searchQuery}
