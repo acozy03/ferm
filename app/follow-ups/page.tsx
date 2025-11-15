@@ -305,7 +305,7 @@ export default function FollowUpsPage() {
                   <div className="space-y-4">
                     
                     <div className="overflow-x-auto rounded-md border">
-                      <Table>
+                      <Table className="table-auto">
                         <TableHeader>
                           <TableRow>
                             <TableHead className="min-w-[220px] py-4">Application</TableHead>
@@ -313,7 +313,7 @@ export default function FollowUpsPage() {
                             <TableHead className="py-4">Next reminder</TableHead>
                             <TableHead className="py-4">Last reminder</TableHead>
                             <TableHead className="py-4">Status</TableHead>
-                            <TableHead className="py-4">Actions</TableHead>
+                            <TableHead className="py-4 min-w-[220px]">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -330,10 +330,20 @@ export default function FollowUpsPage() {
 
                             return (
                               <TableRow key={row.application.id} className="align-top [&>td]:py-5">
-                                <TableCell>
-                                  <div className="font-medium leading-tight">{row.application.company_name}</div>
-                                  <div className="text-sm text-muted-foreground leading-tight">
-                                    {row.application.position_title}
+                                <TableCell className="max-w-[280px]">
+                                  <div className="space-y-1">
+                                    <div
+                                      className="font-medium leading-tight truncate"
+                                      title={row.application.company_name ?? undefined}
+                                    >
+                                      {row.application.company_name}
+                                    </div>
+                                    <div
+                                      className="text-sm text-muted-foreground leading-tight truncate"
+                                      title={row.application.position_title ?? undefined}
+                                    >
+                                      {row.application.position_title}
+                                    </div>
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-sm">{appliedLabel}</TableCell>
@@ -348,8 +358,8 @@ export default function FollowUpsPage() {
                                         : "Off"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-start">
+                                <TableCell className="min-w-[220px]">
+                                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                                     <FollowUpDraftDialog
                                       application={row.application}
                                       disabled={!row.enabled || isPending}
