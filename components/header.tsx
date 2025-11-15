@@ -4,7 +4,16 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useMemo } from "react"
 import { useSWRConfig } from "swr"
-import { LayoutDashboard, Mail, BarChart3, LogOut, UserRound, FileText, Settings } from "lucide-react"
+import {
+  LayoutDashboard,
+  Mail,
+  BarChart3,
+  LogOut,
+  UserRound,
+  FileText,
+  Settings,
+  CalendarClock,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -22,6 +31,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Follow-ups", href: "/follow-ups", icon: Mail },
+  { label: "Interviews", href: "/interviews", icon: CalendarClock },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Resume", href: "/resume", icon: FileText },
 ] as const

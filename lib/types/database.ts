@@ -67,6 +67,8 @@ export interface Interview {
   interviewer_name?: string
   interviewer_email?: string
   notes?: string
+  prep_notes?: string | null
+  post_interview_notes?: string | null
   status: InterviewStatus
   created_at: string
   updated_at: string
@@ -155,6 +157,8 @@ export interface CreateInterviewData {
   interviewer_name?: string
   interviewer_email?: string
   notes?: string
+  prep_notes?: string | null
+  post_interview_notes?: string | null
   status?: InterviewStatus
 }
 

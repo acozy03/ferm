@@ -90,7 +90,10 @@ export function StatusUpdateDialog({
               <div className="rounded-md border bg-background/80 p-4 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current</p>
                 <div className="mt-3">
-                  <Badge variant="outline" className={getStatusBadgeClass(currentMetadata.value)}>
+                  <Badge
+                    variant="outline"
+                    className={cn("w-full justify-center px-3 py-2 text-sm font-medium", getStatusBadgeClass(currentMetadata.value))}
+                  >
                     {formatStatusOptionLabel(currentMetadata)}
                   </Badge>
                 </div>

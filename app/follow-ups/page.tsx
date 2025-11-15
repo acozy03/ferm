@@ -2,8 +2,6 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { CheckCircle2, Clock, Mail } from "lucide-react"
-
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -147,15 +145,6 @@ export default function FollowUpsPage() {
     })
   }, [applications, followUps])
 
-  const enabledRows = rows.filter((row) => row.enabled)
-  const dueRows = enabledRows.filter((row) => row.status === "due")
-  const upcomingRows = enabledRows
-    .filter((row) => row.status === "upcoming")
-    .sort((a, b) => {
-      const left = a.nextReminder ? a.nextReminder.getTime() : Number.POSITIVE_INFINITY
-      const right = b.nextReminder ? b.nextReminder.getTime() : Number.POSITIVE_INFINITY
-      return left - right
-    })
 
   const sortedRows = useMemo(() => {
     const items = [...rows]
@@ -259,31 +248,6 @@ export default function FollowUpsPage() {
     })
   }, [])
 
-  const summaryCards = [
-    {
-      label: "Reminders enabled",
-      value: enabledRows.length,
-      helper:
-        dueRows.length > 0 ? `${dueRows.length} reminder${dueRows.length === 1 ? "" : "s"} ready to send` : "All reminders scheduled",
-      icon: CheckCircle2,
-    },
-    {
-      label: "Upcoming follow-ups",
-      value: upcomingRows.length,
-      helper:
-        upcomingRows[0]?.nextReminder
-          ? `Next in ${formatDistanceToNow(upcomingRows[0].nextReminder, { addSuffix: true })}`
-          : "No follow-ups scheduled",
-      icon: Clock,
-    },
-    {
-      label: "Reminders sent",
-      value: followUps.filter((item) => item.last_notified_at).length,
-      helper: "Total nudges emailed to you",
-      icon: Mail,
-    },
-  ]
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -295,50 +259,31 @@ export default function FollowUpsPage() {
               Decide when to check in on each application, generate a polished follow-up email, and let ferm.dev deliver the reminder.
             </p>
           </header>
-          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {summaryCards.map((card) => (
-              <Card key={card.label}>
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="rounded-full bg-muted p-3">
-                    <card.icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">{card.label}</p>
-                    <div className="text-2xl font-semibold">{card.value}</div>
-                    <p className="text-xs text-muted-foreground">{card.helper}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </section>
 
           <section>
             <Card>
               <CardHeader className="gap-4">
+                <CardTitle>Reminder schedule</CardTitle>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle>Reminder schedule</CardTitle>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <span className="text-sm font-medium text-muted-foreground">Sort by</span>
-                    <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortValue)}>
-                      <SelectTrigger className="sm:w-[200px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by company or role"
+                    className="w-full sm:max-w-sm"
+                  />
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortValue)}>
+                    <SelectTrigger className="sm:w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sortOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search by company or role"
-                  className="w-full sm:max-w-sm"
-                />
               </CardHeader>
               <CardContent className="space-y-4">
                 {isLoading ? (
@@ -358,19 +303,17 @@ export default function FollowUpsPage() {
                   <p className="text-sm text-muted-foreground">No follow-ups match your search.</p>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Arrange your follow-ups to focus on what matters first.
-                    </p>
+                    
                     <div className="overflow-x-auto rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[220px]">Application</TableHead>
-                            <TableHead>Applied</TableHead>
-                            <TableHead>Next reminder</TableHead>
-                            <TableHead>Last reminder</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead className="min-w-[220px] py-4">Application</TableHead>
+                            <TableHead className="py-4">Applied</TableHead>
+                            <TableHead className="py-4">Next reminder</TableHead>
+                            <TableHead className="py-4">Last reminder</TableHead>
+                            <TableHead className="py-4">Status</TableHead>
+                            <TableHead className="py-4">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -386,7 +329,7 @@ export default function FollowUpsPage() {
                             const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
 
                             return (
-                              <TableRow key={row.application.id} className="align-top">
+                              <TableRow key={row.application.id} className="align-top [&>td]:py-5">
                                 <TableCell>
                                   <div className="font-medium leading-tight">{row.application.company_name}</div>
                                   <div className="text-sm text-muted-foreground leading-tight">
@@ -406,7 +349,7 @@ export default function FollowUpsPage() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
+                                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-start">
                                     <FollowUpDraftDialog
                                       application={row.application}
                                       disabled={!row.enabled || isPending}
