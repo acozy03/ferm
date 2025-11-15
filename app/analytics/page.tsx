@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { AnimatedNumber } from "@/components/animated-number"
 import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip } from "recharts"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toPng } from "html-to-image"
 import {
   getStatusChartColor,
@@ -20,7 +21,13 @@ import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 
 const SANKEY_BASE_NODE = "Applications Submitted"
-const ACTIVITY_LEVEL_CLASSES = ["bg-muted/60", "bg-emerald-200/70", "bg-emerald-300/80", "bg-emerald-400/80", "bg-emerald-500"]
+const ACTIVITY_LEVEL_CLASSES = [
+  "bg-muted/60",
+  "bg-sky-200/70",
+  "bg-sky-300/80",
+  "bg-sky-400/80",
+  "bg-sky-500",
+]
 type SankeyNodeWithCount = {
   name: string
   color: string
@@ -342,6 +349,9 @@ export default function AnalyticsPage() {
   }, [applicationActivity.weeks])
 
   const hasActivityData = applicationActivity.weeks.some((week) => week.some((day) => day.count > 0))
+  const activityGridColumns = {
+    gridTemplateColumns: `repeat(${Math.max(applicationActivity.weeks.length, 1)}, minmax(0, 1fr))`,
+  }
 
 
   return (
@@ -454,42 +464,65 @@ export default function AnalyticsPage() {
                 ) : applicationActivity.weeks.length ? (
                   <div className="space-y-4">
                     <div className="overflow-x-auto">
-                      <div className="flex gap-1 text-[10px] text-muted-foreground pl-8 mb-1">
-                        {monthLabels.map((label, index) => (
-                          <span key={`month-${index}`} className="w-3 text-center">
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex">
-                        <div className="mr-2 flex flex-col justify-between text-[10px] text-muted-foreground py-2">
-                          <span>Mon</span>
-                          <span>Wed</span>
-                          <span>Fri</span>
-                        </div>
-                        <div className="flex gap-1">
-                          {applicationActivity.weeks.map((week, weekIndex) => (
-                            <div key={`week-${weekIndex}`} className="flex flex-col gap-1">
-                              {week.map((day, dayIndex) => {
-                                const formattedDate = new Date(day.date).toLocaleDateString(undefined, {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })
-                                return (
-                                  <div
-                                    key={`day-${day.date}-${dayIndex}`}
-                                    className={cn(
-                                      "h-3 w-3 rounded-sm border border-background/30",
-                                      ACTIVITY_LEVEL_CLASSES[day.level] ?? ACTIVITY_LEVEL_CLASSES[0],
-                                    )}
-                                    title={`${formattedDate}: ${day.count} application${day.count === 1 ? "" : "s"}`}
-                                    aria-label={`${formattedDate}: ${day.count} application${day.count === 1 ? "" : "s"}`}
-                                  />
-                                )
-                              })}
+                      <div className="space-y-2 min-w-[640px]">
+                        <div className="flex items-start gap-3 pl-10">
+                          <div className="w-10" aria-hidden />
+                          <div className="flex-1">
+                            <div
+                              className="grid gap-1 text-[10px] text-muted-foreground"
+                              style={activityGridColumns}
+                            >
+                              {monthLabels.map((label, index) => (
+                                <span key={`month-${index}`} className="text-center">
+                                  {label}
+                                </span>
+                              ))}
                             </div>
-                          ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex w-10 flex-col justify-between py-2 text-[10px] text-muted-foreground">
+                            <span>Mon</span>
+                            <span>Wed</span>
+                            <span>Fri</span>
+                          </div>
+                          <div className="flex-1">
+                            <TooltipProvider delayDuration={100}>
+                              <div className="grid gap-1" style={activityGridColumns}>
+                                {applicationActivity.weeks.map((week, weekIndex) => (
+                                  <div key={`week-${weekIndex}`} className="flex flex-col gap-1">
+                                    {week.map((day, dayIndex) => {
+                                      const formattedDate = new Date(day.date).toLocaleDateString(undefined, {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      })
+                                      const tooltipLabel = `${formattedDate}: ${day.count} application${day.count === 1 ? "" : "s"}`
+                                      return (
+                                        <Tooltip key={`day-${day.date}-${dayIndex}`}>
+                                          <TooltipTrigger asChild>
+                                            <div
+                                              className={cn(
+                                                "aspect-square w-full min-w-[12px] rounded-sm border border-background/30",
+                                                ACTIVITY_LEVEL_CLASSES[day.level] ?? ACTIVITY_LEVEL_CLASSES[0],
+                                              )}
+                                              aria-label={tooltipLabel}
+                                            />
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top" align="center" className="text-xs">
+                                            <p className="font-medium">{formattedDate}</p>
+                                            <p className="text-muted-foreground">
+                                              {`${day.count} application${day.count === 1 ? "" : "s"}`}
+                                            </p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )
+                                    })}
+                                  </div>
+                                ))}
+                              </div>
+                            </TooltipProvider>
+                          </div>
                         </div>
                       </div>
                     </div>
