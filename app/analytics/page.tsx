@@ -2,21 +2,14 @@
 
 import { useMemo, useRef } from "react"
 import { Header } from "@/components/header"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { AnimatedNumber } from "@/components/animated-number"
 import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip } from "recharts"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toPng } from "html-to-image"
-import {
-  getStatusChartColor,
-  getStatusStage,
-  isActiveStage,
-  parseStatus,
-} from "@/lib/status"
+import { getStatusChartColor, parseStatus } from "@/lib/status"
 
-import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 
@@ -103,14 +96,7 @@ const CustomSankeyNode = ({ x, y, width, height, payload }: {
 
 export default function AnalyticsPage() {
   const sankeyContainerRef = useRef<HTMLDivElement>(null)
-  const { stats, isLoading: statsLoading } = useDashboardStats()
   const { applications, isLoading: appsLoading } = useJobApplications({ limit: 200, include_status_history: true })
-
-  const totalApplications = stats?.total_applications ?? 0
-  const interviewConversion = stats && stats.applied > 0 ? Math.round((stats.interviews / stats.applied) * 100) : 0
-  const offerRate = stats && totalApplications > 0 ? Math.round((stats.offers / totalApplications) * 100) : 0
-  const activePipeline = applications.filter((app) => isActiveStage(getStatusStage(app.status))).length
-  const awaitingResponse = applications.filter((app) => app.status === "Applied").length
   const sankeyData = useMemo(() => {
     const baseNode = SANKEY_BASE_NODE
     const baseColor = getStatusChartColor("Applied")
@@ -237,39 +223,6 @@ export default function AnalyticsPage() {
     }
   }
 
-  const analyticsSummary = useMemo(
-    () => [
-      {
-        label: "Overall response rate",
-        value: typeof stats?.response_rate === "number" ? stats.response_rate : null,
-        suffix: "%",
-        helper: `${stats?.interviews ?? 0} interviews scheduled`,
-        isLoading: statsLoading,
-      },
-      {
-        label: "Interview conversion",
-        value: stats ? interviewConversion : null,
-        suffix: "%",
-        helper: `${stats?.applied ?? 0} applications reached interview stage`,
-        isLoading: statsLoading,
-      },
-      {
-        label: "Offer momentum",
-        value: stats ? offerRate : null,
-        suffix: "%",
-        helper: `${stats?.offers ?? 0} offers • ${stats?.accepted ?? 0} accepted`,
-        isLoading: statsLoading,
-      },
-      {
-        label: "Active pipeline",
-        value: appsLoading ? null : activePipeline,
-        helper: `${awaitingResponse} awaiting response`,
-        isLoading: appsLoading,
-      },
-    ],
-    [activePipeline, appsLoading, awaitingResponse, interviewConversion, offerRate, stats, statsLoading],
-  )
-
   const applicationActivity = useMemo(() => {
     if (!applications.length) {
       return { weeks: [] as { date: string; count: number; level: number }[][], maxDailyCount: 0 }
@@ -355,32 +308,24 @@ export default function AnalyticsPage() {
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Header />
-      <main className="pt-24 p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <header className="space-y-2">
-            <h1 className="text-3xl font-semibold">Analytics snapshot</h1>
-            <p className="text-muted-foreground text-pretty">
-              High-level insights that show how your job search is trending and where to focus next.
-            </p>
-          </header>
-
+      <main className="flex-1 overflow-hidden px-6 pt-24">
+        <div className="mx-auto flex h-full max-w-7xl flex-col gap-8 overflow-hidden">
           <section>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle>Job search journey</CardTitle>
-                <Button
-                  onClick={handleExportSankey}
-                  variant="outline"
-                  size="sm"
-                  disabled={statsLoading || appsLoading || sankeyData.links.length === 0}
-                >
-                  Export PNG
-                </Button>
-              </CardHeader>
               <CardContent className="space-y-4">
-                {statsLoading || appsLoading ? (
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleExportSankey}
+                    variant="outline"
+                    size="sm"
+                    disabled={appsLoading || sankeyData.links.length === 0}
+                  >
+                    Export PNG
+                  </Button>
+                </div>
+                {appsLoading ? (
                   <div className="h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
                     <Skeleton className="h-6 w-32" />
                     <Skeleton className="h-4 w-48" />
@@ -446,14 +391,6 @@ export default function AnalyticsPage() {
 
           <section>
             <Card>
-              <CardHeader>
-                <div className="space-y-1">
-                  <CardTitle>Application activity</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    A GitHub-style snapshot of when you&rsquo;ve been adding new roles over the past year.
-                  </p>
-                </div>
-              </CardHeader>
               <CardContent>
                 {appsLoading ? (
                   <div className="space-y-2">
@@ -553,36 +490,6 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
           </section>
-
-          <section>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {analyticsSummary.map((item) => (
-                <Card key={item.label}>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium text-muted-foreground">{item.label}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {(() => {
-                      if (item.isLoading) {
-                        return <Skeleton className="h-8 w-16" />
-                      }
-
-                      return (
-                        <AnimatedNumber
-                          className="text-2xl font-semibold"
-                          value={item.value}
-                          suffix={item.suffix}
-                          duration={900}
-                        />
-                      )
-                    })()}
-                    <p className="text-sm text-muted-foreground mt-2">{item.helper}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-
 
         </div>
       </main>

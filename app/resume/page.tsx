@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -380,24 +381,18 @@ export default function ResumePage() {
   }, [fetchResume, isRemoving, resume, supabase, user])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Header />
-      <main className="pt-24 px-4 sm:px-6">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold">Resume manager</h1>
-            <p className="text-muted-foreground text-pretty">
-              Upload a new file any time you need to replace it, the previous copy
-              will be removed automatically.
-            </p>
-          </div>
-
-          <Card>
-            {!resume && (
-              <CardHeader>
-                <CardTitle>Current resume</CardTitle>
-                <CardDescription>Upload a PDF, DOC, or DOCX file up to 5&nbsp;MB.</CardDescription>
-              </CardHeader>
+      <main className="flex-1 overflow-hidden px-4 pt-24 sm:px-6">
+        <div className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden">
+          <ScrollArea className="flex-1">
+            <div className="space-y-8 pb-8">
+              <Card>
+                {!resume && (
+                  <CardHeader>
+                    <CardTitle>Current resume</CardTitle>
+                    <CardDescription>Upload a PDF, DOC, or DOCX file up to 5&nbsp;MB.</CardDescription>
+                  </CardHeader>
             )}
             <CardContent className="space-y-6">
               {errorMessage && (
@@ -511,7 +506,9 @@ export default function ResumePage() {
                 </Button>
               </div>
             </CardFooter>
-          </Card>
+              </Card>
+            </div>
+          </ScrollArea>
         </div>
       </main>
       <DeleteConfirmationDialog

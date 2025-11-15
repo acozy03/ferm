@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
@@ -249,19 +250,12 @@ export default function FollowUpsPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Header />
-      <main className="pt-24 p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <header className="space-y-2">
-            <h1 className="text-3xl font-semibold">Follow-up playbook</h1>
-            <p className="text-muted-foreground text-pretty">
-              Decide when to check in on each application, generate a polished follow-up email, and let ferm.dev deliver the reminder.
-            </p>
-          </header>
-
-          <section>
-            <Card>
+      <main className="flex-1 overflow-hidden px-6 pb-6 pt-24">
+        <div className="mx-auto flex h-full max-w-7xl flex-col space-y-8 overflow-hidden">
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <CardHeader className="gap-4">
                 <CardTitle>Reminder schedule</CardTitle>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -285,7 +279,7 @@ export default function FollowUpsPage() {
                   </Select>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="flex min-h-0 flex-1 flex-col space-y-4 overflow-hidden">
                 {isLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 5 }).map((_, index) => (
@@ -302,89 +296,90 @@ export default function FollowUpsPage() {
                 ) : filteredRows.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No follow-ups match your search.</p>
                 ) : (
-                  <div className="space-y-4">
-                    
-                    <div className="overflow-x-auto rounded-md border pl-4 pr-2 sm:pl-6 sm:pr-4">
-                      <Table className="table-auto">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="min-w-[220px] py-4">Application</TableHead>
-                            <TableHead className="py-4">Applied</TableHead>
-                            <TableHead className="py-4">Next reminder</TableHead>
-                            <TableHead className="py-4">Last reminder</TableHead>
-                            <TableHead className="py-4">Status</TableHead>
-                            <TableHead className="py-4 min-w-[220px]">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredRows.map((row) => {
-                            const isPending = pending[row.application.id]
-                            const appliedDate = getDateOrNull(row.application.application_date)
-                            const appliedLabel = appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
-                            const nextReminderLabel = row.enabled && row.nextReminder
-                              ? row.status === "due"
-                                ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
-                                : format(row.nextReminder, "MMM d, yyyy")
-                              : "Not scheduled"
-                            const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
+                  <div className="flex min-h-0 flex-1 flex-col space-y-4 overflow-hidden">
+                    <ScrollArea className="flex-1">
+                      <div className="overflow-x-auto rounded-md border pl-4 pr-2 sm:pl-6 sm:pr-4">
+                        <Table className="table-auto">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="min-w-[220px] py-4">Application</TableHead>
+                              <TableHead className="py-4">Applied</TableHead>
+                              <TableHead className="py-4">Next reminder</TableHead>
+                              <TableHead className="py-4">Last reminder</TableHead>
+                              <TableHead className="py-4">Status</TableHead>
+                              <TableHead className="py-4 min-w-[220px]">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredRows.map((row) => {
+                              const isPending = pending[row.application.id]
+                              const appliedDate = getDateOrNull(row.application.application_date)
+                              const appliedLabel = appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
+                              const nextReminderLabel = row.enabled && row.nextReminder
+                                ? row.status === "due"
+                                  ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
+                                  : format(row.nextReminder, "MMM d, yyyy")
+                                : "Not scheduled"
+                              const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
 
-                            return (
-                              <TableRow key={row.application.id} className="align-top [&>td]:py-5">
-                                <TableCell className="max-w-[280px]">
-                                  <div className="space-y-1">
-                                    <div
-                                      className="font-medium leading-tight truncate"
-                                      title={row.application.company_name ?? undefined}
-                                    >
-                                      {row.application.company_name}
+                              return (
+                                <TableRow key={row.application.id} className="align-top [&>td]:py-5">
+                                  <TableCell className="max-w-[280px]">
+                                    <div className="space-y-1">
+                                      <div
+                                        className="truncate font-medium leading-tight"
+                                        title={row.application.company_name ?? undefined}
+                                      >
+                                        {row.application.company_name}
+                                      </div>
+                                      <div
+                                        className="truncate text-sm text-muted-foreground leading-tight"
+                                        title={row.application.position_title ?? undefined}
+                                      >
+                                        {row.application.position_title}
+                                      </div>
                                     </div>
-                                    <div
-                                      className="text-sm text-muted-foreground leading-tight truncate"
-                                      title={row.application.position_title ?? undefined}
-                                    >
-                                      {row.application.position_title}
+                                  </TableCell>
+                                  <TableCell className="text-sm">{appliedLabel}</TableCell>
+                                  <TableCell className="text-sm">{nextReminderLabel}</TableCell>
+                                  <TableCell className="text-sm">{lastReminderLabel}</TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className={getStatusBadgeTone(row.status)}>
+                                      {row.status === "due"
+                                        ? "Follow-up due"
+                                        : row.status === "upcoming"
+                                          ? "Scheduled"
+                                          : "Off"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="min-w-[220px]">
+                                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                      <FollowUpDraftDialog
+                                        application={row.application}
+                                        disabled={!row.enabled || isPending}
+                                        hasGeneratedDraft={Boolean(
+                                          row.application.ai_follow_up_draft_generated_at ||
+                                            row.application.ai_follow_up_draft_text,
+                                        )}
+                                        onDraftUpdated={(update) => handleDraftUpdated(row.application.id, update)}
+                                      />
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
+                                        disabled={isPending}
+                                      >
+                                        Set reminder
+                                      </Button>
                                     </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-sm">{appliedLabel}</TableCell>
-                                <TableCell className="text-sm">{nextReminderLabel}</TableCell>
-                                <TableCell className="text-sm">{lastReminderLabel}</TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className={getStatusBadgeTone(row.status)}>
-                                    {row.status === "due"
-                                      ? "Follow-up due"
-                                      : row.status === "upcoming"
-                                        ? "Scheduled"
-                                        : "Off"}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="min-w-[220px]">
-                                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                                    <FollowUpDraftDialog
-                                      application={row.application}
-                                      disabled={!row.enabled || isPending}
-                                      hasGeneratedDraft={Boolean(
-                                        row.application.ai_follow_up_draft_generated_at ||
-                                          row.application.ai_follow_up_draft_text,
-                                      )}
-                                      onDraftUpdated={(update) => handleDraftUpdated(row.application.id, update)}
-                                    />
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
-                                      disabled={isPending}
-                                    >
-                                      Set reminder
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
                   </div>
                 )}
               </CardContent>
