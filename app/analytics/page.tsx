@@ -9,6 +9,7 @@ import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip } from "rechart
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toPng } from "html-to-image"
 import { getStatusChartColor, parseStatus } from "@/lib/status"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
@@ -308,14 +309,15 @@ export default function AnalyticsPage() {
 
 
   return (
-    <div className="flex h-screen flex-col bg-background overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-background overflow-hidden">
       <Header />
       <main className="flex-1 overflow-hidden px-6 pt-24">
         <div className="mx-auto flex h-full max-w-7xl flex-col gap-8 overflow-hidden">
           <section>
             <Card>
               <CardContent className="space-y-4">
-                <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-muted-foreground">Application journey</p>
                   <Button
                     onClick={handleExportSankey}
                     variant="outline"
@@ -392,6 +394,9 @@ export default function AnalyticsPage() {
           <section>
             <Card>
               <CardContent>
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-sm font-medium text-muted-foreground">Application activity</p>
+                </div>
                 {appsLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-40" />
@@ -400,8 +405,8 @@ export default function AnalyticsPage() {
                   </div>
                 ) : applicationActivity.weeks.length ? (
                   <div className="space-y-4">
-                    <div className="overflow-x-auto">
-                      <div className="space-y-2 min-w-[640px]">
+                    <ScrollArea orientation="horizontal">
+                      <div className="space-y-2 min-w-[640px] pb-2">
                         <div className="flex items-start gap-3 pl-10">
                           <div className="w-10" aria-hidden />
                           <div className="flex-1">
@@ -462,7 +467,7 @@ export default function AnalyticsPage() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </ScrollArea>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <span>Less</span>
