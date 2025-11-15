@@ -198,9 +198,9 @@ export default function AnalyticsPage() {
     )
 
     const totalFlow = baseNode?.count ?? largestNode
-    const minHeight = 320
+    const minHeight = 350
     const maxHeight = 1200
-    const pixelsPerApplication = 24
+    const pixelsPerApplication = 25
 
     return Math.max(minHeight, Math.min(maxHeight, totalFlow * pixelsPerApplication))
   }, [sankeyData.nodes])
