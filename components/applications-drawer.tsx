@@ -1,6 +1,7 @@
 "use client"
 
-import { ChangeEvent, useMemo, useRef } from "react"
+import { useMemo, useState } from "react"
+import { format } from "date-fns"
 import { CalendarIcon, ArrowDownAZ, ArrowUpAZ, Filter, X } from "lucide-react"
 
 import {
@@ -12,7 +13,6 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import type { JobApplicationFilters, JobApplicationSort, Priority } from "@/lib/types/database"
@@ -20,6 +20,9 @@ import { formatStatusFilterLabel, STATUS_STAGE_FILTER_OPTIONS } from "@/lib/stat
 import type { PipelineStage } from "@/lib/status"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { getDateOrNull } from "@/lib/date"
 
 type FilterChip =
   | { type: "status"; value: string; label: string }
@@ -54,36 +57,53 @@ const sortFieldOptions: SortFieldOption[] = [
 type DateInputFieldProps = {
   label: string
   value?: string
-  onChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onChange: (value?: string) => void
 }
 
 function DateInputField({ label, value, onChange }: DateInputFieldProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [open, setOpen] = useState(false)
+  const selectedDate = value ? getDateOrNull(value) : null
 
-  const handleIconClick = () => {
-    const input = inputRef.current
-    if (!input) {
-      return
-    }
+  const handleSelect = (date: Date | undefined) => {
+    const formatted = date ? format(date, "yyyy-MM-dd") : undefined
+    onChange(formatted)
+    setOpen(false)
+  }
 
-    input.showPicker?.()
-    input.focus()
+  const handleClear = () => {
+    onChange(undefined)
+    setOpen(false)
   }
 
   return (
     <label className="flex flex-col gap-1 text-sm text-muted-foreground">
       <span className="text-xs uppercase tracking-wide">{label}</span>
-      <div className="relative">
-        <Input ref={inputRef} type="date" value={value ?? ""} onChange={onChange} className="pr-10" />
-        <button
-          type="button"
-          className="absolute inset-y-0 right-2 flex items-center text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={handleIconClick}
-        >
-          <CalendarIcon className="h-4 w-4" />
-          <span className="sr-only">Open {label.toLowerCase()} date picker</span>
-        </button>
-      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" className="w-full justify-between text-left font-normal">
+            <span className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              {selectedDate ? format(selectedDate, "LLL dd, y") : `Select ${label.toLowerCase()} date`}
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selectedDate ?? undefined}
+            defaultMonth={selectedDate ?? undefined}
+            onSelect={handleSelect}
+            initialFocus
+          />
+          {value ? (
+            <div className="border-t p-2">
+              <Button type="button" variant="ghost" size="sm" className="w-full" onClick={handleClear}>
+                Clear date
+              </Button>
+            </div>
+          ) : null}
+        </PopoverContent>
+      </Popover>
     </label>
   )
 }
@@ -151,12 +171,10 @@ export function ApplicationsDrawer({
     })
   }
 
-  const handleDateChange = (key: "date_from" | "date_to") => (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value
-
+  const handleDateChange = (key: "date_from" | "date_to") => (value?: string) => {
     onFiltersChange({
       ...filters,
-      [key]: value.length > 0 ? value : undefined,
+      [key]: value,
     })
   }
 
