@@ -1,7 +1,7 @@
 "use client"
 
-import { ChangeEvent, useMemo } from "react"
-import { ArrowDownAZ, ArrowUpAZ, Filter, X } from "lucide-react"
+import { ChangeEvent, useMemo, useRef } from "react"
+import { CalendarIcon, ArrowDownAZ, ArrowUpAZ, Filter, X } from "lucide-react"
 
 import {
   Drawer,
@@ -50,6 +50,43 @@ const sortFieldOptions: SortFieldOption[] = [
   { value: "priority", label: "Priority" },
   { value: "resume_match_score", label: "Fit score" },
 ]
+
+type DateInputFieldProps = {
+  label: string
+  value?: string
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void
+}
+
+function DateInputField({ label, value, onChange }: DateInputFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleIconClick = () => {
+    const input = inputRef.current
+    if (!input) {
+      return
+    }
+
+    input.showPicker?.()
+    input.focus()
+  }
+
+  return (
+    <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+      <span className="text-xs uppercase tracking-wide">{label}</span>
+      <div className="relative">
+        <Input ref={inputRef} type="date" value={value ?? ""} onChange={onChange} className="pr-10" />
+        <button
+          type="button"
+          className="absolute inset-y-0 right-2 flex items-center text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={handleIconClick}
+        >
+          <CalendarIcon className="h-4 w-4" />
+          <span className="sr-only">Open {label.toLowerCase()} date picker</span>
+        </button>
+      </div>
+    </label>
+  )
+}
 
 export function ApplicationsDrawer({
   open,
@@ -219,18 +256,49 @@ export function ApplicationsDrawer({
           <div className="flex flex-col gap-4 p-4">
             <div className="flex flex-col gap-4">
               <div className="rounded-lg border bg-background/60 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Filter className="h-4 w-4" />
+                    Refine results
+                    {hasActiveFilters ? (
+                      <Badge variant="secondary" className="ml-1">
+                        {activeFilters.length}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    disabled={!hasActiveFilters}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              </div>
+
+              {hasActiveFilters ? (
+                <div className="flex flex-wrap gap-2">
+                  {activeFilters.map((chip) => (
+                    <Badge key={`${chip.type}:${chip.value}`} variant="secondary" asChild>
+                      <button type="button" className="flex items-center gap-1" onClick={() => handleRemoveFilter(chip)}>
+                        {chip.label}
+                        <X className="h-3 w-3" />
+                        <span className="sr-only">Remove {chip.label}</span>
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="rounded-lg border bg-background/60 p-3">
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Date range
                 </span>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-                    <span className="text-xs uppercase tracking-wide">From</span>
-                    <Input type="date" value={filters.date_from ?? ""} onChange={handleDateChange("date_from")} />
-                  </label>
-                  <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-                    <span className="text-xs uppercase tracking-wide">To</span>
-                    <Input type="date" value={filters.date_to ?? ""} onChange={handleDateChange("date_to")} />
-                  </label>
+                  <DateInputField label="From" value={filters.date_from} onChange={handleDateChange("date_from")} />
+                  <DateInputField label="To" value={filters.date_to} onChange={handleDateChange("date_to")} />
                 </div>
               </div>
 
@@ -271,43 +339,6 @@ export function ApplicationsDrawer({
                   </div>
                 </div>
               </div>
-
-              <div className="rounded-lg border bg-background/60 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Filter className="h-4 w-4" />
-                    Refine results
-                    {hasActiveFilters ? (
-                      <Badge variant="secondary" className="ml-1">
-                        {activeFilters.length}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearAllFilters}
-                    disabled={!hasActiveFilters}
-                  >
-                    Clear filters
-                  </Button>
-                </div>
-              </div>
-
-              {hasActiveFilters ? (
-                <div className="flex flex-wrap gap-2">
-                  {activeFilters.map((chip) => (
-                    <Badge key={`${chip.type}:${chip.value}`} variant="secondary" asChild>
-                      <button type="button" className="flex items-center gap-1" onClick={() => handleRemoveFilter(chip)}>
-                        {chip.label}
-                        <X className="h-3 w-3" />
-                        <span className="sr-only">Remove {chip.label}</span>
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
             </div>
 
             <ScrollArea className="h-[60vh] pr-4">
