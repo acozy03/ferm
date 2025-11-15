@@ -26,11 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import type { ApplicationFollowUp, JobApplication } from "@/lib/types/database"
-import { cn } from "@/lib/utils"
 import { getDateOrNull } from "@/lib/date"
 
 import { FollowUpDraftDialog } from "@/components/follow-up-draft-dialog"
@@ -90,6 +91,7 @@ export default function FollowUpsPage() {
   const [pending, setPending] = useState<Record<string, boolean>>({})
   const [reminderDialog, setReminderDialog] = useState<ReminderDialogState | null>(null)
   const [sortBy, setSortBy] = useState<SortValue>("status")
+  const [searchQuery, setSearchQuery] = useState("")
 
   const handleDraftUpdated = useCallback(
     (applicationId: string, update: { draft: string; generatedAt?: string | null }) => {
@@ -194,6 +196,18 @@ export default function FollowUpsPage() {
     }
   }, [rows, sortBy])
 
+  const filteredRows = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) {
+      return sortedRows
+    }
+
+    return sortedRows.filter((row) => {
+      const values = [row.application.company_name, row.application.position_title]
+      return values.some((value) => value?.toLowerCase().includes(query))
+    })
+  }, [searchQuery, sortedRows])
+
   const isLoading = isLoadingApplications || isLoadingFollowUps
 
   const setPendingState = useCallback((id: string, value: boolean) => {
@@ -281,136 +295,142 @@ export default function FollowUpsPage() {
               Decide when to check in on each application, generate a polished follow-up email, and let ferm.dev deliver the reminder.
             </p>
           </header>
-
-     
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {summaryCards.map((card) => (
+              <Card key={card.label}>
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="rounded-full bg-muted p-3">
+                    <card.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">{card.label}</p>
+                    <div className="text-2xl font-semibold">{card.value}</div>
+                    <p className="text-xs text-muted-foreground">{card.helper}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </section>
 
           <section>
             <Card>
-              <CardHeader>
-                <CardTitle>Reminder schedule</CardTitle>
+              <CardHeader className="gap-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle>Reminder schedule</CardTitle>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <span className="text-sm font-medium text-muted-foreground">Sort by</span>
+                    <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortValue)}>
+                      <SelectTrigger className="sm:w-[200px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search by company or role"
+                  className="w-full sm:max-w-sm"
+                />
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
                 {isLoading ? (
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <Card key={index} className="border-dashed">
-                        <CardHeader>
-                          <Skeleton className="h-5 w-24" />
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-4 w-2/3" />
-                          <Skeleton className="h-10 w-full" />
-                        </CardContent>
-                      </Card>
+                  <div className="space-y-3">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className="rounded-md border border-dashed p-4">
+                        <Skeleton className="h-5 w-40" />
+                        <Skeleton className="mt-2 h-4 w-64" />
+                      </div>
                     ))}
                   </div>
                 ) : rows.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     Add job applications to start planning your follow-up cadence.
                   </p>
+                ) : filteredRows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No follow-ups match your search.</p>
                 ) : (
                   <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm text-muted-foreground">Arrange your follow-ups to focus on what matters first.</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-muted-foreground">Sort by</span>
-                        <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortValue)}>
-                          <SelectTrigger className="w-[200px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {sortOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {sortedRows.map((row) => {
-                        const isPending = pending[row.application.id]
-                        const appliedDate = getDateOrNull(row.application.application_date)
-                        const appliedLabel = appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
-                        const nextReminderLabel = row.enabled && row.nextReminder
-                          ? row.status === "due"
-                            ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
-                            : format(row.nextReminder, "MMM d, yyyy")
-                          : "Not scheduled"
-                        const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
+                    <p className="text-sm text-muted-foreground">
+                      Arrange your follow-ups to focus on what matters first.
+                    </p>
+                    <div className="overflow-x-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[220px]">Application</TableHead>
+                            <TableHead>Applied</TableHead>
+                            <TableHead>Next reminder</TableHead>
+                            <TableHead>Last reminder</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredRows.map((row) => {
+                            const isPending = pending[row.application.id]
+                            const appliedDate = getDateOrNull(row.application.application_date)
+                            const appliedLabel = appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
+                            const nextReminderLabel = row.enabled && row.nextReminder
+                              ? row.status === "due"
+                                ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
+                                : format(row.nextReminder, "MMM d, yyyy")
+                              : "Not scheduled"
+                            const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
 
-                        return (
-                          <Card
-                            key={row.application.id}
-                            className={cn(
-                              "flex h-full flex-col border transition",
-                              row.status === "due" && "border-destructive/60 shadow-[0_0_0_1px] shadow-destructive/10",
-                              row.status === "upcoming" &&
-                                "border-emerald-500/30 shadow-[0_0_0_1px] shadow-emerald-500/10",
-                            )}
-                          >
-                            <CardHeader className="space-y-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-1">
-                                  <CardTitle className="text-lg font-semibold">
-                                    {row.application.company_name}
-                                  </CardTitle>
-                                  <p className="text-sm text-muted-foreground">
+                            return (
+                              <TableRow key={row.application.id} className="align-top">
+                                <TableCell>
+                                  <div className="font-medium leading-tight">{row.application.company_name}</div>
+                                  <div className="text-sm text-muted-foreground leading-tight">
                                     {row.application.position_title}
-                                  </p>
-                                </div>
-                                <Badge variant="outline" className={getStatusBadgeTone(row.status)}>
-                                  {row.status === "due"
-                                    ? "Follow-up due"
-                                    : row.status === "upcoming"
-                                      ? "Scheduled"
-                                      : "Off"}
-                                </Badge>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="flex flex-1 flex-col justify-between space-y-4">
-                              <div className="space-y-3 text-sm">
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-muted-foreground">Applied</span>
-                                  <span className="font-medium">{appliedLabel}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-muted-foreground">Next reminder</span>
-                                  <span className="font-medium text-right">{nextReminderLabel}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-muted-foreground">Last reminder</span>
-                                  <span className="font-medium">{lastReminderLabel}</span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col gap-3 border-t pt-4">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <FollowUpDraftDialog
-                                    application={row.application}
-                                    disabled={!row.enabled || isPending}
-                                    hasGeneratedDraft={Boolean(
-                                      row.application.ai_follow_up_draft_generated_at ||
-                                        row.application.ai_follow_up_draft_text,
-                                    )}
-                                    onDraftUpdated={(update) => handleDraftUpdated(row.application.id, update)}
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
-                                    disabled={isPending}
-                                  >
-                                    Set reminder
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm">{appliedLabel}</TableCell>
+                                <TableCell className="text-sm">{nextReminderLabel}</TableCell>
+                                <TableCell className="text-sm">{lastReminderLabel}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={getStatusBadgeTone(row.status)}>
+                                    {row.status === "due"
+                                      ? "Follow-up due"
+                                      : row.status === "upcoming"
+                                        ? "Scheduled"
+                                        : "Off"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
+                                    <FollowUpDraftDialog
+                                      application={row.application}
+                                      disabled={!row.enabled || isPending}
+                                      hasGeneratedDraft={Boolean(
+                                        row.application.ai_follow_up_draft_generated_at ||
+                                          row.application.ai_follow_up_draft_text,
+                                      )}
+                                      onDraftUpdated={(update) => handleDraftUpdated(row.application.id, update)}
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
+                                      disabled={isPending}
+                                    >
+                                      Set reminder
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
                 )}

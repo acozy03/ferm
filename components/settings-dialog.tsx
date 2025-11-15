@@ -2,35 +2,38 @@
 
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { toast } from "@/components/ui/use-toast"
-import {
-  defaultSettings,
-  defaultSortOptions,
-  defaultViewOptions,
-  themeOptions,
-  type SettingsState,
-  type ThemePreference,
-} from "@/lib/settings"
+import { themeOptions, type SettingsState, type ThemePreference } from "@/lib/settings"
 import { useSettings } from "@/components/settings-provider"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Laptop, Moon, SunMedium } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface SettingsDialogProps {
   trigger?: ReactNode
 }
 
+const themeIconMap: Record<ThemePreference, typeof SunMedium> = {
+  system: Laptop,
+  light: SunMedium,
+  dark: Moon,
+}
+
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
-  const { settings, hasHydrated, updateSettings: saveSettings, resetSettings: restoreSettings } = useSettings()
+  const { settings, hasHydrated, updateSettings: saveSettings } = useSettings()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<SettingsState>(settings)
 
@@ -52,10 +55,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     return JSON.stringify(settings) !== JSON.stringify(draft)
   }, [settings, draft])
 
-  const isDefaultSettings = useMemo(() => {
-    return JSON.stringify(settings) === JSON.stringify(defaultSettings)
-  }, [settings])
-
   const updateDraft = <Key extends keyof SettingsState>(key: Key, value: SettingsState[Key]) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
@@ -69,13 +68,12 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     setOpen(false)
   }
 
-  const handleReset = () => {
-    restoreSettings()
-    setDraft(defaultSettings)
+  const handleDeleteAccount = () => {
     toast({
-      title: "Settings restored",
-      description: "All preferences have been reset to their defaults.",
+      title: "Account deletion scheduled",
+      description: "We'll send a confirmation email with next steps.",
     })
+    setOpen(false)
   }
 
   if (!hasHydrated) {
@@ -89,73 +87,59 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Workspace settings</DialogTitle>
-          <DialogDescription>Configure your job tracking preferences.</DialogDescription>
         </DialogHeader>
-
-        <section className="space-y-4 rounded-lg border border-border/60 bg-muted/5 p-4">
-          <header className="space-y-1">
-            <h3 className="text-sm font-medium">Preferences</h3>
-            <p className="text-sm text-muted-foreground">
-              Choose how ferm.dev should present information by default.
-            </p>
-          </header>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="theme">Theme</Label>
-              <Select value={draft.theme} onValueChange={(value) => updateDraft("theme", value as ThemePreference)}>
-                <SelectTrigger id="theme">
-                  <SelectValue placeholder="Select theme" />
-                </SelectTrigger>
-                <SelectContent>
-                  {themeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="default-view">Default dashboard view</Label>
-              <Select value={draft.defaultView} onValueChange={(value) => updateDraft("defaultView", value)}>
-                <SelectTrigger id="default-view">
-                  <SelectValue placeholder="Choose a view" />
-                </SelectTrigger>
-                <SelectContent>
-                  {defaultViewOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="default-sort">Default sort</Label>
-              <Select value={draft.defaultSort} onValueChange={(value) => updateDraft("defaultSort", value)}>
-                <SelectTrigger id="default-sort">
-                  <SelectValue placeholder="Choose a sort order" />
-                </SelectTrigger>
-                <SelectContent>
-                  {defaultSortOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-6 py-2">
+          <div className="space-y-3">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Theme</Label>
+            <ToggleGroup
+              type="single"
+              value={draft.theme}
+              onValueChange={(value) => value && updateDraft("theme", value as ThemePreference)}
+              className="grid gap-2 sm:grid-cols-3"
+              variant="outline"
+            >
+              {themeOptions.map((option) => {
+                const Icon = themeIconMap[option.value]
+                return (
+                  <ToggleGroupItem
+                    key={option.value}
+                    value={option.value}
+                    className={cn("h-12 flex-col gap-1 text-sm", draft.theme === option.value && "text-foreground")}
+                    aria-label={option.label}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{option.label}</span>
+                  </ToggleGroupItem>
+                )
+              })}
+            </ToggleGroup>
           </div>
-        </section>
 
-        <DialogFooter className="flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <Button variant="ghost" type="button" onClick={handleReset} disabled={!hasChanges && isDefaultSettings}>
-            Restore defaults
-          </Button>
-          <div className="flex w-full justify-end gap-2 sm:w-auto">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full sm:w-auto">
+                Delete account
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+
+        <DialogFooter className="border-t border-border/60 pt-4">
+          <div className="flex w-full justify-end gap-2">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               Cancel
             </Button>
