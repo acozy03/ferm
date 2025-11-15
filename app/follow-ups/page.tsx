@@ -304,7 +304,7 @@ export default function FollowUpsPage() {
                 ) : (
                   <div className="space-y-4">
                     
-                    <div className="overflow-x-auto rounded-md border">
+                    <div className="overflow-x-auto rounded-md border pl-4 pr-2 sm:pl-6 sm:pr-4">
                       <Table className="table-auto">
                         <TableHeader>
                           <TableRow>
