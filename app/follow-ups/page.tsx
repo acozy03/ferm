@@ -347,6 +347,8 @@ export default function FollowUpsPage() {
                             className={cn(
                               "flex h-full flex-col border transition",
                               row.status === "due" && "border-destructive/60 shadow-[0_0_0_1px] shadow-destructive/10",
+                              row.status === "upcoming" &&
+                                "border-emerald-500/30 shadow-[0_0_0_1px] shadow-emerald-500/10",
                             )}
                           >
                             <CardHeader className="space-y-3">
@@ -498,8 +500,8 @@ function getStatusBadgeTone(status: FollowUpRow["status"]) {
     case "due":
       return "bg-destructive/10 text-destructive border-destructive/40"
     case "upcoming":
-      return "bg-primary/10 text-primary border-primary/40"
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-200 dark:border-emerald-500/40"
     default:
-      return "bg-muted text-muted-foreground border-muted"
+      return "bg-background text-muted-foreground border-border"
   }
 }
