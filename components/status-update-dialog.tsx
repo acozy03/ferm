@@ -16,6 +16,7 @@ import {
   getStatusBadgeClass,
   parseStatus,
 } from "@/lib/status"
+import { cn } from "@/lib/utils"
 
 interface StatusUpdateDialogProps {
   currentStatus: JobApplicationStatus
@@ -38,6 +39,7 @@ export function StatusUpdateDialog({
   const [selectedStatus, setSelectedStatus] = useState<JobApplicationStatus>(currentMetadata.value)
   const [note, setNote] = useState("")
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const selectedMetadata = useMemo(() => parseStatus(selectedStatus), [selectedStatus])
   const isControlled = typeof controlledOpen === "boolean" && typeof onOpenChange === "function"
   const dialogOpen = isControlled ? controlledOpen : uncontrolledOpen
   const handleOpenChange = (nextOpen: boolean) => {
@@ -101,8 +103,21 @@ export function StatusUpdateDialog({
                   Update To
                 </Label>
                 <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as JobApplicationStatus)}>
-                  <SelectTrigger id="new-status" className="mt-3">
-                    <SelectValue placeholder="Select a status" />
+                  <SelectTrigger
+                    id="new-status"
+                    className="mt-3 w-full gap-0 border-none bg-transparent p-0 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    hideIcon
+                  >
+                    <SelectValue className="sr-only" placeholder="Select a status" />
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-center px-3 py-2 text-sm font-medium",
+                        selectedMetadata.badgeClass,
+                      )}
+                    >
+                      {formatStatusOptionLabel(selectedMetadata)}
+                    </Badge>
                   </SelectTrigger>
                   <SelectContent>
                     {options.map((option) => (
