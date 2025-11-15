@@ -92,12 +92,14 @@ export function ApplicationsDrawer({
     return chips
   }, [filters, trimmedSearch])
 
-  const handleStatusChange = (next: string[]) => {
-    const normalized = next.filter(Boolean) as PipelineStage[]
+  const handleStatusToggle = (status: PipelineStage) => {
+    const current = filters.status ?? []
+    const exists = current.includes(status)
+    const nextStatuses = exists ? current.filter((item) => item !== status) : [...current, status]
 
     onFiltersChange({
       ...filters,
-      status: normalized.length > 0 ? normalized : undefined,
+      status: nextStatuses.length > 0 ? nextStatuses : undefined,
     })
   }
 
@@ -216,6 +218,22 @@ export function ApplicationsDrawer({
         <div className="border-t">
           <div className="flex flex-col gap-4 p-4">
             <div className="flex flex-col gap-4">
+              <div className="rounded-lg border bg-background/60 p-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Date range
+                </span>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+                    <span className="text-xs uppercase tracking-wide">From</span>
+                    <Input type="date" value={filters.date_from ?? ""} onChange={handleDateChange("date_from")} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+                    <span className="text-xs uppercase tracking-wide">To</span>
+                    <Input type="date" value={filters.date_to ?? ""} onChange={handleDateChange("date_to")} />
+                  </label>
+                </div>
+              </div>
+
               <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-1 lg:max-w-md">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -296,28 +314,29 @@ export function ApplicationsDrawer({
               <div className="space-y-6 pb-6">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
-                  <ToggleGroup
-                    type="multiple"
-                    value={(filters.status ?? []) as string[]}
-                    onValueChange={handleStatusChange}
-                    variant="outline"
-                    className="mt-2 !w-full flex-nowrap overflow-x-auto"
-                  >
-                    {STATUS_STAGE_FILTER_OPTIONS.map((option) => (
-                      <ToggleGroupItem
-                        key={option.value}
-                        value={option.value}
-                        className="whitespace-nowrap px-3 py-2 text-sm"
-                      >
-                        {option.label}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {STATUS_STAGE_FILTER_OPTIONS.map((option) => {
+                      const isActive = (filters.status ?? []).includes(option.value)
+
+                      return (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          variant={isActive ? "secondary" : "outline"}
+                          size="sm"
+                          className="justify-start"
+                          onClick={() => handleStatusToggle(option.value as PipelineStage)}
+                        >
+                          {option.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Priority</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {priorityOptions.map((priority) => {
                       const isActive = (filters.priority ?? []).includes(priority)
 
@@ -327,34 +346,13 @@ export function ApplicationsDrawer({
                           type="button"
                           variant={isActive ? "secondary" : "outline"}
                           size="sm"
-                          className="justify-start"
+                          className="justify-center"
                           onClick={() => handlePriorityToggle(priority)}
                         >
                           {priority}
                         </Button>
                       )
                     })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">From</p>
-                    <Input
-                      type="date"
-                      value={filters.date_from ?? ""}
-                      onChange={handleDateChange("date_from")}
-                      className="mt-2"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">To</p>
-                    <Input
-                      type="date"
-                      value={filters.date_to ?? ""}
-                      onChange={handleDateChange("date_to")}
-                      className="mt-2"
-                    />
                   </div>
                 </div>
               </div>
