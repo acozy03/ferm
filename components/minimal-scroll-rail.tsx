@@ -21,7 +21,7 @@ interface ScrollToProgressOptions {
 
 export function MinimalScrollRail() {
   const pathname = usePathname()
-  const shouldHide = pathname === "/"
+  const shouldHide = ["/", "/follow-ups", "/resume", "/analytics"].includes(pathname)
 
   const [progress, setProgress] = useState(0)
   const isDraggingRef = useRef(false)
