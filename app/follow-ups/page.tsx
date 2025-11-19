@@ -285,25 +285,6 @@ export default function FollowUpsPage() {
                     className="w-full sm:max-w-sm"
                   />
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <Select
-                      value={sortBy}
-                      onValueChange={(value) => {
-                        const sortValue = value as SortValue
-                        setSortBy(sortValue)
-                        setSortDirection(sortDirectionDefaults[sortValue])
-                      }}
-                    >
-                      <SelectTrigger className="sm:w-[200px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <ToggleGroup
                       type="single"
                       value={sortDirection}
@@ -324,6 +305,25 @@ export default function FollowUpsPage() {
                         <span className="text-sm">Descending</span>
                       </ToggleGroupItem>
                     </ToggleGroup>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value) => {
+                        const sortValue = value as SortValue
+                        setSortBy(sortValue)
+                        setSortDirection(sortDirectionDefaults[sortValue])
+                      }}
+                    >
+                      <SelectTrigger className="sm:w-[200px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </CardHeader>

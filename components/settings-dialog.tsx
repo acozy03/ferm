@@ -57,9 +57,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     return JSON.stringify(settings) !== JSON.stringify(draft)
   }, [settings, draft])
 
-  const selectedTheme = useMemo(() => themeOptions.find((option) => option.value === draft.theme), [draft.theme])
-  const SelectedThemeIcon = selectedTheme ? themeIconMap[selectedTheme.value] : null
-
   const updateDraft = <Key extends keyof SettingsState>(key: Key, value: SettingsState[Key]) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
@@ -119,64 +116,60 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Theme</Label>
-              <p className="text-sm text-muted-foreground">Choose how ferm.dev looks on this device.</p>
             </div>
             <Select value={draft.theme} onValueChange={(value) => updateDraft("theme", value as ThemePreference)}>
-              <SelectTrigger className="w-full sm:w-72">
-                <div className="flex items-center gap-2">
-                  {SelectedThemeIcon ? <SelectedThemeIcon className="h-4 w-4" /> : null}
-                  <SelectValue placeholder="Select a theme" />
-                </div>
+              <SelectTrigger className="sm:w-30">
+                <SelectValue placeholder="Select a theme" />
               </SelectTrigger>
               <SelectContent align="start">
                 {themeOptions.map((option) => {
                   const Icon = themeIconMap[option.value]
                   return (
-                    <SelectItem key={option.value} value={option.value} className="flex gap-2">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
-                        <span>{option.label}</span>
-                      </div>
+                    <SelectItem key={option.value} value={option.value} className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      <span>{option.label}</span>
                     </SelectItem>
                   )
                 })}
               </SelectContent>
             </Select>
           </div>
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full sm:w-auto">
-                Delete account
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => void handleDeleteAccount()}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={isDeleting}
-                  aria-busy={isDeleting}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
 
         <DialogFooter className="border-t border-border/60 pt-4">
-          <div className="flex w-full justify-end gap-2">
-            <Button variant="outline" type="button" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleSave} disabled={!hasChanges}>
-              Save changes
-            </Button>
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full sm:w-auto">
+                  Delete account
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => void handleDeleteAccount()}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={isDeleting}
+                    aria-busy={isDeleting}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <div className="flex w-full justify-end gap-2 sm:w-auto">
+              <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleSave} disabled={!hasChanges}>
+                Save changes
+              </Button>
+            </div>
           </div>
         </DialogFooter>
       </DialogContent>
