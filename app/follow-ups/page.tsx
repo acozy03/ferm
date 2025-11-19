@@ -2,8 +2,9 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
+import { ArrowDownAZ, ArrowUpAZ } from "lucide-react"
 import { Header } from "@/components/header"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,6 +28,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
@@ -53,6 +55,7 @@ type ReminderDialogState = {
 }
 
 type SortValue = "status" | "next" | "applied" | "company"
+type SortDirection = "asc" | "desc"
 
 const sortOptions: { label: string; value: SortValue }[] = [
   { label: "Status (due first)", value: "status" },
@@ -60,6 +63,13 @@ const sortOptions: { label: string; value: SortValue }[] = [
   { label: "Applied date", value: "applied" },
   { label: "Company name", value: "company" },
 ]
+
+const sortDirectionDefaults: Record<SortValue, SortDirection> = {
+  status: "asc",
+  next: "asc",
+  applied: "desc",
+  company: "asc",
+}
 
 function computeNextReminder(followUp: ApplicationFollowUp | undefined): Date | null {
   if (!followUp?.enabled) {
@@ -90,6 +100,7 @@ export default function FollowUpsPage() {
   const [pending, setPending] = useState<Record<string, boolean>>({})
   const [reminderDialog, setReminderDialog] = useState<ReminderDialogState | null>(null)
   const [sortBy, setSortBy] = useState<SortValue>("status")
+  const [sortDirection, setSortDirection] = useState<SortDirection>(sortDirectionDefaults.status)
   const [searchQuery, setSearchQuery] = useState("")
 
   const handleDraftUpdated = useCallback(
@@ -148,43 +159,51 @@ export default function FollowUpsPage() {
 
 
   const sortedRows = useMemo(() => {
+    const directionMultiplier = sortDirection === "asc" ? 1 : -1
+    const getNextReminderValue = (row: FollowUpRow) =>
+      row.nextReminder
+        ? row.nextReminder.getTime()
+        : sortDirection === "asc"
+          ? Number.POSITIVE_INFINITY
+          : Number.NEGATIVE_INFINITY
+
     const items = [...rows]
     switch (sortBy) {
       case "status": {
         const priority: Record<FollowUpRow["status"], number> = { due: 0, upcoming: 1, disabled: 2 }
         return items.sort((a, b) => {
-          const statusDiff = priority[a.status] - priority[b.status]
+          const statusDiff = directionMultiplier * (priority[a.status] - priority[b.status])
           if (statusDiff !== 0) {
             return statusDiff
           }
 
-          const left = a.nextReminder ? a.nextReminder.getTime() : Number.POSITIVE_INFINITY
-          const right = b.nextReminder ? b.nextReminder.getTime() : Number.POSITIVE_INFINITY
-          return left - right
+          const left = getNextReminderValue(a)
+          const right = getNextReminderValue(b)
+          return directionMultiplier * (left - right)
         })
       }
       case "next":
         return items.sort((a, b) => {
-          const left = a.nextReminder ? a.nextReminder.getTime() : Number.POSITIVE_INFINITY
-          const right = b.nextReminder ? b.nextReminder.getTime() : Number.POSITIVE_INFINITY
-          return left - right
+          const left = getNextReminderValue(a)
+          const right = getNextReminderValue(b)
+          return directionMultiplier * (left - right)
         })
       case "applied":
         return items.sort((a, b) => {
           const left = getDateOrNull(a.application.application_date)?.getTime() ?? 0
           const right = getDateOrNull(b.application.application_date)?.getTime() ?? 0
-          return right - left
+          return directionMultiplier * (left - right)
         })
       case "company":
         return items.sort((a, b) => {
           const left = a.application.company_name ?? ""
           const right = b.application.company_name ?? ""
-          return left.localeCompare(right)
+          return directionMultiplier * left.localeCompare(right)
         })
       default:
         return items
     }
-  }, [rows, sortBy])
+  }, [rows, sortBy, sortDirection])
 
   const filteredRows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -265,18 +284,47 @@ export default function FollowUpsPage() {
                     placeholder="Search by company or role"
                     className="w-full sm:max-w-sm"
                   />
-                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortValue)}>
-                    <SelectTrigger className="sm:w-[200px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sortOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value) => {
+                        const sortValue = value as SortValue
+                        setSortBy(sortValue)
+                        setSortDirection(sortDirectionDefaults[sortValue])
+                      }}
+                    >
+                      <SelectTrigger className="sm:w-[200px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <ToggleGroup
+                      type="single"
+                      value={sortDirection}
+                      onValueChange={(value) => {
+                        if (value === "asc" || value === "desc") {
+                          setSortDirection(value)
+                        }
+                      }}
+                      variant="outline"
+                      className="flex flex-wrap"
+                    >
+                      <ToggleGroupItem value="asc" className="flex items-center gap-2 px-3" aria-label="Sort ascending">
+                        <ArrowUpAZ className="h-4 w-4" />
+                        <span className="text-sm">Ascending</span>
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="desc" className="flex items-center gap-2 px-3" aria-label="Sort descending">
+                        <ArrowDownAZ className="h-4 w-4" />
+                        <span className="text-sm">Descending</span>
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="flex min-h-0 flex-1 flex-col space-y-4 overflow-hidden">

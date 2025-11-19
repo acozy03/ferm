@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { toast } from "@/components/ui/use-toast"
 import { themeOptions, type SettingsState, type ThemePreference } from "@/lib/settings"
 import { useSettings } from "@/components/settings-provider"
@@ -19,8 +18,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useSupabase } from "@/components/supabase-provider"
 import { Laptop, Moon, SunMedium } from "lucide-react"
-import { cn } from "@/lib/utils"
 
 interface SettingsDialogProps {
   trigger?: ReactNode
@@ -34,7 +34,9 @@ const themeIconMap: Record<ThemePreference, typeof SunMedium> = {
 
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const { settings, hasHydrated, updateSettings: saveSettings } = useSettings()
+  const { supabase } = useSupabase()
   const [open, setOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [draft, setDraft] = useState<SettingsState>(settings)
 
   useEffect(() => {
@@ -55,6 +57,9 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     return JSON.stringify(settings) !== JSON.stringify(draft)
   }, [settings, draft])
 
+  const selectedTheme = useMemo(() => themeOptions.find((option) => option.value === draft.theme), [draft.theme])
+  const SelectedThemeIcon = selectedTheme ? themeIconMap[selectedTheme.value] : null
+
   const updateDraft = <Key extends keyof SettingsState>(key: Key, value: SettingsState[Key]) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
@@ -68,12 +73,31 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     setOpen(false)
   }
 
-  const handleDeleteAccount = () => {
-    toast({
-      title: "Account deletion scheduled",
-      description: "We'll send a confirmation email with next steps.",
-    })
-    setOpen(false)
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true)
+    try {
+      const response = await fetch("/api/account/delete", { method: "POST" })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null
+        const errorMessage = payload?.error || "Failed to delete account. Please try again."
+        throw new Error(errorMessage)
+      }
+
+      await supabase.auth.signOut()
+
+      toast({
+        title: "Account deleted",
+        description: "Your account and associated data have been removed.",
+      })
+      setOpen(false)
+    } catch (error) {
+      console.error("Account deletion failed", error)
+      const errorMessage = error instanceof Error ? error.message : "Unable to delete account. Please try again."
+      toast({ title: "Deletion failed", description: errorMessage, variant: "destructive" })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   if (!hasHydrated) {
@@ -93,29 +117,31 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
         </DialogHeader>
         <div className="space-y-6 py-2">
           <div className="space-y-3">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Theme</Label>
-            <ToggleGroup
-              type="single"
-              value={draft.theme}
-              onValueChange={(value) => value && updateDraft("theme", value as ThemePreference)}
-              className="grid gap-2 sm:grid-cols-3"
-              variant="outline"
-            >
-              {themeOptions.map((option) => {
-                const Icon = themeIconMap[option.value]
-                return (
-                  <ToggleGroupItem
-                    key={option.value}
-                    value={option.value}
-                    className={cn("h-12 flex-col gap-1 text-sm", draft.theme === option.value && "text-foreground")}
-                    aria-label={option.label}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{option.label}</span>
-                  </ToggleGroupItem>
-                )
-              })}
-            </ToggleGroup>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Theme</Label>
+              <p className="text-sm text-muted-foreground">Choose how ferm.dev looks on this device.</p>
+            </div>
+            <Select value={draft.theme} onValueChange={(value) => updateDraft("theme", value as ThemePreference)}>
+              <SelectTrigger className="w-full sm:w-72">
+                <div className="flex items-center gap-2">
+                  {SelectedThemeIcon ? <SelectedThemeIcon className="h-4 w-4" /> : null}
+                  <SelectValue placeholder="Select a theme" />
+                </div>
+              </SelectTrigger>
+              <SelectContent align="start">
+                {themeOptions.map((option) => {
+                  const Icon = themeIconMap[option.value]
+                  return (
+                    <SelectItem key={option.value} value={option.value} className="flex gap-2">
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        <span>{option.label}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
           <AlertDialog>
@@ -130,8 +156,13 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Delete
+                <AlertDialogAction
+                  onClick={() => void handleDeleteAccount()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={isDeleting}
+                  aria-busy={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
