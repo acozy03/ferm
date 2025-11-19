@@ -6,28 +6,45 @@ import type {
   JobApplication,
   JobApplicationFilters,
   JobApplicationSort,
+  JobApplicationWithInterviews,
   JobApplicationWithStatusHistory,
 } from "@/lib/types/database"
 import type { PaginatedResponse } from "@/lib/types/api"
 import { apiFetcher } from "@/lib/fetcher"
 
-type JobApplicationResult<TIncludeStatusHistory extends boolean | undefined> = TIncludeStatusHistory extends true
-  ? JobApplicationWithStatusHistory
-  : JobApplication
+type JobApplicationResult<
+  TIncludeStatusHistory extends boolean | undefined,
+  TIncludeInterviews extends boolean | undefined,
+> = TIncludeStatusHistory extends true
+  ? TIncludeInterviews extends true
+    ? JobApplicationWithStatusHistory & JobApplicationWithInterviews
+    : JobApplicationWithStatusHistory
+  : TIncludeInterviews extends true
+    ? JobApplicationWithInterviews
+    : JobApplication
 
-interface UseJobApplicationsParams<TIncludeStatusHistory extends boolean | undefined = undefined> {
+interface UseJobApplicationsParams<
+  TIncludeStatusHistory extends boolean | undefined = undefined,
+  TIncludeInterviews extends boolean | undefined = undefined,
+> {
   page?: number
   limit?: number
   filters?: JobApplicationFilters
   sort?: JobApplicationSort
-  include_interviews?: boolean
+  include_interviews?: TIncludeInterviews
   include_activity?: boolean
   include_status_history?: TIncludeStatusHistory
   ignoreArchivePreference?: boolean
 }
 
-export function useJobApplications<TIncludeStatusHistory extends boolean | undefined = undefined>(
-  params: UseJobApplicationsParams<TIncludeStatusHistory> = {} as UseJobApplicationsParams<TIncludeStatusHistory>,
+export function useJobApplications<
+  TIncludeStatusHistory extends boolean | undefined = undefined,
+  TIncludeInterviews extends boolean | undefined = undefined,
+>(
+  params: UseJobApplicationsParams<
+    TIncludeStatusHistory,
+    TIncludeInterviews
+  > = {} as UseJobApplicationsParams<TIncludeStatusHistory, TIncludeInterviews>,
 ) {
   const effectiveFilters = useMemo<JobApplicationFilters>(
     () => params.filters ?? {},
@@ -66,15 +83,16 @@ export function useJobApplications<TIncludeStatusHistory extends boolean | undef
     params.sort?.field,
   ])
 
-  const { data, error, isLoading, mutate } = useSWR<PaginatedResponse<JobApplicationResult<TIncludeStatusHistory>>>(
-    requestUrl,
-    (url) => apiFetcher<PaginatedResponse<JobApplicationResult<TIncludeStatusHistory>>>(url),
+  const { data, error, isLoading, mutate } = useSWR<
+    PaginatedResponse<JobApplicationResult<TIncludeStatusHistory, TIncludeInterviews>>
+  >(requestUrl, (url) =>
+    apiFetcher<PaginatedResponse<JobApplicationResult<TIncludeStatusHistory, TIncludeInterviews>>>(url),
   )
 
   const applications = useMemo(() => {
     const records = data?.data ?? []
     if (!params.include_status_history) {
-      return records as JobApplicationResult<TIncludeStatusHistory>[]
+      return records as JobApplicationResult<TIncludeStatusHistory, TIncludeInterviews>[]
     }
 
     return (records as JobApplicationWithStatusHistory[]).map((application) => ({
@@ -82,7 +100,7 @@ export function useJobApplications<TIncludeStatusHistory extends boolean | undef
       status_history: [...(application.status_history ?? [])].sort(
         (left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime(),
       ),
-    })) as JobApplicationResult<TIncludeStatusHistory>[]
+    })) as JobApplicationResult<TIncludeStatusHistory, TIncludeInterviews>[]
   }, [data?.data, params.include_status_history])
 
   return {

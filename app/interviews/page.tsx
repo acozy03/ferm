@@ -30,6 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
+import { getStatusRound } from "@/lib/status"
 import type {
   InterviewStatus,
   InterviewType,
@@ -162,7 +163,10 @@ function InterviewNotesCard({ interview, onSave, onStatusChange, pendingId }: In
 export default function InterviewsPage() {
   const { toast } = useToast()
   const { interviews, isLoading, mutate } = useInterviews()
-  const { applications, isLoading: isLoadingApplications } = useJobApplications({ limit: 200 })
+  const { applications, isLoading: isLoadingApplications } = useJobApplications<undefined, true>({
+    limit: 200,
+    include_interviews: true,
+  })
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [formState, setFormState] = useState({
@@ -192,6 +196,15 @@ export default function InterviewsPage() {
     [interviews],
   )
 
+  const eligibleApplications = useMemo(() => {
+    return applications.filter((application) => {
+      const maxInterviewRound = getStatusRound(application.status) ?? 0
+      const loggedInterviews = application.interviews?.length ?? 0
+
+      return maxInterviewRound > 0 && loggedInterviews < maxInterviewRound
+    })
+  }, [applications])
+
   const handleDialogChange = (open: boolean) => {
     setIsDialogOpen(open)
     if (!open) {
@@ -215,6 +228,19 @@ export default function InterviewsPage() {
       toast({
         title: "Missing details",
         description: "Select a job and date to schedule the interview.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const isEligible = eligibleApplications.some(
+      (application) => application.id === formState.job_application_id,
+    )
+
+    if (!isEligible) {
+      toast({
+        title: "Update job status first",
+        description: "Progress the job to the next interview round before logging it.",
         variant: "destructive",
       })
       return
@@ -332,18 +358,29 @@ export default function InterviewsPage() {
                     <Select
                       value={formState.job_application_id}
                       onValueChange={(value) => setFormState((prev) => ({ ...prev, job_application_id: value }))}
+                      disabled={eligibleApplications.length === 0}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={
-                          isLoadingApplications ? "Loading applications..." : "Select a job"
+                          isLoadingApplications
+                            ? "Loading applications..."
+                            : eligibleApplications.length === 0
+                              ? "Update job statuses to log interviews"
+                              : "Select a job"
                         } />
                       </SelectTrigger>
                       <SelectContent>
-                        {applications.map((application) => (
+                        {eligibleApplications.length === 0 ? (
+                          <SelectItem value="" disabled>
+                            No jobs ready for interviews yet
+                          </SelectItem>
+                        ) : (
+                          eligibleApplications.map((application) => (
                           <SelectItem key={application.id} value={application.id}>
                             {application.company_name} — {application.position_title}
                           </SelectItem>
-                        ))}
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
