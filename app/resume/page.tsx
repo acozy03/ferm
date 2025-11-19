@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -28,6 +27,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_EXTENSIONS = ["pdf", "doc", "docx"] as const
 const RESUME_BUCKET = "resumes" as const
+const PDF_PREVIEW_HEIGHT = "clamp(360px, calc(100vh - 320px), 720px)" as const
 
 type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number]
 
@@ -384,104 +384,104 @@ export default function ResumePage() {
     <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Header />
       <main className="flex-1 overflow-hidden px-4 pt-24 sm:px-6">
-        <div className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden">
-          <ScrollArea className="flex-1">
-            <div className="space-y-8 pb-8">
-              <Card>
-                {!resume && (
-                  <CardHeader>
-                    <CardTitle>Current resume</CardTitle>
-                    <CardDescription>Upload a PDF, DOC, or DOCX file up to 5&nbsp;MB.</CardDescription>
-                  </CardHeader>
-            )}
-            <CardContent className="space-y-6">
-              {errorMessage && (
-                <Alert variant="destructive">
-                  <ShieldAlert className="h-4 w-4" />
-                  <AlertTitle>Something isn&apos;t right</AlertTitle>
-                  <AlertDescription>{errorMessage}</AlertDescription>
-                </Alert>
+        <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
+          <div className="flex-1 space-y-8 pb-8">
+            <Card>
+              {!resume && (
+                <CardHeader>
+                  <CardTitle>Current resume</CardTitle>
+                  <CardDescription>Upload a PDF, DOC, or DOCX file up to 5&nbsp;MB.</CardDescription>
+                </CardHeader>
               )}
+              <CardContent className="space-y-6">
+                {errorMessage && (
+                  <Alert variant="destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertTitle>Something isn&apos;t right</AlertTitle>
+                    <AlertDescription>{errorMessage}</AlertDescription>
+                  </Alert>
+                )}
 
-              {isAuthLoading || isFetching ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-40" />
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-9 w-32" />
-                </div>
-              ) : !user ? (
-                <Alert>
-                  <FileText className="h-4 w-4" />
-                  <AlertTitle>Sign in to manage your resume</AlertTitle>
-                  <AlertDescription>
-                    <span className="block">Resume uploads require an authenticated account.</span>
-                    <Link href="/landing" className="font-medium text-primary underline underline-offset-4">
-                      Go to the sign-in page
-                    </Link>
-                  </AlertDescription>
-                </Alert>
-              ) : resume ? (
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium text-base">{resume.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {resume.updatedAt
-                          ? `Last updated ${formatDistanceToNow(new Date(resume.updatedAt), { addSuffix: true })}`
-                          : "Last updated information unavailable"}
-                        {resume.size ? ` • ${formatFileSize(resume.size)}` : null}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button asChild variant="outline">
-                        <a href={resume.signedUrl} target="_blank" rel="noopener noreferrer">
-                          Download resume
-                        </a>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        className="gap-2"
-                        onClick={() => setIsRemoveDialogOpen(true)}
-                        disabled={isUploading || isRemoving}
-                      >
-                        {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                        Remove resume
-                      </Button>
-                    </div>
+                {isAuthLoading || isFetching ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-9 w-32" />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    The download link is temporary for security and will refresh automatically when you revisit this page.
-                  </p>
-                  {resume.name.toLowerCase().endsWith(".pdf") ? (
-                    <div className="overflow-hidden rounded-md border bg-muted/20">
-                      <iframe
-                        key={resume.signedUrl}
-                        src={`${resume.signedUrl}#toolbar=0&navpanes=0`}
-                        title="Resume preview"
-                        className="h-[720px] w-full"
-                        loading="lazy"
-                      />
+                ) : !user ? (
+                  <Alert>
+                    <FileText className="h-4 w-4" />
+                    <AlertTitle>Sign in to manage your resume</AlertTitle>
+                    <AlertDescription>
+                      <span className="block">Resume uploads require an authenticated account.</span>
+                      <Link href="/landing" className="font-medium text-primary underline underline-offset-4">
+                        Go to the sign-in page
+                      </Link>
+                    </AlertDescription>
+                  </Alert>
+                ) : resume ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-medium text-base">{resume.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {resume.updatedAt
+                            ? `Last updated ${formatDistanceToNow(new Date(resume.updatedAt), { addSuffix: true })}`
+                            : "Last updated information unavailable"}
+                          {resume.size ? ` • ${formatFileSize(resume.size)}` : null}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button asChild variant="outline">
+                          <a href={resume.signedUrl} target="_blank" rel="noopener noreferrer">
+                            Download resume
+                          </a>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          className="gap-2"
+                          onClick={() => setIsRemoveDialogOpen(true)}
+                          disabled={isUploading || isRemoving}
+                        >
+                          {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                          Remove resume
+                        </Button>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-                      <p className="font-medium text-foreground">Preview unavailable</p>
-                      <p>
-                        Resume previews are currently limited to PDF files. Download the file above to view or upload a PDF to see
-                        it inline.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="font-medium">No resume uploaded yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Upload your resume to keep it handy for applications and interviews.
-                  </p>
-                </div>
-              )}
-            </CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      The download link is temporary for security and will refresh automatically when you revisit this page.
+                    </p>
+                    {resume.name.toLowerCase().endsWith(".pdf") ? (
+                      <div className="overflow-hidden rounded-md border bg-muted/20">
+                        <iframe
+                          key={resume.signedUrl}
+                          src={`${resume.signedUrl}#toolbar=0&navpanes=0`}
+                          title="Resume preview"
+                          className="w-full"
+                          style={{ height: PDF_PREVIEW_HEIGHT }}
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground">Preview unavailable</p>
+                        <p>
+                          Resume previews are currently limited to PDF files. Download the file above to view or upload a PDF to
+                          see it inline.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="font-medium">No resume uploaded yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      Upload your resume to keep it handy for applications and interviews.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
             <CardFooter className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground text-pretty">{acceptedTypesDescription}</p>
               <div className="flex items-center gap-3">
@@ -506,9 +506,8 @@ export default function ResumePage() {
                 </Button>
               </div>
             </CardFooter>
-              </Card>
-            </div>
-          </ScrollArea>
+            </Card>
+          </div>
         </div>
       </main>
       <DeleteConfirmationDialog

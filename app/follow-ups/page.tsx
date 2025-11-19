@@ -356,7 +356,7 @@ export default function FollowUpsPage() {
                                     <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                                       <FollowUpDraftDialog
                                         application={row.application}
-                                        disabled={!row.enabled || isPending}
+                                        disabled={(!row.enabled && !row.lastSent) || isPending}
                                         hasGeneratedDraft={Boolean(
                                           row.application.ai_follow_up_draft_generated_at ||
                                             row.application.ai_follow_up_draft_text,
