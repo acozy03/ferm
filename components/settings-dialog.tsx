@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -35,6 +36,7 @@ const themeIconMap: Record<ThemePreference, typeof SunMedium> = {
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const { settings, hasHydrated, updateSettings: saveSettings } = useSettings()
   const { supabase } = useSupabase()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [draft, setDraft] = useState<SettingsState>(settings)
@@ -87,7 +89,8 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
         title: "Account deleted",
         description: "Your account and associated data have been removed.",
       })
-      setOpen(false)
+      router.replace("/landing")
+      router.refresh()
     } catch (error) {
       console.error("Account deletion failed", error)
       const errorMessage = error instanceof Error ? error.message : "Unable to delete account. Please try again."

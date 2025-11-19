@@ -8,12 +8,15 @@ import {
   ClipboardList,
   Flame,
   GraduationCap,
+  Mic,
   Lightbulb,
   Loader2,
   MessageCircleMore,
   Send,
   Sparkles,
+  Square,
   StopCircle,
+  Volume2,
 } from "lucide-react"
 
 import { Header } from "@/components/header"
@@ -53,7 +56,16 @@ export default function PrepPage() {
   ])
   const [input, setInput] = useState("")
   const [isSessionEnded, setIsSessionEnded] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false)
+  const [voiceTranscript, setVoiceTranscript] = useState("")
+  const [voiceReplyUrl, setVoiceReplyUrl] = useState<string | null>(null)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   const chatRef = useRef<HTMLDivElement | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   const jobOptions = useMemo(
     () =>
@@ -73,6 +85,19 @@ export default function PrepPage() {
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" })
   }, [messages])
+
+  useEffect(
+    () => () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+      }
+      mediaRecorderRef.current?.stream.getTracks().forEach((track) => track.stop())
+      if (voiceReplyUrl) {
+        URL.revokeObjectURL(voiceReplyUrl)
+      }
+    },
+    [voiceReplyUrl],
+  )
 
   const selectedApplication = useMemo(
     () => applications.find((application) => application.id === selectedApplicationId),
@@ -124,6 +149,137 @@ export default function PrepPage() {
   const handleRestart = () => {
     setIsSessionEnded(false)
     setMessages((prev) => prev.slice(0, 2))
+  }
+
+  const handleStartRecording = async () => {
+    if (isRecording || isProcessingVoice) return
+    setVoiceError(null)
+
+    if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setVoiceError("This browser doesn't support microphone recording.")
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" })
+        stream.getTracks().forEach((track) => track.stop())
+        void sendVoiceMessage(audioBlob)
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingSeconds(0)
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+      }
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((previous) => previous + 1)
+      }, 1000)
+      mediaRecorderRef.current = mediaRecorder
+    } catch {
+      setVoiceError("Microphone access was blocked. Please enable permissions and try again.")
+    }
+  }
+
+  const handleStopRecording = () => {
+    if (!isRecording) return
+
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    setIsRecording(false)
+    setIsProcessingVoice(true)
+    mediaRecorderRef.current?.stop()
+  }
+
+  const sendVoiceMessage = async (audioBlob: Blob) => {
+    if (audioBlob.size === 0) {
+      setVoiceError("We couldn't capture any audio. Try again.")
+      setIsProcessingVoice(false)
+      return
+    }
+
+    setVoiceError(null)
+    setVoiceTranscript("")
+
+    try {
+      const formData = new FormData()
+      formData.append("audio", audioBlob, "voice-input.webm")
+      formData.append("messages", JSON.stringify(messages))
+
+      if (selectedApplication) {
+        formData.append(
+          "jobContext",
+          JSON.stringify({
+            role: selectedApplication.position_title ?? "the role",
+            company: selectedApplication.company_name ?? "the company",
+            latestNote: selectedApplication.notes ?? "",
+          }),
+        )
+      }
+
+      const response = await fetch("/api/prep/voice", { method: "POST", body: formData })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to process voice input." }))
+        throw new Error(errorPayload.error)
+      }
+
+      const data = (await response.json()) as { transcript?: string; reply?: string; audioBase64?: string }
+
+      setMessages((previous) => {
+        const nextMessages = [...previous]
+
+        if (data.transcript) {
+          nextMessages.push({ role: "user", content: data.transcript })
+          setVoiceTranscript(data.transcript)
+        }
+
+        if (data.reply) {
+          nextMessages.push({ role: "assistant", tone: "technical", content: data.reply })
+        }
+
+        return nextMessages
+      })
+
+      if (voiceReplyUrl) {
+        URL.revokeObjectURL(voiceReplyUrl)
+      }
+
+      if (data.audioBase64) {
+        const byteCharacters = atob(data.audioBase64)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let index = 0; index < byteCharacters.length; index += 1) {
+          byteNumbers[index] = byteCharacters.charCodeAt(index)
+        }
+        const audioResponse = new Blob([new Uint8Array(byteNumbers)], { type: "audio/mpeg" })
+        const objectUrl = URL.createObjectURL(audioResponse)
+        setVoiceReplyUrl(objectUrl)
+
+        const audioElement = new Audio(objectUrl)
+        void audioElement.play().catch(() => undefined)
+      } else {
+        setVoiceReplyUrl(null)
+      }
+    } catch (error) {
+      setVoiceError(error instanceof Error ? error.message : "Voice mode is unavailable right now.")
+    } finally {
+      setIsProcessingVoice(false)
+      setRecordingSeconds(0)
+    }
   }
 
   return (
@@ -337,7 +493,71 @@ export default function PrepPage() {
                 </div>
               </ScrollArea>
               <Separator />
-              <div className="p-4 pt-0">
+              <div className="p-4 pt-0 space-y-4">
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Mic className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">Voice interview mode</p>
+                        <p className="text-xs text-muted-foreground">
+                          Speak your answers, we&apos;ll transcribe with Whisper and reply using TTS.
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] h-6">
+                      Voice beta
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={isRecording ? "destructive" : "default"}
+                      size="sm"
+                      onClick={isRecording ? handleStopRecording : handleStartRecording}
+                      disabled={isProcessingVoice}
+                    >
+                      {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+                      {isRecording ? "Stop recording" : "Start speaking"}
+                    </Button>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {isRecording && <span className="text-destructive font-semibold">Recording</span>}
+                      {isRecording && <span>• {recordingSeconds}s</span>}
+                      {isProcessingVoice && (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Processing...
+                        </span>
+                      )}
+                      {!isRecording && !isProcessingVoice && <span>Click to record your answer.</span>}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (voiceReplyUrl) {
+                          const audioElement = new Audio(voiceReplyUrl)
+                          void audioElement.play().catch(() => undefined)
+                        }
+                      }}
+                      disabled={!voiceReplyUrl}
+                    >
+                      <Volume2 className="mr-2 h-4 w-4" />
+                      Replay answer
+                    </Button>
+                  </div>
+
+                  {voiceTranscript && (
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground">Transcript:</span> {voiceTranscript}
+                    </p>
+                  )}
+
+                  {voiceError && <p className="text-xs text-destructive">{voiceError}</p>}
+                </div>
                 <form
                   className="flex flex-col gap-3"
                   onSubmit={(event) => {
