@@ -8,8 +8,7 @@ import "./globals.css"
 import { MinimalScrollRail } from "@/components/minimal-scroll-rail"
 import { Providers } from "./providers"
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 60;
 export const runtime = 'nodejs';
 
 export const metadata: Metadata = {
