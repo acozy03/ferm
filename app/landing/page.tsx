@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/accordion"
 import { useSupabase } from "@/components/supabase-provider"
 import fermLogo from "@/public/logo.png"
+
+export const dynamic = "force-static"
+export const revalidate = 60 * 60 * 24
 const navigation = [
   { name: "Overview", href: "#overview" },
   { name: "Features", href: "#features" },

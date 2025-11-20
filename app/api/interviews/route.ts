@@ -47,7 +47,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json(
+      { data },
+      {
+        headers: {
+          "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+        },
+      },
+    )
   } catch (error) {
     console.error("Failed to load interviews", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

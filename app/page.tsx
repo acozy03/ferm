@@ -1,4 +1,5 @@
 "use client"
+import dynamic from "next/dynamic"
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { CalendarClock, Filter, LayoutPanelLeft, Plus, Search, Table2, X } from "lucide-react"
@@ -6,8 +7,6 @@ import { CalendarClock, Filter, LayoutPanelLeft, Plus, Search, Table2, X } from 
 import { Header } from "@/components/header"
 import { JobApplicationCard } from "@/components/job-application-card"
 import { StatsOverview } from "@/components/stats-overview"
-import { ActivityTimeline } from "@/components/activity-timeline"
-import { UpcomingReminders } from "@/components/upcoming-reminders"
 import { BulkActions } from "@/components/bulk-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +26,16 @@ import { cn } from "@/lib/utils"
 import { getDateOrNull } from "@/lib/date"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
 import { ScrollArea } from "@/components/ui/scroll-area"
+
+const ActivityTimeline = dynamic(() => import("@/components/activity-timeline").then((mod) => mod.ActivityTimeline), {
+  ssr: false,
+  loading: () => <div className="h-full rounded-xl border bg-muted/40" />,
+})
+
+const UpcomingReminders = dynamic(() => import("@/components/upcoming-reminders").then((mod) => mod.UpcomingReminders), {
+  ssr: false,
+  loading: () => <div className="h-full rounded-xl border bg-muted/40" />,
+})
 
 const serializeFilters = (filters: JobApplicationFilters) =>
   createSearchParamsWithFilters(new URLSearchParams(), filters).toString()
@@ -117,7 +126,7 @@ export default function Dashboard() {
     })
   }, [sortFromParams])
 
-  const commitState = useCallback(
+  const buildDashboardHref = useCallback(
     (next?: {
       filters?: JobApplicationFilters
       sort?: JobApplicationSort
@@ -148,9 +157,21 @@ export default function Dashboard() {
       }
 
       const query = params.toString()
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+      return query ? `${pathname}?${query}` : pathname
     },
-    [filters, sort, view, pathname, preferredSort, preferredView, router, searchParams],
+    [filters, pathname, preferredSort, preferredView, searchParams, sort, view],
+  )
+
+  const commitState = useCallback(
+    (next?: {
+      filters?: JobApplicationFilters
+      sort?: JobApplicationSort
+      view?: DashboardView
+    }) => {
+      const href = buildDashboardHref(next)
+      router.replace(href, { scroll: false })
+    },
+    [buildDashboardHref, router],
   )
 
   const { applications, isLoading, error, mutate, count } = useJobApplications({
@@ -425,15 +446,15 @@ export default function Dashboard() {
                <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
   {/* Tabs */}
   <TabsList className="shrink-0 whitespace-nowrap overflow-x-auto">
-    <TabsTrigger value="pipeline" className="gap-2">
+    <TabsTrigger value="pipeline" className="gap-2" href={buildDashboardHref({ view: "pipeline" })}>
       <LayoutPanelLeft className="h-4 w-4" />
       Pipeline
     </TabsTrigger>
-    <TabsTrigger value="table" className="gap-2">
+    <TabsTrigger value="table" className="gap-2" href={buildDashboardHref({ view: "table" })}>
       <Table2 className="h-4 w-4" />
       Table
     </TabsTrigger>
-    <TabsTrigger value="timeline" className="gap-2">
+    <TabsTrigger value="timeline" className="gap-2" href={buildDashboardHref({ view: "timeline" })}>
       <CalendarClock className="h-4 w-4" />
       Timeline
     </TabsTrigger>

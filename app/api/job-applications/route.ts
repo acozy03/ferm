@@ -240,7 +240,12 @@ export async function GET(request: NextRequest) {
         limit,
         total_pages: Math.ceil((count || 0) / limit),
       },
-      { headers: corsHeaders }
+      {
+        headers: {
+          ...corsHeaders,
+          "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+        },
+      }
     )
   } catch (error) {
     console.error("Failed to load job applications", error)

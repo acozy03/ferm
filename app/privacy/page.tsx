@@ -7,6 +7,9 @@ export const metadata: Metadata = {
     "Learn how Ferm handles authentication data, stores user information securely, and responds to privacy requests.",
 }
 
+export const dynamic = "force-static"
+export const revalidate = 60 * 60 * 24
+
 export default function PrivacyPolicyPage() {
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">

@@ -112,7 +112,11 @@ export async function GET(request: NextRequest) {
       response_rate: Math.round(response_rate * 100) / 100,
     }
 
-    return NextResponse.json({ data: stats })
+    return NextResponse.json({ data: stats }, {
+      headers: {
+        "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+      },
+    })
   } catch (error) {
     console.error("Failed to load dashboard stats", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

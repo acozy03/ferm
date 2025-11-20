@@ -31,7 +31,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ data: data ?? [] })
+  return NextResponse.json(
+    { data: data ?? [] },
+    {
+      headers: {
+        "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+      },
+    },
+  )
 }
 
 export async function POST(request: NextRequest) {

@@ -51,7 +51,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         .sort((left, right) => new Date(left.changed_at).getTime() - new Date(right.changed_at).getTime()),
     }
 
-    return NextResponse.json({ data: normalizedData })
+    return NextResponse.json(
+      { data: normalizedData },
+      {
+        headers: {
+          "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+        },
+      },
+    )
   } catch (error) {
     console.error("Failed to load job application", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
