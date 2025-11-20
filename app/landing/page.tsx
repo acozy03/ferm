@@ -17,7 +17,7 @@ import { useSupabase } from "@/components/supabase-provider"
 import fermLogo from "@/public/logo.png"
 
 export const dynamic = "force-static"
-export const revalidate = 60 * 60 * 24
+export const revalidate = 86400
 const navigation = [
   { name: "Overview", href: "#overview" },
   { name: "Features", href: "#features" },
