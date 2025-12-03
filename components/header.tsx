@@ -15,7 +15,7 @@ import {
   CalendarClock,
   MessageCircle,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { IconButton } from "@/components/ui/icon-button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,18 +66,14 @@ export function Header() {
               <div className="flex items-center gap-2 sm:gap-3">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
+                    <IconButton
+                      variant="subtle"
                       size="icon"
-                      className="bg-primary/0 text-primary hover:bg-primary/20"
+                      className="text-primary"
                       aria-label="Open workspace menu"
                     >
-                       <img
-      src="/logo_cropped.png"
-      alt="ferm.dev logo"
-      className="h-9 w-5 sm:h-6 sm:w-6"
-    />
-                    </Button>
+                      <img src="/logo_cropped.png" alt="ferm.dev logo" className="h-9 w-5 sm:h-6 sm:w-6" />
+                    </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-56">
                     {/* <DropdownMenuLabel>ferm.dev</DropdownMenuLabel> */}
@@ -127,12 +123,7 @@ export function Header() {
             <div className="flex items-center justify-end gap-2 sm:gap-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 bg-transparent px-2 sm:px-3"
-                    disabled={isAuthLoading}
-                  >
+                  <IconButton size="sm" className="gap-2 px-2 sm:px-3" disabled={isAuthLoading}>
                     <Avatar className="h-7 w-7">
                       {userAvatar ? (
                         <AvatarImage src={userAvatar} alt={user?.email ?? "Account avatar"} />
@@ -145,7 +136,7 @@ export function Header() {
                     <span className="truncate max-w-[8rem] text-left text-sm sm:text-base">
                       {user?.email ?? "Account"}
                     </span>
-                  </Button>
+                  </IconButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="truncate">{user?.email ?? "Signed in"}</DropdownMenuLabel>
