@@ -286,6 +286,10 @@ export default function PrepPage() {
       formData.append("messages", JSON.stringify(recentMessages))
       formData.append("voiceReplies", isVoiceReplyEnabled ? "true" : "false")
 
+      if (selectedApplication?.id) {
+        formData.append("applicationId", selectedApplication.id)
+      }
+
       if (selectedApplication) {
         formData.append(
           "jobContext",

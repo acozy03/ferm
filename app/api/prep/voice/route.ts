@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import Groq from "groq-sdk"
 
+import { getAuthedClient } from "@/lib/api/auth"
+import { buildPrepContext } from "../context"
+
 type ChatHistory = { role: string; content: string }[]
 
 export const runtime = "nodejs"
@@ -60,12 +63,18 @@ async function synthesizeCartesiaSpeech(text: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await getAuthedClient(request)
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
+  }
+
   const groq = getGroqClient()
 
   const formData = await request.formData()
   const audioFile = formData.get("audio") as File | null
   const history = formData.get("messages") as string | null
   const jobContext = formData.get("jobContext") as string | null
+  const rawApplicationId = formData.get("applicationId") as string | null
   const voiceReplies = (formData.get("voiceReplies") as string | null) !== "false"
 
   if (!audioFile) {
@@ -74,12 +83,15 @@ export async function POST(request: NextRequest) {
 
   const messageHistory = history ? (JSON.parse(history) as ChatHistory) : []
 
-  const contextText = jobContext
+  const applicationId = rawApplicationId && rawApplicationId.trim().length > 0 ? rawApplicationId : null
+
+  const extraContext = jobContext
     ? (() => {
         try {
           const parsed = JSON.parse(jobContext) as { role?: string | null; company?: string | null; latestNote?: string | null }
-          return `You are prepping the user for ${parsed.role ?? "their role"} at ${parsed.company ?? "their company"}.` +
-            (parsed.latestNote ? ` Keep this note in mind: ${parsed.latestNote}` : "")
+          const jobLine = `You are prepping the user for ${parsed.role ?? "their role"} at ${parsed.company ?? "their company"}.`
+          const noteLine = parsed.latestNote ? ` Keep this note in mind: ${parsed.latestNote}` : ""
+          return `${jobLine}${noteLine}`
         } catch {
           return ""
         }
@@ -100,13 +112,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ transcript: "", reply: "", audioBase64: null })
     }
 
+    const context = await buildPrepContext({
+      supabase: auth.supabase,
+      userId: auth.userId,
+      applicationId,
+      extraContext: extraContext || null,
+    })
+
     const messages = [
       {
         role: "system" as const,
         content:
-          "You are Prep, a concise mock interview partner. Keep responses under 120 words and keep a coaching tone. " +
-          "Do not repeat the transcript back; move the conversation forward with a new question or feedback. " +
-          contextText,
+          context +
+          "\n\nVoice session rules: Keep a coaching tone, stay under 120 words, and do not repeat the transcript back. Move the conversation forward with a new question or feedback.",
       },
       ...messageHistory.map((message) => ({ role: message.role as "user" | "assistant", content: message.content })),
       { role: "user" as const, content: transcript },
