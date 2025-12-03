@@ -62,10 +62,12 @@ export default function PrepPage() {
   const [voiceTranscript, setVoiceTranscript] = useState("")
   const [voiceReplyUrl, setVoiceReplyUrl] = useState<string | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
   const chatRef = useRef<HTMLDivElement | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const streamingMessageIndexRef = useRef<number | null>(null)
 
   const jobOptions = useMemo(
     () =>
@@ -107,30 +109,74 @@ export default function PrepPage() {
   const interviewCount = selectedApplication?.interviews?.length ?? 0
   const firstInterview = selectedApplication?.interviews?.[0]
 
-  const handleSend = () => {
-    if (!input.trim()) return
+  const handleSend = async () => {
+    if (!input.trim() || isGenerating) return
     const trimmed = input.trim()
-    setMessages((prev) => [...prev, { role: "user", content: trimmed }])
+    const userMessage: ChatMessage = { role: "user", content: trimmed }
+    const history = [...messages, userMessage]
+
     setInput("")
+    setIsSessionEnded(false)
+    setIsGenerating(true)
+    streamingMessageIndexRef.current = null
 
-    const nextCoachMessage: ChatMessage = {
-      role: "assistant",
-      tone: "behavioral",
-      content:
-        "Thanks! Tell me about a time you navigated ambiguity on a project. Keep your STAR structure tight and concise.",
-    }
-    const contextMessage: ChatMessage = {
-      role: "assistant",
-      tone: "technical",
-      content:
-        selectedApplication
-          ? `Based on ${selectedApplication.position_title ?? "this role"} at ${
-              selectedApplication.company_name ?? "the company"
-            }, I want to understand how you prioritize roadmap trade-offs. Ready for a scenario?`
-          : "I'll also weave in questions tied to the job description once you pick a role.",
-    }
+    setMessages((previous) => {
+      const nextMessages = [...previous, userMessage, { role: "assistant", tone: "technical", content: "" }]
+      streamingMessageIndexRef.current = nextMessages.length - 1
+      return nextMessages
+    })
 
-    setMessages((prev) => [...prev, nextCoachMessage, contextMessage])
+    try {
+      const response = await fetch("/api/prep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: selectedApplication?.id ?? null,
+          messages: history.map((message) => ({ role: message.role, content: message.content })),
+        }),
+      })
+
+      if (!response.ok || !response.body) {
+        throw new Error("The assistant couldn't respond right now.")
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+
+        if (streamingMessageIndexRef.current !== null) {
+          setMessages((previous) => {
+            const next = [...previous]
+            const target = next[streamingMessageIndexRef.current!]
+            if (target) {
+              next[streamingMessageIndexRef.current!] = { ...target, content: accumulated }
+            }
+            return next
+          })
+        }
+      }
+    } catch (error) {
+      const fallbackMessage =
+        error instanceof Error ? error.message : "We hit a snag fetching a response. Please try again."
+      if (streamingMessageIndexRef.current !== null) {
+        setMessages((previous) => {
+          const next = [...previous]
+          const target = next[streamingMessageIndexRef.current!]
+          if (target) {
+            next[streamingMessageIndexRef.current!] = { ...target, content: fallbackMessage, tone: "coach" }
+          }
+          return next
+        })
+      }
+    } finally {
+      setIsGenerating(false)
+      streamingMessageIndexRef.current = null
+    }
   }
 
   const handleEndSession = () => {
@@ -575,8 +621,9 @@ export default function PrepPage() {
                       onChange={(event) => setInput(event.target.value)}
                       placeholder="Tell me about a time you led a challenging launch..."
                       className="min-h-[80px] resize-none"
+                      disabled={isGenerating}
                     />
-                    <Button type="submit" className="self-start" disabled={!input.trim()}>
+                    <Button type="submit" className="self-start" disabled={!input.trim() || isGenerating}>
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>
