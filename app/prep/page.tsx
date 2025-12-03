@@ -42,7 +42,7 @@ export default function PrepPage() {
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const volumeCheckFrameRef = useRef<number | null>(null)
-  const silenceStartRef = useRef<number | null>(null)
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const streamingMessageIndexRef = useRef<number | null>(null)
 
   const jobOptions = useMemo(
@@ -69,10 +69,7 @@ export default function PrepPage() {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current)
       }
-      if (volumeCheckFrameRef.current !== null) {
-        cancelAnimationFrame(volumeCheckFrameRef.current)
-      }
-      silenceStartRef.current = null
+      stopVolumeMonitoring()
       analyserRef.current = null
       if (audioContextRef.current) {
         audioContextRef.current.close().catch(() => undefined)
@@ -177,7 +174,10 @@ export default function PrepPage() {
       cancelAnimationFrame(volumeCheckFrameRef.current)
       volumeCheckFrameRef.current = null
     }
-    silenceStartRef.current = null
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
   }
 
   const stopRecordingAndProcess = () => {
@@ -255,39 +255,40 @@ export default function PrepPage() {
 
       mediaRecorder.onstop = () => {
         stopVolumeMonitoring()
+        analyserRef.current = null
         if (audioContextRef.current) {
           audioContextRef.current.close().catch(() => undefined)
           audioContextRef.current = null
         }
-        analyserRef.current = null
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" })
         stream.getTracks().forEach((track) => track.stop())
         void sendVoiceMessage(audioBlob)
       }
 
       const volumeData = new Uint8Array(analyser.frequencyBinCount)
-      const silenceThreshold = 0.01
-      const silenceDurationMs = 800
+      const silenceThreshold = 4
+      const silenceDurationMs = 1000
 
       const monitorVolume = () => {
         analyser.getByteTimeDomainData(volumeData)
-        let sumSquares = 0
+        let sumDeviation = 0
         for (const value of volumeData) {
-          const normalized = (value - 128) / 128
-          sumSquares += normalized * normalized
+          sumDeviation += Math.abs(value - 128)
         }
-        const rms = Math.sqrt(sumSquares / volumeData.length)
-        const now = performance.now()
+        const averageAmplitude = sumDeviation / volumeData.length
 
-        if (rms < silenceThreshold) {
-          if (silenceStartRef.current === null) {
-            silenceStartRef.current = now
-          } else if (now - silenceStartRef.current >= silenceDurationMs && mediaRecorder.state === "recording") {
-            stopRecordingAndProcess()
-            return
+        if (averageAmplitude < silenceThreshold) {
+          if (!silenceTimerRef.current) {
+            silenceTimerRef.current = setTimeout(() => {
+              silenceTimerRef.current = null
+              if (mediaRecorder.state === "recording") {
+                handleStopRecording()
+              }
+            }, silenceDurationMs)
           }
-        } else {
-          silenceStartRef.current = null
+        } else if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current)
+          silenceTimerRef.current = null
         }
 
         volumeCheckFrameRef.current = requestAnimationFrame(monitorVolume)
@@ -311,6 +312,8 @@ export default function PrepPage() {
   }
 
   const handleStopRecording = () => {
+    stopVolumeMonitoring()
+    analyserRef.current = null
     stopRecordingAndProcess()
   }
 
@@ -500,6 +503,10 @@ export default function PrepPage() {
                   Replay
                 </Button>
               </div>
+
+              <p className="text-xs text-muted-foreground">
+                Recording will end automatically after a moment of silence.
+              </p>
 
               {voiceTranscript && (
                 <p className="text-xs text-muted-foreground">
