@@ -28,6 +28,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 
@@ -62,6 +63,7 @@ export default function PrepPage() {
   const [voiceTranscript, setVoiceTranscript] = useState("")
   const [voiceReplyUrl, setVoiceReplyUrl] = useState<string | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [isVoiceReplyEnabled, setIsVoiceReplyEnabled] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const chatRef = useRef<HTMLDivElement | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -265,6 +267,7 @@ export default function PrepPage() {
       const formData = new FormData()
       formData.append("audio", audioBlob, "voice-input.webm")
       formData.append("messages", JSON.stringify(messages))
+      formData.append("voiceReplies", isVoiceReplyEnabled ? "true" : "false")
 
       if (selectedApplication) {
         formData.append(
@@ -315,8 +318,10 @@ export default function PrepPage() {
         const objectUrl = URL.createObjectURL(audioResponse)
         setVoiceReplyUrl(objectUrl)
 
-        const audioElement = new Audio(objectUrl)
-        void audioElement.play().catch(() => undefined)
+        if (isVoiceReplyEnabled) {
+          const audioElement = new Audio(objectUrl)
+          void audioElement.play().catch(() => undefined)
+        }
       } else {
         setVoiceReplyUrl(null)
       }
@@ -549,13 +554,23 @@ export default function PrepPage() {
                       <div className="space-y-1">
                         <p className="text-sm font-semibold text-foreground">Voice interview mode</p>
                         <p className="text-xs text-muted-foreground">
-                          Speak your answers, we&apos;ll transcribe with Whisper and reply using TTS.
+                          Speak your answers, we&apos;ll transcribe with Whisper and reply using GPT-4o mini TTS so Prep talks back.
                         </p>
                       </div>
                     </div>
                     <Badge variant="outline" className="text-[10px] h-6">
                       Voice beta
                     </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-md border border-border/60 bg-background px-3 py-2">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-semibold text-foreground">GPT-4o mini talk-back</p>
+                      <p className="text-xs text-muted-foreground">
+                        Auto-play assistant replies with text-to-speech for a conversational loop.
+                      </p>
+                    </div>
+                    <Switch checked={isVoiceReplyEnabled} onCheckedChange={setIsVoiceReplyEnabled} aria-label="Toggle voice replies" />
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">

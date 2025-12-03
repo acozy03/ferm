@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
   const audioFile = formData.get("audio") as File | null
   const history = formData.get("messages") as string | null
   const jobContext = formData.get("jobContext") as string | null
+  const voiceReplies = (formData.get("voiceReplies") as string | null) !== "false"
 
   if (!audioFile) {
     return NextResponse.json({ error: "Audio file is required." }, { status: 400 })
@@ -63,15 +64,19 @@ export async function POST(request: NextRequest) {
 
     const replyText = completion.choices[0]?.message?.content?.trim() ?? "I heard you. Let's keep practicing."
 
-    const speech = await openai.audio.speech.create({
-      model: "gpt-4o-mini-tts",
-      voice: "alloy",
-      input: replyText,
-      format: "mp3",
-    })
+    let audioBase64: string | null = null
 
-    const audioBuffer = Buffer.from(await speech.arrayBuffer())
-    const audioBase64 = audioBuffer.toString("base64")
+    if (voiceReplies) {
+      const speech = await openai.audio.speech.create({
+        model: "gpt-4o-mini-tts",
+        voice: "alloy",
+        input: replyText,
+        format: "mp3",
+      })
+
+      const audioBuffer = Buffer.from(await speech.arrayBuffer())
+      audioBase64 = audioBuffer.toString("base64")
+    }
 
     return NextResponse.json({ transcript: transcription, reply: replyText, audioBase64 })
   } catch (error) {
