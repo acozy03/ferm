@@ -1,5 +1,6 @@
 "use client"
 
+import { MicVAD, utils } from "@ricky0123/vad-web"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Bot, Loader2, Mic, Send, Sparkles, Square, StopCircle, Volume2 } from "lucide-react"
 
@@ -36,13 +37,9 @@ export default function PrepPage() {
   const [isVoiceReplyEnabled, setIsVoiceReplyEnabled] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const chatRef = useRef<HTMLDivElement | null>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const volumeCheckFrameRef = useRef<number | null>(null)
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const recordingStartedAtRef = useRef<number | null>(null)
+  const vadRef = useRef<MicVAD | null>(null)
   const streamingMessageIndexRef = useRef<number | null>(null)
 
   const jobOptions = useMemo(
@@ -69,12 +66,10 @@ export default function PrepPage() {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current)
       }
-      stopVolumeMonitoring()
-      analyserRef.current = null
-      if (audioContextRef.current) {
-        audioContextRef.current.close().catch(() => undefined)
+      if (vadRef.current) {
+        vadRef.current.pause()
+        vadRef.current = null
       }
-      mediaRecorderRef.current?.stream.getTracks().forEach((track) => track.stop())
       if (voiceReplyUrl) {
         URL.revokeObjectURL(voiceReplyUrl)
       }
@@ -169,29 +164,12 @@ export default function PrepPage() {
     setMessages([])
   }
 
-  const stopVolumeMonitoring = () => {
-    if (volumeCheckFrameRef.current !== null) {
-      cancelAnimationFrame(volumeCheckFrameRef.current)
-      volumeCheckFrameRef.current = null
-    }
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current)
-      silenceTimerRef.current = null
-    }
-  }
-
-  const stopRecordingAndProcess = () => {
-    if (!isRecording) return
-
+  const stopRecordingTimer = () => {
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current)
       recordingTimerRef.current = null
     }
-
-    stopVolumeMonitoring()
-    setIsRecording(false)
-    setIsProcessingVoice(true)
-    mediaRecorderRef.current?.stop()
+    recordingStartedAtRef.current = null
   }
 
   const playProcessingTone = () => {
@@ -222,7 +200,7 @@ export default function PrepPage() {
   }
 
   const handleStartRecording = async () => {
-    if (isRecording || isProcessingVoice) return
+    if (isProcessingVoice) return
     setVoiceError(null)
 
     if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -231,90 +209,60 @@ export default function PrepPage() {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      const audioContext = new AudioContextClass()
-      audioContextRef.current = audioContext
+      if (!vadRef.current) {
+        vadRef.current = await MicVAD.new({
+          startOnLoad: false,
+          onSpeechStart: () => {
+            setIsRecording(true)
+            setRecordingSeconds(0)
+            recordingStartedAtRef.current = Date.now()
+            if (recordingTimerRef.current) {
+              clearInterval(recordingTimerRef.current)
+            }
+            recordingTimerRef.current = setInterval(() => {
+              const start = recordingStartedAtRef.current
+              if (!start) return
+              const elapsedSeconds = Math.floor((Date.now() - start) / 1000)
+              setRecordingSeconds(elapsedSeconds)
+            }, 1000)
+          },
+          onSpeechEnd: (audio) => {
+            vadRef.current?.pause()
+            stopRecordingTimer()
+            setIsRecording(false)
+            setIsProcessingVoice(true)
+            setRecordingSeconds(0)
 
-      const analyser = audioContext.createAnalyser()
-      analyser.fftSize = 2048
-      analyserRef.current = analyser
-
-      const source = audioContext.createMediaStreamSource(stream)
-      source.connect(analyser)
-
-      const mediaRecorder = new MediaRecorder(stream)
-
-      audioChunksRef.current = []
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      }
-
-      mediaRecorder.onstop = () => {
-        stopVolumeMonitoring()
-        analyserRef.current = null
-        if (audioContextRef.current) {
-          audioContextRef.current.close().catch(() => undefined)
-          audioContextRef.current = null
-        }
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" })
-        stream.getTracks().forEach((track) => track.stop())
-        void sendVoiceMessage(audioBlob)
-      }
-
-      const volumeData = new Uint8Array(analyser.frequencyBinCount)
-      const silenceThreshold = 4
-      const silenceDurationMs = 1000
-
-      const monitorVolume = () => {
-        analyser.getByteTimeDomainData(volumeData)
-        let sumDeviation = 0
-        for (const value of volumeData) {
-          sumDeviation += Math.abs(value - 128)
-        }
-        const averageAmplitude = sumDeviation / volumeData.length
-
-        if (averageAmplitude < silenceThreshold) {
-          if (!silenceTimerRef.current) {
-            silenceTimerRef.current = setTimeout(() => {
-              silenceTimerRef.current = null
-              if (mediaRecorder.state === "recording") {
-                handleStopRecording()
+            void (async () => {
+              try {
+                const wavBuffer = utils.encodeWAV(audio)
+                const audioBlob = new Blob([wavBuffer], { type: "audio/wav" })
+                await sendVoiceMessage(audioBlob)
+              } catch (error) {
+                setVoiceError(error instanceof Error ? error.message : "Voice processing failed.")
+              } finally {
+                setIsProcessingVoice(false)
               }
-            }, silenceDurationMs)
-          }
-        } else if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current)
-          silenceTimerRef.current = null
-        }
-
-        volumeCheckFrameRef.current = requestAnimationFrame(monitorVolume)
+            })()
+          },
+        })
       }
 
-      monitorVolume()
-
-      mediaRecorder.start(250)
+      await vadRef.current.start()
       setIsRecording(true)
       setRecordingSeconds(0)
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current)
-      }
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingSeconds((previous) => previous + 1)
-      }, 1000)
-      mediaRecorderRef.current = mediaRecorder
     } catch {
       setVoiceError("Microphone access was blocked. Please enable permissions and try again.")
     }
   }
 
   const handleStopRecording = () => {
-    stopVolumeMonitoring()
-    analyserRef.current = null
-    stopRecordingAndProcess()
+    if (vadRef.current) {
+      vadRef.current.pause()
+      vadRef.current = null
+    }
+    stopRecordingTimer()
+    setIsRecording(false)
   }
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
@@ -326,12 +274,13 @@ export default function PrepPage() {
 
     setVoiceError(null)
     setVoiceTranscript("")
+    setIsProcessingVoice(true)
     playProcessingTone()
 
     try {
       const recentMessages = messages.slice(-6)
       const formData = new FormData()
-      formData.append("audio", audioBlob, "voice-input.webm")
+      formData.append("audio", audioBlob, "voice-input.wav")
       formData.append("messages", JSON.stringify(recentMessages))
       formData.append("voiceReplies", isVoiceReplyEnabled ? "true" : "false")
 
@@ -380,7 +329,7 @@ export default function PrepPage() {
         for (let index = 0; index < byteCharacters.length; index += 1) {
           byteNumbers[index] = byteCharacters.charCodeAt(index)
         }
-        const audioResponse = new Blob([new Uint8Array(byteNumbers)], { type: "audio/mpeg" })
+        const audioResponse = new Blob([new Uint8Array(byteNumbers)], { type: "audio/wav" })
         const objectUrl = URL.createObjectURL(audioResponse)
         setVoiceReplyUrl(objectUrl)
 

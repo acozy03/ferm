@@ -1,16 +1,53 @@
 import { NextRequest, NextResponse } from "next/server"
-import OpenAI from "openai"
+import Groq from "groq-sdk"
 
-function getOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
+type ChatHistory = { role: string; content: string }[]
+
+export const runtime = "nodejs"
+
+function getGroqClient() {
+  const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not set");
+    throw new Error("GROQ_API_KEY is not set")
   }
-  return new OpenAI({ apiKey });
+  return new Groq({ apiKey })
+}
+
+async function synthesizeCartesiaSpeech(text: string) {
+  const apiKey = process.env.CARTESIA_API_KEY
+  const voiceId = process.env.CARTESIA_VOICE_ID ?? "alloy"
+  const model = process.env.CARTESIA_MODEL ?? "sonic-english"
+
+  if (!apiKey) {
+    return null
+  }
+
+  const response = await fetch("https://api.cartesia.ai/tts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey,
+    },
+    body: JSON.stringify({
+      model,
+      voice: voiceId,
+      format: "wav",
+      input: [{ text }],
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "")
+    console.error("Cartesia TTS error", response.status, errorText)
+    return null
+  }
+
+  const audioBuffer = Buffer.from(await response.arrayBuffer())
+  return audioBuffer.toString("base64")
 }
 
 export async function POST(request: NextRequest) {
-  const openai = getOpenAIClient()
+  const groq = getGroqClient()
 
   const formData = await request.formData()
   const audioFile = formData.get("audio") as File | null
@@ -22,7 +59,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Audio file is required." }, { status: 400 })
   }
 
-  const messageHistory = history ? (JSON.parse(history) as { role: string; content: string }[]) : []
+  const messageHistory = history ? (JSON.parse(history) as ChatHistory) : []
 
   const contextText = jobContext
     ? (() => {
@@ -37,8 +74,8 @@ export async function POST(request: NextRequest) {
     : ""
 
   try {
-    const transcription = await openai.audio.transcriptions.create({
-      model: "whisper-1",
+    const transcription = await groq.audio.transcriptions.create({
+      model: process.env.GROQ_TRANSCRIPTION_MODEL ?? "whisper-large-v3",
       file: audioFile,
       response_format: "text",
       temperature: 0.2,
@@ -62,27 +99,15 @@ export async function POST(request: NextRequest) {
       { role: "user" as const, content: transcript },
     ]
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const completion = await groq.chat.completions.create({
+      model: process.env.GROQ_CHAT_MODEL ?? "llama3-70b-8192",
       messages,
-      temperature: 0.7,
+      temperature: 0.6,
     })
 
     const replyText = completion.choices[0]?.message?.content?.trim() ?? "I heard you. Let's keep practicing."
 
-    let audioBase64: string | null = null
-
-    if (voiceReplies) {
-      const speech = await openai.audio.speech.create({
-        model: "gpt-4o-mini-tts",
-        voice: "alloy",
-        input: replyText,
-        format: "mp3",
-      })
-
-      const audioBuffer = Buffer.from(await speech.arrayBuffer())
-      audioBase64 = audioBuffer.toString("base64")
-    }
+    const audioBase64 = voiceReplies ? await synthesizeCartesiaSpeech(replyText) : null
 
     return NextResponse.json({ transcript, reply: replyText, audioBase64 })
   } catch (error) {
