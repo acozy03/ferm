@@ -16,7 +16,7 @@ function getGroqClient() {
 async function synthesizeCartesiaSpeech(text: string) {
   const apiKey = process.env.CARTESIA_API_KEY
   const voiceId = process.env.CARTESIA_VOICE_ID ?? "alloy"
-  const model = process.env.CARTESIA_MODEL ?? "sonic-english"
+  const model = process.env.CARTESIA_MODEL ?? "sonic-3"
 
   if (!apiKey) {
     return null
@@ -25,14 +25,27 @@ async function synthesizeCartesiaSpeech(text: string) {
   const response = await fetch("https://api.cartesia.ai/tts/bytes", {
     method: "POST",
     headers: {
+      "Cartesia-Version": "2025-04-16",
       "Content-Type": "application/json",
       "X-API-Key": apiKey,
     },
     body: JSON.stringify({
-      model,
-      voice: voiceId,
-      format: "wav",
-      input: [{ text }],
+      model_id: model,
+      transcript: text,
+      voice: {
+        mode: "id",
+        id: voiceId,
+      },
+      output_format: {
+        container: "wav",
+        encoding: "pcm_f32le",
+        sample_rate: 44100,
+      },
+      speed: "normal",
+      generation_config: {
+        speed: 1,
+        volume: 1,
+      },
     }),
   })
 
