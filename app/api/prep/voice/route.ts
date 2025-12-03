@@ -22,7 +22,7 @@ async function synthesizeCartesiaSpeech(text: string) {
     return null
   }
 
-  const response = await fetch("https://api.cartesia.ai/tts", {
+  const response = await fetch("https://api.cartesia.ai/tts/bytes", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
