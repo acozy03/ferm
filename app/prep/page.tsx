@@ -211,6 +211,8 @@ export default function PrepPage() {
     try {
       if (!vadRef.current) {
         vadRef.current = await MicVAD.new({
+          baseAssetPath: "/vad-assets/",
+          onnxWASMBasePath: "/vad-assets/",
           startOnLoad: false,
           onSpeechStart: () => {
             setIsRecording(true)
