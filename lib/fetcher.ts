@@ -1,5 +1,5 @@
 export async function apiFetcher<T>(url: string): Promise<T> {
-  const response = await fetch(url)
+  const response = await fetch(url, { cache: "no-store" })
 
   if (!response.ok) {
     let errorMessage = "Request failed"

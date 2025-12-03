@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       { data: normalizedData },
       {
         headers: {
-          "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+          "Cache-Control": "no-store",
         },
       },
     )

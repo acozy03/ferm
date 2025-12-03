@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       { data, totalCount: count ?? data.length },
       {
         headers: {
-          "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+          "Cache-Control": "no-store",
         },
       },
     )
