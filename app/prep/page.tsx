@@ -39,6 +39,10 @@ export default function PrepPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const volumeCheckFrameRef = useRef<number | null>(null)
+  const silenceStartRef = useRef<number | null>(null)
   const streamingMessageIndexRef = useRef<number | null>(null)
 
   const jobOptions = useMemo(
@@ -64,6 +68,14 @@ export default function PrepPage() {
     () => () => {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current)
+      }
+      if (volumeCheckFrameRef.current !== null) {
+        cancelAnimationFrame(volumeCheckFrameRef.current)
+      }
+      silenceStartRef.current = null
+      analyserRef.current = null
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => undefined)
       }
       mediaRecorderRef.current?.stream.getTracks().forEach((track) => track.stop())
       if (voiceReplyUrl) {
@@ -160,6 +172,55 @@ export default function PrepPage() {
     setMessages([])
   }
 
+  const stopVolumeMonitoring = () => {
+    if (volumeCheckFrameRef.current !== null) {
+      cancelAnimationFrame(volumeCheckFrameRef.current)
+      volumeCheckFrameRef.current = null
+    }
+    silenceStartRef.current = null
+  }
+
+  const stopRecordingAndProcess = () => {
+    if (!isRecording) return
+
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+
+    stopVolumeMonitoring()
+    setIsRecording(false)
+    setIsProcessingVoice(true)
+    mediaRecorderRef.current?.stop()
+  }
+
+  const playProcessingTone = () => {
+    if (typeof window === "undefined") return
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      const audioContext = new AudioContextClass()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+
+      oscillator.frequency.value = 660
+      gainNode.gain.value = 0.05
+
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+
+      const now = audioContext.currentTime
+      oscillator.start(now)
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.25)
+      oscillator.stop(now + 0.25)
+      oscillator.onended = () => {
+        audioContext.close().catch(() => undefined)
+      }
+    } catch {
+      // Best-effort UX enhancement; ignore audio errors
+    }
+  }
+
   const handleStartRecording = async () => {
     if (isRecording || isProcessingVoice) return
     setVoiceError(null)
@@ -171,6 +232,17 @@ export default function PrepPage() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      const audioContext = new AudioContextClass()
+      audioContextRef.current = audioContext
+
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = 2048
+      analyserRef.current = analyser
+
+      const source = audioContext.createMediaStreamSource(stream)
+      source.connect(analyser)
+
       const mediaRecorder = new MediaRecorder(stream)
 
       audioChunksRef.current = []
@@ -182,12 +254,48 @@ export default function PrepPage() {
       }
 
       mediaRecorder.onstop = () => {
+        stopVolumeMonitoring()
+        if (audioContextRef.current) {
+          audioContextRef.current.close().catch(() => undefined)
+          audioContextRef.current = null
+        }
+        analyserRef.current = null
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" })
         stream.getTracks().forEach((track) => track.stop())
         void sendVoiceMessage(audioBlob)
       }
 
-      mediaRecorder.start()
+      const volumeData = new Uint8Array(analyser.frequencyBinCount)
+      const silenceThreshold = 0.01
+      const silenceDurationMs = 800
+
+      const monitorVolume = () => {
+        analyser.getByteTimeDomainData(volumeData)
+        let sumSquares = 0
+        for (const value of volumeData) {
+          const normalized = (value - 128) / 128
+          sumSquares += normalized * normalized
+        }
+        const rms = Math.sqrt(sumSquares / volumeData.length)
+        const now = performance.now()
+
+        if (rms < silenceThreshold) {
+          if (silenceStartRef.current === null) {
+            silenceStartRef.current = now
+          } else if (now - silenceStartRef.current >= silenceDurationMs && mediaRecorder.state === "recording") {
+            stopRecordingAndProcess()
+            return
+          }
+        } else {
+          silenceStartRef.current = null
+        }
+
+        volumeCheckFrameRef.current = requestAnimationFrame(monitorVolume)
+      }
+
+      monitorVolume()
+
+      mediaRecorder.start(250)
       setIsRecording(true)
       setRecordingSeconds(0)
       if (recordingTimerRef.current) {
@@ -203,15 +311,7 @@ export default function PrepPage() {
   }
 
   const handleStopRecording = () => {
-    if (!isRecording) return
-
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current)
-      recordingTimerRef.current = null
-    }
-    setIsRecording(false)
-    setIsProcessingVoice(true)
-    mediaRecorderRef.current?.stop()
+    stopRecordingAndProcess()
   }
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
@@ -223,11 +323,13 @@ export default function PrepPage() {
 
     setVoiceError(null)
     setVoiceTranscript("")
+    playProcessingTone()
 
     try {
+      const recentMessages = messages.slice(-6)
       const formData = new FormData()
       formData.append("audio", audioBlob, "voice-input.webm")
-      formData.append("messages", JSON.stringify(messages))
+      formData.append("messages", JSON.stringify(recentMessages))
       formData.append("voiceReplies", isVoiceReplyEnabled ? "true" : "false")
 
       if (selectedApplication) {

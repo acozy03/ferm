@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
       temperature: 0.2,
     })
 
+    const transcript = transcription.trim()
+
+    if (!transcript) {
+      return NextResponse.json({ transcript: "", reply: "", audioBase64: null })
+    }
+
     const messages = [
       {
         role: "system" as const,
@@ -53,7 +59,7 @@ export async function POST(request: NextRequest) {
           contextText,
       },
       ...messageHistory.map((message) => ({ role: message.role as "user" | "assistant", content: message.content })),
-      { role: "user" as const, content: transcription },
+      { role: "user" as const, content: transcript },
     ]
 
     const completion = await openai.chat.completions.create({
@@ -78,7 +84,7 @@ export async function POST(request: NextRequest) {
       audioBase64 = audioBuffer.toString("base64")
     }
 
-    return NextResponse.json({ transcript: transcription, reply: replyText, audioBase64 })
+    return NextResponse.json({ transcript, reply: replyText, audioBase64 })
   } catch (error) {
     console.error("Voice pipeline error", error)
     return NextResponse.json({ error: "Unable to process voice input right now." }, { status: 500 })
