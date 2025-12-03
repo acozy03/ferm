@@ -191,6 +191,20 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             deleteError,
           })
         }
+
+        const { error: interviewDeleteError } = await supabase
+          .from("interviews")
+          .delete()
+          .eq("job_application_id", id)
+          .eq("user_id", user.id)
+
+        if (interviewDeleteError) {
+          console.error("Failed to clear interviews during reset", {
+            jobId: id,
+            userId,
+            interviewDeleteError,
+          })
+        }
       } else {
         const { error: historyError } = await supabase.from("job_application_status_history").insert({
           job_application_id: id,
