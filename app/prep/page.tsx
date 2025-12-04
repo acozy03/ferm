@@ -35,12 +35,14 @@ export default function PrepPage() {
   const [voiceReplyUrl, setVoiceReplyUrl] = useState<string | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [isVoiceReplyEnabled, setIsVoiceReplyEnabled] = useState(true)
+  const [isFocusMode, setIsFocusMode] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const chatRef = useRef<HTMLDivElement | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const recordingStartedAtRef = useRef<number | null>(null)
   const vadRef = useRef<MicVAD | null>(null)
   const streamingMessageIndexRef = useRef<number | null>(null)
+  const voicePlaybackRef = useRef<HTMLAudioElement | null>(null)
 
   const jobOptions = useMemo(
     () =>
@@ -86,7 +88,7 @@ export default function PrepPage() {
   const firstInterview = selectedApplication?.interviews?.[0]
 
   const handleSend = async () => {
-    if (!input.trim() || isGenerating) return
+    if (!input.trim() || isGenerating || isSessionEnded) return
     const trimmed = input.trim()
     const userMessage: ChatMessage = { role: "user", content: trimmed }
     const history = [...messages, userMessage]
@@ -156,12 +158,37 @@ export default function PrepPage() {
   }
 
   const handleEndSession = () => {
+    stopRecordingTimer()
+    if (vadRef.current) {
+      vadRef.current.pause()
+      vadRef.current = null
+    }
+    if (voicePlaybackRef.current) {
+      voicePlaybackRef.current.pause()
+      voicePlaybackRef.current.currentTime = 0
+      voicePlaybackRef.current = null
+    }
+    setIsRecording(false)
+    setIsProcessingVoice(false)
     setIsSessionEnded(true)
   }
 
   const handleRestart = () => {
+    stopRecordingTimer()
+    if (vadRef.current) {
+      vadRef.current.pause()
+      vadRef.current = null
+    }
+    if (voicePlaybackRef.current) {
+      voicePlaybackRef.current.pause()
+      voicePlaybackRef.current.currentTime = 0
+      voicePlaybackRef.current = null
+    }
     setIsSessionEnded(false)
     setMessages([])
+    setVoiceTranscript("")
+    setVoiceError(null)
+    setVoiceReplyUrl(null)
   }
 
   const stopRecordingTimer = () => {
@@ -200,7 +227,7 @@ export default function PrepPage() {
   }
 
   const handleStartRecording = async () => {
-    if (isProcessingVoice) return
+    if (isProcessingVoice || isRecording || isSessionEnded || isGenerating) return
     setVoiceError(null)
 
     if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -268,6 +295,7 @@ export default function PrepPage() {
   }
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
+    if (isSessionEnded) return
     if (audioBlob.size === 0) {
       setVoiceError("We couldn't capture any audio. Try again.")
       setIsProcessingVoice(false)
@@ -341,6 +369,18 @@ export default function PrepPage() {
 
         if (isVoiceReplyEnabled) {
           const audioElement = new Audio(objectUrl)
+          voicePlaybackRef.current = audioElement
+          audioElement.addEventListener("ended", () => {
+            voicePlaybackRef.current = null
+            if (!isSessionEnded) {
+              void handleStartRecording()
+            }
+          })
+          audioElement.addEventListener("pause", () => {
+            if (voicePlaybackRef.current === audioElement) {
+              voicePlaybackRef.current = null
+            }
+          })
           void audioElement.play().catch(() => undefined)
         }
       } else {
@@ -354,136 +394,254 @@ export default function PrepPage() {
     }
   }
 
+
+  const voiceStatus = (
+    <div className="flex flex-wrap items-center gap-4">
+      <div className="relative h-20 w-20 sm:h-24 sm:w-24">
+        <div
+          className={cn(
+            "absolute inset-0 rounded-full bg-primary/15 transition-all duration-500",
+            isRecording ? "animate-ping" : "opacity-50",
+          )}
+        />
+        <div
+          className={cn(
+            "absolute inset-2 rounded-full border transition-all duration-500",
+            isRecording ? "border-primary shadow-[0_0_0_8px_rgba(99,102,241,0.15)]" : "border-border",
+          )}
+        />
+        <div className="relative flex h-full w-full items-center justify-center rounded-full bg-background shadow-inner">
+          {isProcessingVoice ? (
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          ) : isRecording ? (
+            <Mic className="h-6 w-6 text-primary" />
+          ) : (
+            <Volume2 className="h-6 w-6 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 min-w-[200px] space-y-1">
+        <p className="text-sm font-semibold text-foreground">Your mic</p>
+        <p className="text-xs text-muted-foreground">
+          {isRecording
+            ? `Listening • ${recordingSeconds}s`
+            : isProcessingVoice
+              ? "Processing your reply"
+              : "Tap start or wait for Prep to finish to respond automatically."}
+        </p>
+        {voiceTranscript && !isRecording && (
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Transcript:</span> {voiceTranscript}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.08),_transparent_35%),_radial-gradient(circle_at_20%_20%,_rgba(34,197,94,0.05),_transparent_25%)]">
       <Header />
-      <main className="max-w-[1100px] mx-auto px-4 pt-24 pb-8 h-[calc(100vh-88px)] flex flex-col gap-4">
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[360px_1fr]">
-          <Card className="shadow-sm border-border/60 flex flex-col overflow-hidden">
-            <CardContent className="flex flex-col gap-4 p-4">
-              <div className="space-y-2">
-                <Label htmlFor="role-select">Job application</Label>
-                <Select
-                  value={selectedApplicationId}
-                  onValueChange={(value) => setSelectedApplicationId(value)}
-                  disabled={isLoading || jobOptions.length === 0}
-                >
-                  <SelectTrigger id="role-select" className="bg-background/70">
-                    <SelectValue placeholder={isLoading ? "Loading roles..." : "Pick a role"} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {jobOptions.map((job) => (
-                      <SelectItem key={job.id} value={job.id}>
-                        {job.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {isLoading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Fetching applications...
-                  </div>
-                )}
-                {!isLoading && jobOptions.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No roles found yet. Add one from the dashboard to get started.</p>
-                )}
-              </div>
+      <main className="max-w-[83rem] mx-auto px-3 sm:px-6 pt-24 pb-10 flex flex-col gap-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">Prep</p>
+            <h1 className="text-3xl font-semibold text-foreground">Focused practice with Prep</h1>
+            <p className="text-sm text-muted-foreground">
+              Streamlined coaching, voice replies, and a focus canvas to stay in the conversation.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-2 text-sm shadow-sm">
+              <Switch checked={isFocusMode} onCheckedChange={setIsFocusMode} id="focus-toggle" />
+              <Label htmlFor="focus-toggle" className="text-muted-foreground cursor-pointer">
+                Focus mode
+              </Label>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRestart} disabled={messages.length === 0}>
+              Restart
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleEndSession} disabled={isSessionEnded}>
+              <StopCircle className="h-4 w-4 mr-1" />
+              End
+            </Button>
+          </div>
+        </div>
 
-              {selectedApplication && (
-                <div className="rounded-lg border border-border/60 bg-background p-3 space-y-2">
-                  <p className="text-sm font-medium text-foreground">{selectedApplication.position_title ?? "Role"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedApplication.company_name ?? "Company"}
-                    {firstInterview?.scheduled_date && (
-                      <span className="ml-1">• Next: {new Date(firstInterview.scheduled_date).toLocaleDateString()}</span>
-                    )}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline" className="border-border/60">
-                      {selectedApplication.status ?? "Draft"}
-                    </Badge>
-                    {selectedApplication.priority && (
-                      <Badge variant="secondary" className="gap-1">
-                        Priority
-                        <span className="font-semibold">{selectedApplication.priority}</span>
-                      </Badge>
-                    )}
-                    <span>Interviews: {interviewCount}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between rounded-md border border-border/60 bg-background px-3 py-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Volume2 className="h-4 w-4" />
-                  Voice replies
-                </div>
-                <Switch checked={isVoiceReplyEnabled} onCheckedChange={setIsVoiceReplyEnabled} aria-label="Toggle voice replies" />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant={isRecording ? "destructive" : "default"}
-                  size="sm"
-                  onClick={isRecording ? handleStopRecording : handleStartRecording}
-                  disabled={isProcessingVoice}
-                >
-                  {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-                  {isRecording ? "Stop recording" : "Start speaking"}
-                </Button>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {isRecording && <span className="text-destructive font-semibold">Recording</span>}
-                  {isRecording && <span>• {recordingSeconds}s</span>}
-                  {isProcessingVoice && (
-                    <span className="flex items-center gap-1">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Processing...
-                    </span>
+        <div
+          className={cn(
+            "grid flex-1 gap-4 overflow-hidden",
+            isFocusMode ? "grid-cols-1 min-h-[70vh]" : "lg:grid-cols-[360px_1fr]",
+          )}
+        >
+          {!isFocusMode && (
+            <Card className="shadow-sm border-border/60 flex flex-col overflow-hidden">
+              <CardContent className="flex flex-col gap-4 p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="role-select">Job application</Label>
+                  <Select
+                    value={selectedApplicationId}
+                    onValueChange={(value) => setSelectedApplicationId(value)}
+                    disabled={isLoading || jobOptions.length === 0}
+                  >
+                    <SelectTrigger id="role-select" className="bg-background/70">
+                      <SelectValue placeholder={isLoading ? "Loading roles..." : "Pick a role"} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {jobOptions.map((job) => (
+                        <SelectItem key={job.id} value={job.id}>
+                          {job.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {isLoading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Fetching applications...
+                    </div>
+                  )}
+                  {!isLoading && jobOptions.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No roles found yet. Add one from the dashboard to get started.</p>
                   )}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    if (voiceReplyUrl) {
-                      const audioElement = new Audio(voiceReplyUrl)
-                      void audioElement.play().catch(() => undefined)
-                    }
-                  }}
-                  disabled={!voiceReplyUrl}
-                >
-                  <Volume2 className="mr-2 h-4 w-4" />
-                  Replay
-                </Button>
-              </div>
 
-              <p className="text-xs text-muted-foreground">
-                Recording will end automatically after a moment of silence.
-              </p>
+                {selectedApplication && (
+                  <div className="rounded-lg border border-border/60 bg-background p-3 space-y-2">
+                    <p className="text-sm font-medium text-foreground">{selectedApplication.position_title ?? "Role"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedApplication.company_name ?? "Company"}
+                      {firstInterview?.scheduled_date && (
+                        <span className="ml-1">• Next: {new Date(firstInterview.scheduled_date).toLocaleDateString()}</span>
+                      )}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="outline" className="border-border/60">
+                        {selectedApplication.status ?? "Draft"}
+                      </Badge>
+                      {selectedApplication.priority && (
+                        <Badge variant="secondary" className="gap-1">
+                          Priority
+                          <span className="font-semibold">{selectedApplication.priority}</span>
+                        </Badge>
+                      )}
+                      <span>Interviews: {interviewCount}</span>
+                    </div>
+                  </div>
+                )}
 
-              {voiceTranscript && (
+                <div className="flex items-center justify-between rounded-md border border-border/60 bg-background px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Volume2 className="h-4 w-4" />
+                    Voice replies
+                  </div>
+                  <Switch
+                    checked={isVoiceReplyEnabled}
+                    onCheckedChange={setIsVoiceReplyEnabled}
+                    aria-label="Toggle voice replies"
+                  />
+                </div>
+
+                {voiceStatus}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant={isRecording ? "destructive" : "default"}
+                    size="sm"
+                    onClick={isRecording ? handleStopRecording : handleStartRecording}
+                    disabled={isProcessingVoice}
+                  >
+                    {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+                    {isRecording ? "Stop recording" : "Start speaking"}
+                  </Button>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {isRecording && <span className="text-destructive font-semibold">Recording</span>}
+                    {isRecording && <span>• {recordingSeconds}s</span>}
+                    {isProcessingVoice && (
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Processing...
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (voiceReplyUrl) {
+                        const audioElement = new Audio(voiceReplyUrl)
+                        void audioElement.play().catch(() => undefined)
+                      }
+                    }}
+                    disabled={!voiceReplyUrl}
+                  >
+                    <Volume2 className="mr-2 h-4 w-4" />
+                    Replay
+                  </Button>
+                </div>
+
                 <p className="text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">Transcript:</span> {voiceTranscript}
+                  Recording will end automatically after a moment of silence.
                 </p>
+
+                {voiceError && <p className="text-xs text-destructive">{voiceError}</p>}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card
+            className={cn(
+              "shadow-sm border-border/60 flex flex-col overflow-hidden",
+              isFocusMode && "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70",
+            )}
+          >
+            <CardContent className="flex-1 flex flex-col gap-4 p-4 lg:p-6 overflow-hidden">
+              {isFocusMode && (
+                <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">Focus mode</p>
+                      <p className="text-sm text-muted-foreground">Immersive view with Prep narrating and listening back.</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {isVoiceReplyEnabled ? "Voice replies on" : "Voice replies muted"}
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.25)]" />
+                    </div>
+                  </div>
+                  {voiceStatus}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={isRecording ? "destructive" : "default"}
+                      onClick={isRecording ? handleStopRecording : handleStartRecording}
+                      disabled={isProcessingVoice}
+                    >
+                      {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+                      {isRecording ? "Stop recording" : "Start speaking"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (voiceReplyUrl) {
+                          const audioElement = new Audio(voiceReplyUrl)
+                          void audioElement.play().catch(() => undefined)
+                        }
+                      }}
+                      disabled={!voiceReplyUrl}
+                    >
+                      <Volume2 className="mr-2 h-4 w-4" />
+                      Replay last reply
+                    </Button>
+                    <div className="text-xs text-muted-foreground">
+                      {isSessionEnded ? "Session ended" : "Prep will auto-listen after it speaks"}
+                    </div>
+                  </div>
+                </div>
               )}
 
-              {voiceError && <p className="text-xs text-destructive">{voiceError}</p>}
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm border-border/60 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-end gap-2 px-4 pt-4">
-              <Button variant="outline" size="sm" onClick={handleRestart} disabled={messages.length === 0}>
-                Restart
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleEndSession} disabled={isSessionEnded}>
-                <StopCircle className="h-4 w-4 mr-1" />
-                End
-              </Button>
-            </div>
-            <CardContent className="flex-1 flex flex-col gap-3 p-4 pt-2 overflow-hidden">
               <ScrollArea className="flex-1 overflow-y-auto" ref={chatRef}>
                 <div className="space-y-4 pr-2 pb-4">
                   {messages.map((message, index) => (
@@ -525,11 +683,11 @@ export default function PrepPage() {
                     id="prep-input"
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Share your answer..."
+                    placeholder={isSessionEnded ? "Session ended. Restart to continue." : "Share your answer..."}
                     className="min-h-[80px] resize-none"
-                    disabled={isGenerating}
+                    disabled={isGenerating || isSessionEnded}
                   />
-                  <Button type="submit" className="self-start" disabled={!input.trim() || isGenerating}>
+                  <Button type="submit" className="self-start" disabled={!input.trim() || isGenerating || isSessionEnded}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>

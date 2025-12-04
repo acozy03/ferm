@@ -22,6 +22,7 @@ import {
 import type { CreateJobApplicationData, Priority, EmploymentType } from "@/lib/types/database"
 import { SequentialStatusSelect } from "@/components/status-select"
 import { useSupabase } from "@/components/supabase-provider"
+import { cn } from "@/lib/utils"
 
 interface AddApplicationDialogProps {
   trigger?: React.ReactNode
@@ -85,6 +86,12 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
     remaining: null,
   })
   const [lastAutofilledUrl, setLastAutofilledUrl] = useState<string | null>(null)
+  const [formErrors, setFormErrors] = useState<{
+    company_name?: string
+    position_title?: string
+    appliedDate?: string
+  }>({})
+  const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (lastAutofilledUrl && formData.job_url !== lastAutofilledUrl) {
@@ -96,54 +103,86 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    const newErrors: typeof formErrors = {}
+
+    if (!formData.company_name.trim()) {
+      newErrors.company_name = "Add a company"
+    }
+
+    if (!formData.position_title.trim()) {
+      newErrors.position_title = "Add a position"
+    }
+
+    if (!formData.appliedDate) {
+      newErrors.appliedDate = "Pick a date"
+    }
+
+    setFormErrors(newErrors)
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrorMessage("")
+      return
+    }
+
+    setFormErrorMessage(null)
+
     const toNullable = (value: string) => {
       const trimmed = value.trim()
       return trimmed === "" ? null : trimmed
     }
 
-    if (formData.company_name && formData.position_title && formData.appliedDate) {
-      const applicationData: CreateJobApplicationData = {
-        company_name: formData.company_name,
-        position_title: formData.position_title,
-        status: formData.status,
-        application_date: format(formData.appliedDate, "yyyy-MM-dd"),
-        location: toNullable(formData.location),
-        salary_range: toNullable(formData.salary_range),
-        employment_type: formData.employment_type,
-        priority: formData.priority,
-        notes: toNullable(formData.notes),
-        job_url: toNullable(formData.job_url),
-        contact_email: toNullable(formData.contact_email),
-        contact_person: toNullable(formData.contact_person),
-        job_description: toNullable(formData.job_description),
-        qualifications: toNullable(formData.qualifications),
-        job_responsibilities: toNullable(formData.job_responsibilities),
-      }
-      console.log(applicationData)
-      onAdd(applicationData)
-      setFormData({
-        company_name: "",
-        position_title: "",
-        status: "Applied",
-        appliedDate: new Date(),
-        location: "",
-        salary_range: "",
-        employment_type: "Full-time",
-        priority: "Medium",
-        notes: "",
-        job_url: "",
-        contact_email: "",
-        contact_person: "",
-        job_description: "",
-        qualifications: "",
-        job_responsibilities: "",
-      })
-      setOpen(false)
+    if (!formData.appliedDate) return
+
+    const applicationData: CreateJobApplicationData = {
+      company_name: formData.company_name,
+      position_title: formData.position_title,
+      status: formData.status,
+      application_date: format(formData.appliedDate, "yyyy-MM-dd"),
+      location: toNullable(formData.location),
+      salary_range: toNullable(formData.salary_range),
+      employment_type: formData.employment_type,
+      priority: formData.priority,
+      notes: toNullable(formData.notes),
+      job_url: toNullable(formData.job_url),
+      contact_email: toNullable(formData.contact_email),
+      contact_person: toNullable(formData.contact_person),
+      job_description: toNullable(formData.job_description),
+      qualifications: toNullable(formData.qualifications),
+      job_responsibilities: toNullable(formData.job_responsibilities),
     }
+    console.log(applicationData)
+    onAdd(applicationData)
+    setFormData({
+      company_name: "",
+      position_title: "",
+      status: "Applied",
+      appliedDate: new Date(),
+      location: "",
+      salary_range: "",
+      employment_type: "Full-time",
+      priority: "Medium",
+      notes: "",
+      job_url: "",
+      contact_email: "",
+      contact_person: "",
+      job_description: "",
+      qualifications: "",
+      job_responsibilities: "",
+    })
+    setFormErrors({})
+    setFormErrorMessage(null)
+    handleDialogChange(false)
   }
 
   const updateFormData = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormErrors((prev) => {
+      if (field === "company_name" || field === "position_title" || field === "appliedDate") {
+        return { ...prev, [field]: undefined }
+      }
+      return prev
+    })
+    setFormErrorMessage(null)
   }
 
   const handleAutofillFromUrl = async () => {
@@ -262,8 +301,16 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
     }
   }
 
+  const handleDialogChange = (isOpen: boolean) => {
+    setOpen(isOpen)
+    if (!isOpen) {
+      setFormErrors({})
+      setFormErrorMessage(null)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button className="gap-2">
@@ -285,8 +332,13 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 value={formData.company_name}
                 onChange={(e) => updateFormData("company_name", e.target.value)}
                 placeholder="e.g. Vercel, Linear, Stripe"
-                required
+                className={cn(
+                  formErrors.company_name && "border-destructive focus-visible:ring-destructive",
+                )}
               />
+              {formErrors.company_name ? (
+                <p className="text-sm text-destructive">{formErrors.company_name}</p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="position">Position *</Label>
@@ -295,8 +347,13 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 value={formData.position_title}
                 onChange={(e) => updateFormData("position_title", e.target.value)}
                 placeholder="e.g. Frontend Engineer, Full Stack Developer"
-                required
+                className={cn(
+                  formErrors.position_title && "border-destructive focus-visible:ring-destructive",
+                )}
               />
+              {formErrors.position_title ? (
+                <p className="text-sm text-destructive">{formErrors.position_title}</p>
+              ) : null}
             </div>
           </div>
 
@@ -356,7 +413,14 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
               <Label>Applied Date *</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal bg-transparent">
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal bg-transparent",
+                      formErrors.appliedDate && "border-destructive focus-visible:ring-destructive",
+                    )}
+                    onClick={() => setFormErrors((prev) => ({ ...prev, appliedDate: undefined }))}
+                  >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData.appliedDate ? format(formData.appliedDate, "PPP") : "Pick a date"}
                   </Button>
@@ -370,6 +434,9 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                   />
                 </PopoverContent>
               </Popover>
+              {formErrors.appliedDate ? (
+                <p className="text-sm text-destructive">{formErrors.appliedDate}</p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
@@ -501,8 +568,10 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
             />
           </div>
 
+          {formErrorMessage ? <p className="text-sm text-destructive">{formErrorMessage}</p> : null}
+
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => handleDialogChange(false)}>
               Cancel
             </Button>
             <Button type="submit">Add Application</Button>

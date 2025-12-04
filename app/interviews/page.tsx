@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { CalendarClock, CheckCircle2, ClipboardPen, NotebookPen, Plus } from "lucide-react"
+import { CalendarClock, CalendarIcon, CheckCircle2, ClipboardPen, NotebookPen, Plus } from "lucide-react"
 
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -28,6 +29,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -173,7 +175,6 @@ export default function InterviewsPage() {
   const [formState, setFormState] = useState({
     job_application_id: "",
     interview_type: interviewTypeOptions[0],
-    scheduled_date: "",
     duration_minutes: "60",
     interviewer_name: "",
     interviewer_email: "",
@@ -182,6 +183,8 @@ export default function InterviewsPage() {
     post_interview_notes: "",
     status: "Scheduled" as InterviewStatus,
   })
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined)
+  const [scheduledTime, setScheduledTime] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formErrors, setFormErrors] = useState<{
     job_application_id?: string
@@ -217,7 +220,6 @@ export default function InterviewsPage() {
       setFormState({
         job_application_id: "",
         interview_type: interviewTypeOptions[0],
-        scheduled_date: "",
         duration_minutes: "60",
         interviewer_name: "",
         interviewer_email: "",
@@ -226,6 +228,8 @@ export default function InterviewsPage() {
         post_interview_notes: "",
         status: "Scheduled",
       })
+      setScheduledDate(undefined)
+      setScheduledTime("")
       setFormErrors({})
       setFormErrorMessage(null)
     }
@@ -238,18 +242,33 @@ export default function InterviewsPage() {
       newErrors.job_application_id = "Select a job"
     }
 
-    if (!formState.scheduled_date) {
+    if (!scheduledDate || !scheduledTime.trim()) {
       newErrors.scheduled_date = "Add a date and time"
     }
 
     setFormErrors(newErrors)
 
     if (Object.keys(newErrors).length > 0) {
-      setFormErrorMessage("Fill in the required fields before saving.")
+      setFormErrorMessage("")
       return
     }
 
     setFormErrorMessage(null)
+
+    const [hours, minutes] = scheduledTime.split(":").map(Number)
+    const hasValidTime = Number.isFinite(hours) && Number.isFinite(minutes)
+
+    if (!scheduledDate || !hasValidTime) {
+      setFormErrors((prev) => ({
+        ...prev,
+        scheduled_date: newErrors.scheduled_date ?? "Add a valid date and time",
+      }))
+      setFormErrorMessage("Fill in the required fields before saving.")
+      return
+    }
+
+    const scheduledDateTime = new Date(scheduledDate)
+    scheduledDateTime.setHours(hours ?? 0, minutes ?? 0, 0, 0)
 
     const isEligible = eligibleApplications.some(
       (application) => application.id === formState.job_application_id,
@@ -268,7 +287,7 @@ export default function InterviewsPage() {
     try {
       const payload = {
         ...formState,
-        scheduled_date: new Date(formState.scheduled_date).toISOString(),
+        scheduled_date: scheduledDateTime.toISOString(),
         duration_minutes: Number(formState.duration_minutes) || 60,
         notes: formState.notes.trim() || undefined,
         prep_notes: formState.prep_notes.trim() || undefined,
@@ -455,18 +474,54 @@ export default function InterviewsPage() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Scheduled for</Label>
-                      <Input
-                        type="datetime-local"
-                        value={formState.scheduled_date}
-                        onChange={(event) => {
-                          setFormState((prev) => ({ ...prev, scheduled_date: event.target.value }))
-                          setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
-                        }}
-                        className={cn(
-                          formErrors.scheduled_date &&
-                            "border-destructive focus-visible:ring-destructive",
-                        )}
-                      />
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                formErrors.scheduled_date &&
+                                  "border-destructive focus-visible:ring-destructive",
+                              )}
+                              onClick={() =>
+                                setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
+                              }
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {scheduledDate ? format(scheduledDate, "PPP") : "Pick a date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={scheduledDate}
+                              onSelect={(date) => {
+                                setScheduledDate(date ?? undefined)
+                                setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <Input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={(event) => {
+                            setScheduledTime(event.target.value)
+                            setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
+                          }}
+                          className={cn(
+                            "w-full sm:w-[160px]",
+                            formErrors.scheduled_date &&
+                              "border-destructive focus-visible:ring-destructive",
+                          )}
+                          placeholder="hh:mm"
+                        />
+                      </div>
+                      {formErrors.scheduled_date ? (
+                        <p className="text-sm text-destructive">{formErrors.scheduled_date}</p>
+                      ) : null}
                     </div>
                     <div className="space-y-2">
                       <Label>Duration (minutes)</Label>
