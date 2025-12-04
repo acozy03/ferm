@@ -28,6 +28,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { getStatusRound } from "@/lib/status"
@@ -182,6 +183,11 @@ export default function InterviewsPage() {
     status: "Scheduled" as InterviewStatus,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formErrors, setFormErrors] = useState<{
+    job_application_id?: string
+    scheduled_date?: string
+  }>({})
+  const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
 
   const upcoming = useMemo(() => {
     const current = Date.now()
@@ -220,18 +226,30 @@ export default function InterviewsPage() {
         post_interview_notes: "",
         status: "Scheduled",
       })
+      setFormErrors({})
+      setFormErrorMessage(null)
     }
   }
 
   const handleCreateInterview = async () => {
-    if (!formState.job_application_id || !formState.scheduled_date) {
-      toast({
-        title: "Missing details",
-        description: "Select a job and date to schedule the interview.",
-        variant: "destructive",
-      })
+    const newErrors: typeof formErrors = {}
+
+    if (!formState.job_application_id) {
+      newErrors.job_application_id = "Select a job"
+    }
+
+    if (!formState.scheduled_date) {
+      newErrors.scheduled_date = "Add a date and time"
+    }
+
+    setFormErrors(newErrors)
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrorMessage("Fill in the required fields before saving.")
       return
     }
+
+    setFormErrorMessage(null)
 
     const isEligible = eligibleApplications.some(
       (application) => application.id === formState.job_application_id,
@@ -357,16 +375,24 @@ export default function InterviewsPage() {
                     <Label>Job application</Label>
                     <Select
                       value={formState.job_application_id}
-                      onValueChange={(value) => setFormState((prev) => ({ ...prev, job_application_id: value }))}
+                      onValueChange={(value) => {
+                        setFormState((prev) => ({ ...prev, job_application_id: value }))
+                        setFormErrors((prev) => ({ ...prev, job_application_id: undefined }))
+                      }}
                       disabled={eligibleApplications.length === 0}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger
+                        className={cn(
+                          formErrors.job_application_id &&
+                            "border-destructive focus-visible:ring-destructive",
+                        )}
+                      >
                         <SelectValue placeholder={
                           isLoadingApplications
                             ? "Loading applications..."
                             : eligibleApplications.length === 0
-                              ? "Update job statuses to log interviews"
-                              : "Select a job"
+                                ? "Update job statuses to log interviews"
+                                : "Select a job"
                         } />
                       </SelectTrigger>
                       <SelectContent>
@@ -376,9 +402,9 @@ export default function InterviewsPage() {
                           </SelectItem>
                         ) : (
                           eligibleApplications.map((application) => (
-                          <SelectItem key={application.id} value={application.id}>
-                            {application.company_name} — {application.position_title}
-                          </SelectItem>
+                            <SelectItem key={application.id} value={application.id}>
+                              {application.company_name} — {application.position_title}
+                            </SelectItem>
                           ))
                         )}
                       </SelectContent>
@@ -432,9 +458,14 @@ export default function InterviewsPage() {
                       <Input
                         type="datetime-local"
                         value={formState.scheduled_date}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setFormState((prev) => ({ ...prev, scheduled_date: event.target.value }))
-                        }
+                          setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
+                        }}
+                        className={cn(
+                          formErrors.scheduled_date &&
+                            "border-destructive focus-visible:ring-destructive",
+                        )}
                       />
                     </div>
                     <div className="space-y-2">
@@ -503,6 +534,9 @@ export default function InterviewsPage() {
                       className="min-h-[80px]"
                     />
                   </div>
+                  {formErrorMessage && (
+                    <p className="text-sm text-destructive">{formErrorMessage}</p>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => handleDialogChange(false)}>
