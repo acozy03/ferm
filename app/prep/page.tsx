@@ -63,6 +63,22 @@ export default function PrepPage() {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" })
   }, [messages])
 
+  useEffect(() => {
+    if (typeof document === "undefined") return
+
+    const previousOverflow = document.body.style.overflow
+
+    if (isFocusMode) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = previousOverflow
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isFocusMode])
+
   useEffect(
     () => () => {
       if (recordingTimerRef.current) {
@@ -86,6 +102,13 @@ export default function PrepPage() {
 
   const interviewCount = selectedApplication?.interviews?.length ?? 0
   const firstInterview = selectedApplication?.interviews?.[0]
+
+  const latestAssistantMessage = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]?.role === "assistant") return messages[index]
+    }
+    return null
+  }, [messages])
 
   const handleSend = async () => {
     if (!input.trim() || isGenerating || isSessionEnded) return
@@ -696,6 +719,117 @@ export default function PrepPage() {
           </Card>
         </div>
       </main>
+
+      {isFocusMode && (
+        <div className="fixed inset-0 z-50 isolate bg-gradient-to-b from-black via-zinc-950 to-black text-white transition-opacity duration-500">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.08),transparent_35%),radial-gradient(circle_at_80%_40%,rgba(16,185,129,0.12),transparent_30%)] blur-3xl" />
+
+          <div className="relative flex h-full flex-col">
+            <div className="flex items-center justify-between px-6 py-5 text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-400/80">
+              <span className="text-primary/70">Focus mode</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsFocusMode(false)}
+                className="border border-white/10 bg-white/10 text-white shadow-[0_10px_40px_rgba(0,0,0,0.45)] backdrop-blur hover:bg-white/20"
+              >
+                Exit focus
+              </Button>
+            </div>
+
+            <div className="flex flex-1 flex-col items-center justify-center gap-10 px-6 pb-12 text-center">
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label={isRecording ? "Stop recording" : "Start speaking"}
+                onClick={() => {
+                  if (isProcessingVoice) return
+                  if (isRecording) {
+                    handleStopRecording()
+                  } else {
+                    void handleStartRecording()
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    if (isProcessingVoice) return
+                    if (isRecording) {
+                      handleStopRecording()
+                    } else {
+                      void handleStartRecording()
+                    }
+                  }
+                }}
+                className="relative flex h-52 w-52 cursor-pointer items-center justify-center rounded-full sm:h-60 sm:w-60"
+              >
+                <div
+                  className={cn(
+                    "absolute inset-0 rounded-full bg-emerald-400/10 transition-all duration-700",
+                    isRecording ? "animate-[pulse_2s_ease-in-out_infinite]" : "opacity-50",
+                  )}
+                />
+                <div
+                  className={cn(
+                    "absolute inset-3 rounded-full border border-white/10 transition-all duration-700",
+                    isRecording
+                      ? "shadow-[0_0_0_18px_rgba(52,211,153,0.15)]"
+                      : isProcessingVoice
+                        ? "shadow-[0_0_0_12px_rgba(99,102,241,0.12)]"
+                        : "shadow-[0_0_0_8px_rgba(255,255,255,0.04)]",
+                  )}
+                />
+                <div className="relative flex h-36 w-36 items-center justify-center rounded-full bg-white/5 shadow-[0_20px_120px_rgba(0,0,0,0.65)] backdrop-blur">
+                  {isProcessingVoice ? (
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  ) : isRecording ? (
+                    <Mic className="h-10 w-10 text-emerald-400" />
+                  ) : (
+                    <Volume2 className="h-10 w-10 text-zinc-300" />
+                  )}
+                </div>
+              </div>
+
+              <div className="max-w-3xl space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">Prep is speaking</p>
+                <div className="rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
+                  <p className="text-lg leading-relaxed text-white/90 whitespace-pre-wrap" aria-live="polite">
+                    {latestAssistantMessage?.content?.trim()
+                      ? latestAssistantMessage.content
+                      : "Waiting for Prep to start speaking..."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-zinc-400">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      isRecording
+                        ? "bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.25)]"
+                        : isProcessingVoice
+                          ? "bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.25)]"
+                          : "bg-zinc-600",
+                    )}
+                  />
+                  <span>
+                    {isProcessingVoice
+                      ? "Processing your reply"
+                      : isRecording
+                        ? "Listening... tap to end"
+                        : "Tap the circle to start speaking"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4" />
+                  <span>{isVoiceReplyEnabled ? "Voice replies on" : "Voice replies muted"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
