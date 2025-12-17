@@ -43,6 +43,7 @@ export default function PrepPage() {
   const recordingStartedAtRef = useRef<number | null>(null)
   const vadRef = useRef<MicVAD | null>(null)
   const streamingMessageIndexRef = useRef<number | null>(null)
+  const typewriterIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const voicePlaybackRef = useRef<HTMLAudioElement | null>(null)
   const visualizerContainerRef = useRef<HTMLDivElement | null>(null)
   const visualizerInstanceRef = useRef<AudioVisualizer | null>(null)
@@ -132,6 +133,9 @@ export default function PrepPage() {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current)
       }
+      if (typewriterIntervalRef.current) {
+        clearInterval(typewriterIntervalRef.current)
+      }
       if (vadRef.current) {
         vadRef.current.pause()
         vadRef.current = null
@@ -166,6 +170,55 @@ export default function PrepPage() {
     }
     return null
   }, [messages])
+
+  const startTypewriterStream = useCallback(
+    (targetIndex: number, fullText: string, tone: ChatMessage["tone"] = "technical") => {
+      if (typewriterIntervalRef.current) {
+        clearInterval(typewriterIntervalRef.current)
+      }
+
+      const sanitized = fullText.trim()
+      if (!sanitized) {
+        streamingMessageIndexRef.current = null
+        setMessages((previous) => {
+          const next = [...previous]
+          const target = next[targetIndex]
+          if (target) {
+            next[targetIndex] = { ...target, content: "", tone }
+          }
+          return next
+        })
+        return
+      }
+
+      let currentLength = 0
+      const chunkSize = 6
+      const tickInterval = 28
+
+      typewriterIntervalRef.current = setInterval(() => {
+        currentLength = Math.min(sanitized.length, currentLength + chunkSize)
+        const nextSlice = sanitized.slice(0, currentLength)
+
+        setMessages((previous) => {
+          const next = [...previous]
+          const target = next[targetIndex]
+          if (target) {
+            next[targetIndex] = { ...target, content: nextSlice, tone }
+          }
+          return next
+        })
+
+        if (currentLength >= sanitized.length) {
+          if (typewriterIntervalRef.current) {
+            clearInterval(typewriterIntervalRef.current)
+            typewriterIntervalRef.current = null
+          }
+          streamingMessageIndexRef.current = null
+        }
+      }, tickInterval)
+    },
+    [],
+  )
 
   const handleSend = async () => {
     if (!input.trim() || isGenerating || isSessionEnded) return
@@ -439,7 +492,12 @@ export default function PrepPage() {
         }
 
         if (data.reply) {
-          nextMessages.push({ role: "assistant", tone: "technical", content: data.reply })
+          nextMessages.push({ role: "assistant", tone: "technical", content: "" })
+          streamingMessageIndexRef.current = nextMessages.length - 1
+          const messageIndex = streamingMessageIndexRef.current
+          if (messageIndex !== null) {
+            setTimeout(() => startTypewriterStream(messageIndex, data.reply ?? "", "technical"), 0)
+          }
         }
 
         return nextMessages
