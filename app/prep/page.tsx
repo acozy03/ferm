@@ -45,6 +45,7 @@ export default function PrepPage() {
   const streamingMessageIndexRef = useRef<number | null>(null)
   const typewriterIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const voicePlaybackRef = useRef<HTMLAudioElement | null>(null)
+  const isVoiceProcessingRef = useRef(false)
   const visualizerContainerRef = useRef<HTMLDivElement | null>(null)
   const visualizerInstanceRef = useRef<AudioVisualizer | null>(null)
   const micVisualizationStreamRef = useRef<MediaStream | null>(null)
@@ -441,6 +442,7 @@ export default function PrepPage() {
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
     if (isSessionEnded) return
+    if (isVoiceProcessingRef.current) return
     if (audioBlob.size === 0) {
       setVoiceError("We couldn't capture any audio. Try again.")
       setIsProcessingVoice(false)
@@ -450,6 +452,7 @@ export default function PrepPage() {
     setVoiceError(null)
     setVoiceTranscript("")
     setIsProcessingVoice(true)
+    isVoiceProcessingRef.current = true
     playProcessingTone()
 
     try {
@@ -541,6 +544,7 @@ export default function PrepPage() {
       setVoiceError(error instanceof Error ? error.message : "Voice mode is unavailable right now.")
     } finally {
       setIsProcessingVoice(false)
+      isVoiceProcessingRef.current = false
       setRecordingSeconds(0)
     }
   }
