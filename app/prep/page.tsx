@@ -1,7 +1,7 @@
 "use client"
 
 import { MicVAD, utils } from "@ricky0123/vad-web"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Bot, Loader2, Mic, Send, Sparkles, Square, StopCircle, Volume2 } from "lucide-react"
 
 import { Header } from "@/components/header"
@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { createAudioVisualizer, type AudioVisualizer } from "@/lib/audio-visualizer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 
@@ -43,6 +44,9 @@ export default function PrepPage() {
   const vadRef = useRef<MicVAD | null>(null)
   const streamingMessageIndexRef = useRef<number | null>(null)
   const voicePlaybackRef = useRef<HTMLAudioElement | null>(null)
+  const visualizerContainerRef = useRef<HTMLDivElement | null>(null)
+  const visualizerInstanceRef = useRef<AudioVisualizer | null>(null)
+  const micVisualizationStreamRef = useRef<MediaStream | null>(null)
 
   const jobOptions = useMemo(
     () =>
@@ -79,6 +83,50 @@ export default function PrepPage() {
     }
   }, [isFocusMode])
 
+  const teardownVisualizer = useCallback(() => {
+    visualizerInstanceRef.current?.stop()
+    visualizerInstanceRef.current = null
+  }, [])
+
+  const stopMicVisualizationStream = useCallback(() => {
+    if (micVisualizationStreamRef.current) {
+      micVisualizationStreamRef.current.getTracks().forEach((track) => track.stop())
+      micVisualizationStreamRef.current = null
+    }
+  }, [])
+
+  const initializeVisualizer = useCallback(
+    async (source: MediaStream | HTMLAudioElement | null) => {
+      if (!isFocusMode || !source || !visualizerContainerRef.current) return
+
+      try {
+        if (!visualizerInstanceRef.current) {
+          visualizerInstanceRef.current = await createAudioVisualizer(visualizerContainerRef.current)
+        }
+
+        await visualizerInstanceRef.current.connectSource(source)
+      } catch {
+        teardownVisualizer()
+      }
+    },
+    [isFocusMode, teardownVisualizer],
+  )
+
+  const startMicVisualization = useCallback(async () => {
+    if (!isFocusMode) return null
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      micVisualizationStreamRef.current = stream
+      await initializeVisualizer(stream)
+      return stream
+    } catch {
+      stopMicVisualizationStream()
+      teardownVisualizer()
+      return null
+    }
+  }, [initializeVisualizer, isFocusMode, stopMicVisualizationStream, teardownVisualizer])
+
   useEffect(
     () => () => {
       if (recordingTimerRef.current) {
@@ -91,9 +139,18 @@ export default function PrepPage() {
       if (voiceReplyUrl) {
         URL.revokeObjectURL(voiceReplyUrl)
       }
+      stopMicVisualizationStream()
+      teardownVisualizer()
     },
-    [voiceReplyUrl],
+    [stopMicVisualizationStream, teardownVisualizer, voiceReplyUrl],
   )
+
+  useEffect(() => {
+    if (!isFocusMode) {
+      stopMicVisualizationStream()
+      teardownVisualizer()
+    }
+  }, [isFocusMode, stopMicVisualizationStream, teardownVisualizer])
 
   const selectedApplication = useMemo(
     () => applications.find((application) => application.id === selectedApplicationId),
@@ -191,6 +248,8 @@ export default function PrepPage() {
       voicePlaybackRef.current.currentTime = 0
       voicePlaybackRef.current = null
     }
+    stopMicVisualizationStream()
+    teardownVisualizer()
     setIsRecording(false)
     setIsProcessingVoice(false)
     setIsSessionEnded(true)
@@ -207,6 +266,8 @@ export default function PrepPage() {
       voicePlaybackRef.current.currentTime = 0
       voicePlaybackRef.current = null
     }
+    stopMicVisualizationStream()
+    teardownVisualizer()
     setIsSessionEnded(false)
     setMessages([])
     setVoiceTranscript("")
@@ -259,6 +320,8 @@ export default function PrepPage() {
     }
 
     try {
+      void startMicVisualization()
+
       if (!vadRef.current) {
         vadRef.current = await MicVAD.new({
           baseAssetPath: "/vad-assets/",
@@ -284,6 +347,8 @@ export default function PrepPage() {
             setIsRecording(false)
             setIsProcessingVoice(true)
             setRecordingSeconds(0)
+            stopMicVisualizationStream()
+            teardownVisualizer()
 
             void (async () => {
               try {
@@ -304,6 +369,8 @@ export default function PrepPage() {
       setIsRecording(true)
       setRecordingSeconds(0)
     } catch {
+      stopMicVisualizationStream()
+      teardownVisualizer()
       setVoiceError("Microphone access was blocked. Please enable permissions and try again.")
     }
   }
@@ -314,6 +381,8 @@ export default function PrepPage() {
       vadRef.current = null
     }
     stopRecordingTimer()
+    stopMicVisualizationStream()
+    teardownVisualizer()
     setIsRecording(false)
   }
 
@@ -393,6 +462,7 @@ export default function PrepPage() {
         if (isVoiceReplyEnabled) {
           const audioElement = new Audio(objectUrl)
           voicePlaybackRef.current = audioElement
+          void initializeVisualizer(audioElement)
           audioElement.addEventListener("ended", () => {
             voicePlaybackRef.current = null
             if (!isSessionEnded) {
@@ -588,6 +658,8 @@ export default function PrepPage() {
                     onClick={() => {
                       if (voiceReplyUrl) {
                         const audioElement = new Audio(voiceReplyUrl)
+                        voicePlaybackRef.current = audioElement
+                        void initializeVisualizer(audioElement)
                         void audioElement.play().catch(() => undefined)
                       }
                     }}
@@ -644,6 +716,8 @@ export default function PrepPage() {
                       onClick={() => {
                         if (voiceReplyUrl) {
                           const audioElement = new Audio(voiceReplyUrl)
+                          voicePlaybackRef.current = audioElement
+                          void initializeVisualizer(audioElement)
                           void audioElement.play().catch(() => undefined)
                         }
                       }}
@@ -757,6 +831,11 @@ export default function PrepPage() {
                 }}
                 className="relative flex h-52 w-52 cursor-pointer items-center justify-center rounded-full sm:h-60 sm:w-60"
               >
+                <div
+                  ref={visualizerContainerRef}
+                  className="pointer-events-none absolute inset-0 overflow-hidden rounded-full"
+                  aria-hidden
+                />
                 <div
                   className={cn(
                     "absolute inset-0 rounded-full bg-emerald-400/10 transition-all duration-700",

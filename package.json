@@ -2,6 +2,9 @@
     "name": "ferm",
     "version": "1.0",
     "private": true,
+    "sideEffects": [
+        "./lib/audio/circularWave.ts"
+    ],
     "scripts": {
         "build": "next build",
         "dev": "next dev",
@@ -43,6 +46,7 @@
         "@supabase/supabase-js": "latest",
         "@vercel/analytics": "latest",
         "autoprefixer": "^10.4.20",
+        "circular-audio-wave": "^1.0.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "1.0.4",
