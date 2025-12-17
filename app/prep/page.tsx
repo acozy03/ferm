@@ -467,13 +467,7 @@ export default function PrepPage() {
       <Header />
       <main className="max-w-[83rem] mx-auto px-3 sm:px-6 pt-24 pb-10 flex flex-col gap-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">Prep</p>
-            <h1 className="text-3xl font-semibold text-foreground">Focused practice with Prep</h1>
-            <p className="text-sm text-muted-foreground">
-              Streamlined coaching, voice replies, and a focus canvas to stay in the conversation.
-            </p>
-          </div>
+          
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-2 text-sm shadow-sm">
               <Switch checked={isFocusMode} onCheckedChange={setIsFocusMode} id="focus-toggle" />
