@@ -343,7 +343,7 @@ export function ApplicationsDrawer({
               </div>
             </div>
 
-            <ScrollArea className="h-[60vh] pr-4">
+            <ScrollArea className="h-[60vh]">
               <div className="space-y-6 pb-6">
                 <div className="rounded-lg border bg-background/60 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
