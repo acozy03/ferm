@@ -454,7 +454,7 @@ export default function FollowUpsPage() {
           }
         }}
       >
-        <DialogContent className="flex flex-col gap-4 sm:max-w-[420px]">
+        <DialogContent className="flex flex-col gap-4 sm:max-w-[420px]" showCloseButton={false}>
         
           <div className="flex flex-1 items-center justify-center">
             <Calendar
