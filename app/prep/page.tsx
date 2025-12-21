@@ -665,7 +665,7 @@ export default function PrepPage() {
             <div className="grid h-full overflow-hidden lg:grid-cols-[320px_1fr]">
               <aside className="flex min-w-0 flex-col gap-4 border-border/60 bg-background/70 p-4 sm:p-6 lg:border-r">
                 <div className="space-y-2">
-                  <Label htmlFor="role-select">Job application</Label>
+           
                   <Select
                     value={selectedApplicationId}
                     onValueChange={(value) => setSelectedApplicationId(value)}
@@ -694,26 +694,108 @@ export default function PrepPage() {
                 </div>
 
                 {selectedApplication && (
-                  <div className="rounded-lg border border-border/60 bg-background p-3 space-y-2">
-                    <p className="text-sm font-medium text-foreground">{selectedApplication.position_title ?? "Role"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedApplication.company_name ?? "Company"}
-                      {firstInterview?.scheduled_date && (
-                        <span className="ml-1">• Next: {new Date(firstInterview.scheduled_date).toLocaleDateString()}</span>
-                      )}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline" className="border-border/60">
-                        {selectedApplication.status ?? "Draft"}
-                      </Badge>
-                      {selectedApplication.priority && (
-                        <Badge variant="secondary" className="gap-1">
-                          Priority
-                          <span className="font-semibold">{selectedApplication.priority}</span>
+                  <div className="rounded-lg border border-border/60 bg-background p-3 space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">{selectedApplication.position_title ?? "Role"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedApplication.company_name ?? "Company"}
+                        {firstInterview?.scheduled_date && (
+                          <span className="ml-1">• Next: {new Date(firstInterview.scheduled_date).toLocaleDateString()}</span>
+                        )}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="border-border/60">
+                          {selectedApplication.status ?? "Draft"}
                         </Badge>
-                      )}
-                      <span>Interviews: {interviewCount}</span>
+                        {selectedApplication.priority && (
+                          <Badge variant="secondary" className="gap-1">
+                            Priority
+                            <span className="font-semibold">{selectedApplication.priority}</span>
+                          </Badge>
+                        )}
+                        <span>Interviews: {interviewCount}</span>
+                      </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground text-[11px]">Location</p>
+                        <p>{selectedApplication.location ?? "Not specified"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground text-[11px]">Employment</p>
+                        <p>{selectedApplication.employment_type ?? "N/A"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground text-[11px]">Application date</p>
+                        <p>
+                          {selectedApplication.application_date
+                            ? new Date(selectedApplication.application_date).toLocaleDateString()
+                            : "N/A"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground text-[11px]">Salary range</p>
+                        <p>{selectedApplication.salary_range ?? "Not provided"}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 text-xs text-muted-foreground">
+                      {(selectedApplication.contact_person || selectedApplication.contact_email) && (
+                        <div className="flex flex-col gap-1">
+                          <p className="font-semibold text-foreground text-[11px]">Recruiter / Contact</p>
+                          <p>
+                            {selectedApplication.contact_person ?? "Unknown"}
+                            {selectedApplication.contact_email ? ` • ${selectedApplication.contact_email}` : ""}
+                          </p>
+                        </div>
+                      )}
+                      {selectedApplication.job_url && (
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground text-[11px]">Job posting</p>
+                          <a
+                            href={selectedApplication.job_url}
+                            className="text-primary hover:underline break-all"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {selectedApplication.job_url}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {(selectedApplication.resume_match_summary ||
+                      selectedApplication.job_responsibilities ||
+                      selectedApplication.qualifications ||
+                      selectedApplication.notes) && (
+                      <div className="space-y-2 text-xs text-muted-foreground">
+                        {selectedApplication.resume_match_summary && (
+                          <div className="space-y-1">
+                            <p className="font-semibold text-foreground text-[11px]">Resume highlights</p>
+                            <p className="leading-relaxed whitespace-pre-wrap">{selectedApplication.resume_match_summary}</p>
+                          </div>
+                        )}
+                        {selectedApplication.job_responsibilities && (
+                          <div className="space-y-1">
+                            <p className="font-semibold text-foreground text-[11px]">Key responsibilities</p>
+                            <p className="leading-relaxed whitespace-pre-wrap">{selectedApplication.job_responsibilities}</p>
+                          </div>
+                        )}
+                        {selectedApplication.qualifications && (
+                          <div className="space-y-1">
+                            <p className="font-semibold text-foreground text-[11px]">Qualifications</p>
+                            <p className="leading-relaxed whitespace-pre-wrap">{selectedApplication.qualifications}</p>
+                          </div>
+                        )}
+                        {selectedApplication.notes && (
+                          <div className="space-y-1">
+                            <p className="font-semibold text-foreground text-[11px]">Notes</p>
+                            <p className="leading-relaxed whitespace-pre-wrap">{selectedApplication.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </aside>
@@ -812,7 +894,7 @@ export default function PrepPage() {
                             type="button"
                             variant="outline"
                             size="icon"
-                            className="mt-1 shrink-0"
+                            className="shrink-0 h-9 w-9"
                             aria-label="Open voice and session controls"
                           >
                             <Plus className="h-4 w-4" />
