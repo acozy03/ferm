@@ -214,11 +214,8 @@ export function FollowUpDraftDialog({
           AI draft
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Draft a follow-up email</DialogTitle>
-        
-        </DialogHeader>
+      <DialogContent className="sm:max-w-xl" showCloseButton={false}>
+     
         <div className="space-y-3">
           <div className="relative">
             <Textarea
@@ -260,6 +257,9 @@ export function FollowUpDraftDialog({
                 : "Your draft will appear here once it’s generated."}
           </span>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={isSaving}>
+              Cancel
+            </Button>
             <Button
               size="sm"
               onClick={() => void saveDraft()}
