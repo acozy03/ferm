@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Header } from "@/components/header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toPng } from "html-to-image"
 import { getStatusChartColor, parseStatus } from "@/lib/status"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
@@ -98,6 +99,10 @@ const CustomSankeyNode = ({ x, y, width, height, payload }: {
 export default function AnalyticsPage() {
   const sankeyContainerRef = useRef<HTMLDivElement>(null)
   const { applications, isLoading: appsLoading } = useJobApplications({ limit: 200, include_status_history: true })
+  const [selectedDay, setSelectedDay] = useState<{
+    date: string
+    applications: (typeof applications)[number][]
+  } | null>(null)
   const sankeyData = useMemo(() => {
     const baseNode = SANKEY_BASE_NODE
     const baseColor = getStatusChartColor("Applied")
@@ -226,10 +231,13 @@ export default function AnalyticsPage() {
 
   const applicationActivity = useMemo(() => {
     if (!applications.length) {
-      return { weeks: [] as { date: string; count: number; level: number }[][], maxDailyCount: 0 }
+      return {
+        weeks: [] as { date: string; count: number; level: number; applications: (typeof applications)[number][] }[][],
+        maxDailyCount: 0,
+      }
     }
 
-    const countsByDate = new Map<string, number>()
+    const countsByDate = new Map<string, { count: number; applications: (typeof applications)[number][] }>()
 
     applications.forEach((application) => {
       const createdAt = application.created_at ?? application.application_date
@@ -237,11 +245,18 @@ export default function AnalyticsPage() {
       const timestamp = new Date(createdAt)
       if (Number.isNaN(timestamp.getTime())) return
       const dayKey = timestamp.toISOString().split("T")[0]
-      countsByDate.set(dayKey, (countsByDate.get(dayKey) ?? 0) + 1)
+      const existing = countsByDate.get(dayKey) ?? { count: 0, applications: [] }
+      countsByDate.set(dayKey, {
+        count: existing.count + 1,
+        applications: [...existing.applications, application],
+      })
     })
 
     if (countsByDate.size === 0) {
-      return { weeks: [] as { date: string; count: number; level: number }[][], maxDailyCount: 0 }
+      return {
+        weeks: [] as { date: string; count: number; level: number; applications: (typeof applications)[number][] }[][],
+        maxDailyCount: 0,
+      }
     }
 
     const today = new Date()
@@ -257,11 +272,12 @@ export default function AnalyticsPage() {
       end.setDate(end.getDate() + 1)
     }
 
-    const days: { date: string; count: number }[] = []
+    const days: { date: string; count: number; applications: (typeof applications)[number][] }[] = []
     const cursor = new Date(start)
     while (cursor <= end) {
       const dateKey = cursor.toISOString().split("T")[0]
-      days.push({ date: dateKey, count: countsByDate.get(dateKey) ?? 0 })
+      const activity = countsByDate.get(dateKey)
+      days.push({ date: dateKey, count: activity?.count ?? 0, applications: activity?.applications ?? [] })
       cursor.setDate(cursor.getDate() + 1)
     }
 
@@ -272,7 +288,7 @@ export default function AnalyticsPage() {
       return Math.min(4, Math.max(1, scaled))
     }
 
-    const weeks: { date: string; count: number; level: number }[][] = []
+    const weeks: { date: string; count: number; level: number; applications: (typeof applications)[number][] }[][] = []
     days.forEach((day, index) => {
       const weekIndex = Math.floor(index / 7)
       if (!weeks[weekIndex]) {
@@ -306,6 +322,13 @@ export default function AnalyticsPage() {
   const activityGridColumns = {
     gridTemplateColumns: `repeat(${Math.max(applicationActivity.weeks.length, 1)}, minmax(0, 1fr))`,
   }
+
+  const selectedDayLabel = useMemo(() => {
+    if (!selectedDay?.date) return ""
+    const date = new Date(selectedDay.date)
+    if (Number.isNaN(date.getTime())) return selectedDay.date
+    return date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
+  }, [selectedDay?.date])
 
 
   return (
@@ -443,13 +466,15 @@ export default function AnalyticsPage() {
                                       return (
                                         <Tooltip key={`day-${day.date}-${dayIndex}`}>
                                           <TooltipTrigger asChild>
-                                            <div
+                                            <button
+                                              type="button"
                                               className={cn(
                                                 "aspect-square w-full min-w-[12px] rounded-sm border border-background/30",
                                                 ACTIVITY_LEVEL_CLASSES[day.level] ?? ACTIVITY_LEVEL_CLASSES[0],
                                               )}
                                               aria-label={tooltipLabel}
-                                            />
+                                              onClick={() => setSelectedDay({ date: day.date, applications: day.applications })}
+                                            ></button>
                                           </TooltipTrigger>
                                           <TooltipContent side="top" align="center" className="text-xs">
                                             <p className="font-medium">{formattedDate}</p>
@@ -468,7 +493,7 @@ export default function AnalyticsPage() {
                         </div>
                       </div>
                     </ScrollArea>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <span>Less</span>
                         <div className="flex items-center gap-1">
@@ -482,7 +507,7 @@ export default function AnalyticsPage() {
                         </div>
                         <span>More</span>
                       </div>
-                      <p className="text-muted-foreground flex justify-end">
+                      <p className="text-muted-foreground text-right">
                         {hasActivityData
                           ? `${applications.length} application${applications.length === 1 ? "" : "s"} added in the last 52 weeks`
                           : "No applications tracked in the past year yet."}
@@ -498,6 +523,32 @@ export default function AnalyticsPage() {
 
         </div>
       </main>
+      <Dialog open={!!selectedDay} onOpenChange={(isOpen) => !isOpen && setSelectedDay(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Applications on {selectedDayLabel}</DialogTitle>
+            <DialogDescription>Review the roles you added to your tracker on this date.</DialogDescription>
+          </DialogHeader>
+          {selectedDay ? (
+            selectedDay.applications.length ? (
+              <div className="space-y-3">
+                {selectedDay.applications.map((application) => {
+                  const status = parseStatus(application.status)
+                  return (
+                    <div key={application.id} className="rounded-md border bg-muted/30 p-3">
+                      <p className="text-sm font-medium text-foreground">{application.position_title}</p>
+                      <p className="text-sm text-muted-foreground">{application.company_name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Status: {status.label}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No applications were logged on this day.</p>
+            )
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
