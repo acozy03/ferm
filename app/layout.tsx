@@ -1,19 +1,24 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import "./globals.css"
 import { MinimalScrollRail } from "@/components/minimal-scroll-rail"
 import { Providers } from "./providers"
 
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+})
+
 export const revalidate = 60;
 export const runtime = 'nodejs';
 
 export const metadata: Metadata = {
   title: "ferm.dev - Job Application Tracker",
-  description: "Minimalistic job application tracking platform"
+  description: "Minimalistic job application tracking platform",
 }
 
 export default function RootLayout({
@@ -23,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+      <body className={`font-sans ${jetBrainsMono.variable} antialiased`}>
         <Providers>
           <Suspense fallback={null}>{children}</Suspense>
         </Providers>
