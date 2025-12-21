@@ -2,13 +2,14 @@
 
 import { MicVAD, utils } from "@ricky0123/vad-web"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Bot, Loader2, Mic, Send, Sparkles, Square, StopCircle, Volume2 } from "lucide-react"
+import { Bot, Loader2, Mic, Plus, Send, Sparkles, Square, StopCircle, Volume2 } from "lucide-react"
 
 import { Header } from "@/components/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -637,35 +638,46 @@ export default function PrepPage() {
   return (
     <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.08),_transparent_35%),_radial-gradient(circle_at_20%_20%,_rgba(34,197,94,0.05),_transparent_25%)]">
       <Header />
-      <main className="max-w-[83rem] mx-auto px-3 sm:px-6 pt-24 pb-10 flex flex-col gap-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-2 text-sm shadow-sm">
-              <Switch checked={isFocusMode} onCheckedChange={setIsFocusMode} id="focus-toggle" />
-              <Label htmlFor="focus-toggle" className="text-muted-foreground cursor-pointer">
-                Focus mode
-              </Label>
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-24 pb-10">
+        <Card className="overflow-hidden border-border/70 shadow-xl">
+          <div className="grid h-[calc(100vh-12rem)] max-h-[1040px] grid-rows-[auto_1fr]">
+            <div className="flex items-center justify-between border-b border-border/60 bg-background/80 px-4 py-3 sm:px-6">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Prep practice</p>
+                <p className="text-sm text-foreground">Get feedback, rehearse answers, and stay in one window.</p>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+                {isSessionEnded ? "Session ended" : isGenerating ? "Prep is replying" : "Ready for your answer"}
+                <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.18)]" />
+              </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleRestart} disabled={messages.length === 0}>
-              Restart
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleEndSession} disabled={isSessionEnded}>
-              <StopCircle className="h-4 w-4 mr-1" />
-              End
-            </Button>
-          </div>
-        </div>
 
-        <div
-          className={cn(
-            "grid flex-1 gap-4 overflow-hidden",
-            isFocusMode ? "grid-cols-1 min-h-[70vh]" : "lg:grid-cols-[360px_1fr]",
-          )}
-        >
-          {!isFocusMode && (
-            <Card className="shadow-sm border-border/60 flex flex-col overflow-hidden">
-              <CardContent className="flex flex-col gap-4 p-4">
+            <div className="grid h-full overflow-hidden lg:grid-cols-[320px_1fr]">
+              <aside className="flex flex-col gap-4 border-border/60 bg-background/70 p-4 sm:p-6 lg:border-r">
+                <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/40 p-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Focus mode</p>
+                    <p className="text-sm text-foreground">Immersive chat with audio playback.</p>
+                  </div>
+                  <Switch checked={isFocusMode} onCheckedChange={setIsFocusMode} id="focus-toggle" />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={handleRestart} disabled={messages.length === 0} className="flex-1">
+                    Restart
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleEndSession}
+                    disabled={isSessionEnded}
+                    className="flex-1"
+                  >
+                    <StopCircle className="h-4 w-4 mr-1" />
+                    End
+                  </Button>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="role-select">Job application</Label>
                   <Select
@@ -719,208 +731,226 @@ export default function PrepPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between rounded-md border border-border/60 bg-background px-3 py-2">
-                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Volume2 className="h-4 w-4" />
-                    Voice replies
-                  </div>
-                  <Switch
-                    checked={isVoiceReplyEnabled}
-                    onCheckedChange={setIsVoiceReplyEnabled}
-                    aria-label="Toggle voice replies"
-                  />
+                <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Select a role and stay in this window while you prep. Use the + menu by the chat box for voice controls.
                 </div>
+              </aside>
 
-                {voiceStatus}
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant={isRecording ? "destructive" : "default"}
-                    size="sm"
-                    onClick={isRecording ? handleStopRecording : handleStartRecording}
-                    disabled={isProcessingVoice}
-                  >
-                    {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-                    {isRecording ? "Stop recording" : "Start speaking"}
-                  </Button>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {isRecording && <span className="text-destructive font-semibold">Recording</span>}
-                    {isRecording && <span>• {recordingSeconds}s</span>}
-                    {isProcessingVoice && (
-                      <span className="flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Processing...
-                      </span>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      if (!voiceReplyUrl) return
-
-                      const audioElement = new Audio(voiceReplyUrl)
-                      voicePlaybackRef.current = audioElement
-
-                      audioElement.addEventListener("ended", () => {
-                        if (voicePlaybackRef.current === audioElement) {
-                          voicePlaybackRef.current = null
-                        }
-                      })
-
-                      audioElement.addEventListener("pause", () => {
-                        if (voicePlaybackRef.current === audioElement) {
-                          voicePlaybackRef.current = null
-                        }
-                      })
-
-                      try {
-                        await audioElement.play()
-                      } catch (playbackError) {
-                        setVoiceError(
-                          playbackError instanceof Error
-                            ? playbackError.message
-                            : "Unable to replay the audio reply.",
-                        )
-                        return
-                      }
-
-                      try {
-                        await initializeVisualizer(audioElement)
-                      } catch (error) {
-                        handleVisualizerFailure(error)
-                      }
-                    }}
-                    disabled={!voiceReplyUrl}
-                  >
-                    <Volume2 className="mr-2 h-4 w-4" />
-                    Replay
-                  </Button>
-                </div>
-
-                <p className="text-xs text-muted-foreground">
-                  Recording will end automatically after a moment of silence.
-                </p>
-
-                {voiceError && <p className="text-xs text-destructive">{voiceError}</p>}
-
-                {visualizerNotice && (
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    {visualizerNotice}
-                  </p>
+              <div
+                className={cn(
+                  "flex h-full flex-col overflow-hidden bg-background", 
+                  isFocusMode && "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70",
                 )}
-              </CardContent>
-            </Card>
-          )}
-
-          <Card
-            className={cn(
-              "shadow-sm border-border/60 flex flex-col overflow-hidden",
-              isFocusMode && "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70",
-            )}
-          >
-            <CardContent className="flex-1 flex flex-col gap-4 p-4 lg:p-6 overflow-hidden">
-              {isFocusMode && (
-                <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/30 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">Focus mode</p>
-                      <p className="text-sm text-muted-foreground">Immersive view with Prep narrating and listening back.</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {isVoiceReplyEnabled ? "Voice replies on" : "Voice replies muted"}
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.25)]" />
-                    </div>
-                  </div>
-                  {voiceStatus}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant={isRecording ? "destructive" : "default"}
-                      onClick={isRecording ? handleStopRecording : handleStartRecording}
-                      disabled={isProcessingVoice}
-                    >
-                      {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-                      {isRecording ? "Stop recording" : "Start speaking"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        if (voiceReplyUrl) {
-                          const audioElement = new Audio(voiceReplyUrl)
-                          voicePlaybackRef.current = audioElement
-                          void initializeVisualizer(audioElement)
-                          void audioElement.play().catch(() => undefined)
-                        }
-                      }}
-                      disabled={!voiceReplyUrl}
-                    >
-                      <Volume2 className="mr-2 h-4 w-4" />
-                      Replay last reply
-                    </Button>
-                    <div className="text-xs text-muted-foreground">
-                      {isSessionEnded ? "Session ended" : "Prep will auto-listen after it speaks"}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <ScrollArea className="flex-1 overflow-y-auto" ref={chatRef}>
-                <div className="space-y-4 pr-2 pb-4">
-                  {messages.map((message, index) => (
-                    <div key={`${message.role}-${index}`} className="flex gap-3">
-                      <div
-                        className={cn(
-                          "h-10 w-10 rounded-full flex items-center justify-center border",
-                          message.role === "assistant" ? "bg-primary/10 border-primary/30" : "bg-muted",
-                        )}
-                      >
-                        {message.role === "assistant" ? <Bot className="h-5 w-5 text-primary" /> : <Sparkles className="h-5 w-5" />}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground">{message.role === "assistant" ? "Prep" : "You"}</span>
-                          {message.tone && <Badge variant="outline" className="text-[10px] h-5">{message.tone}</Badge>}
-                        </div>
-                        <p className="leading-relaxed break-words text-sm text-foreground whitespace-pre-wrap">{message.content}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {messages.length === 0 && (
-                    <div className="text-center text-muted-foreground text-sm">Start chatting to see your transcript.</div>
-                  )}
-                </div>
-              </ScrollArea>
-              <form
-                className="flex flex-col gap-3"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  handleSend()
-                }}
               >
-                <Label htmlFor="prep-input" className="text-xs text-muted-foreground">
-                  Answer a prompt or ask for feedback
-                </Label>
-                <div className="flex gap-2 items-start">
-                  <Textarea
-                    id="prep-input"
-                    value={input}
-                    onChange={(event) => setInput(event.target.value)}
-                    placeholder={isSessionEnded ? "Session ended. Restart to continue." : "Share your answer..."}
-                    className="min-h-[80px] resize-none"
-                    disabled={isGenerating || isSessionEnded}
-                  />
-                  <Button type="submit" className="self-start" disabled={!input.trim() || isGenerating || isSessionEnded}>
-                    <Send className="h-4 w-4" />
-                  </Button>
+                <div className="flex-1 flex flex-col gap-4 p-4 sm:p-6 overflow-hidden">
+                  {isFocusMode && (
+                    <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/30 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">Focus mode</p>
+                          <p className="text-sm text-muted-foreground">Immersive view with Prep narrating and listening back.</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {isVoiceReplyEnabled ? "Voice replies on" : "Voice replies muted"}
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.25)]" />
+                        </div>
+                      </div>
+                      {voiceStatus}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant={isRecording ? "destructive" : "default"}
+                          onClick={isRecording ? handleStopRecording : handleStartRecording}
+                          disabled={isProcessingVoice}
+                        >
+                          {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+                          {isRecording ? "Stop recording" : "Start speaking"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (voiceReplyUrl) {
+                              const audioElement = new Audio(voiceReplyUrl)
+                              voicePlaybackRef.current = audioElement
+                              void initializeVisualizer(audioElement)
+                              void audioElement.play().catch(() => undefined)
+                            }
+                          }}
+                          disabled={!voiceReplyUrl}
+                        >
+                          <Volume2 className="mr-2 h-4 w-4" />
+                          Replay last reply
+                        </Button>
+                        <div className="text-xs text-muted-foreground">
+                          {isSessionEnded ? "Session ended" : "Prep will auto-listen after it speaks"}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <ScrollArea className="flex-1 overflow-y-auto" ref={chatRef}>
+                    <div className="space-y-4 pr-2 pb-4">
+                      {messages.map((message, index) => (
+                        <div key={`${message.role}-${index}`} className="flex gap-3">
+                          <div
+                            className={cn(
+                              "h-10 w-10 rounded-full flex items-center justify-center border",
+                              message.role === "assistant" ? "bg-primary/10 border-primary/30" : "bg-muted",
+                            )}
+                          >
+                            {message.role === "assistant" ? <Bot className="h-5 w-5 text-primary" /> : <Sparkles className="h-5 w-5" />}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="font-medium text-foreground">{message.role === "assistant" ? "Prep" : "You"}</span>
+                              {message.tone && <Badge variant="outline" className="text-[10px] h-5">{message.tone}</Badge>}
+                            </div>
+                            <p className="leading-relaxed break-words text-sm text-foreground whitespace-pre-wrap">{message.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {messages.length === 0 && (
+                        <div className="text-center text-muted-foreground text-sm">Start chatting to see your transcript.</div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                  <form
+                    className="flex flex-col gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      handleSend()
+                    }}
+                  >
+                    <Label htmlFor="prep-input" className="text-xs text-muted-foreground">
+                      Answer a prompt or ask for feedback
+                    </Label>
+                    <div className="flex gap-2 items-start">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="mt-1 shrink-0"
+                            aria-label="Open voice and session controls"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 space-y-4" align="start">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                              <Volume2 className="h-4 w-4" />
+                              Voice replies
+                            </div>
+                            <Switch
+                              checked={isVoiceReplyEnabled}
+                              onCheckedChange={setIsVoiceReplyEnabled}
+                              aria-label="Toggle voice replies"
+                            />
+                          </div>
+
+                          {voiceStatus}
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            {isRecording && <span className="text-destructive font-semibold">Recording</span>}
+                            {isRecording && <span>• {recordingSeconds}s</span>}
+                            {isProcessingVoice && (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Processing...
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              variant={isRecording ? "destructive" : "default"}
+                              onClick={isRecording ? handleStopRecording : handleStartRecording}
+                              disabled={isProcessingVoice}
+                            >
+                              {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+                              {isRecording ? "Stop recording" : "Start speaking"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                if (!voiceReplyUrl) return
+
+                                const audioElement = new Audio(voiceReplyUrl)
+                                voicePlaybackRef.current = audioElement
+
+                                audioElement.addEventListener("ended", () => {
+                                  if (voicePlaybackRef.current === audioElement) {
+                                    voicePlaybackRef.current = null
+                                  }
+                                })
+
+                                audioElement.addEventListener("pause", () => {
+                                  if (voicePlaybackRef.current === audioElement) {
+                                    voicePlaybackRef.current = null
+                                  }
+                                })
+
+                                try {
+                                  await audioElement.play()
+                                } catch (playbackError) {
+                                  setVoiceError(
+                                    playbackError instanceof Error
+                                      ? playbackError.message
+                                      : "Unable to replay the audio reply.",
+                                  )
+                                  return
+                                }
+
+                                try {
+                                  await initializeVisualizer(audioElement)
+                                } catch (error) {
+                                  handleVisualizerFailure(error)
+                                }
+                              }}
+                              disabled={!voiceReplyUrl}
+                            >
+                              <Volume2 className="mr-2 h-4 w-4" />
+                              Replay
+                            </Button>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground">
+                            Recording will end automatically after a moment of silence.
+                          </p>
+
+                          {voiceError && <p className="text-xs text-destructive">{voiceError}</p>}
+
+                          {visualizerNotice && (
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                              {visualizerNotice}
+                            </p>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                      <Textarea
+                        id="prep-input"
+                        value={input}
+                        onChange={(event) => setInput(event.target.value)}
+                        placeholder={isSessionEnded ? "Session ended. Restart to continue." : "Share your answer..."}
+                        className="min-h-[96px] flex-1 resize-none"
+                        disabled={isGenerating || isSessionEnded}
+                      />
+                      <Button type="submit" className="self-start" disabled={!input.trim() || isGenerating || isSessionEnded}>
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </form>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+              </div>
+            </div>
+          </div>
+        </Card>
       </main>
 
       {isFocusMode && (
