@@ -133,11 +133,11 @@ export function EditApplicationDialog({
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none sm:overflow-visible sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Edit Application</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="company_name">Company Name *</Label>
@@ -159,37 +159,30 @@ export function EditApplicationDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+          <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:gap-6">
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
+              <Label htmlFor="status" className="whitespace-nowrap">
+                Status
+              </Label>
               <SequentialStatusSelect
                 id="status"
                 value={formData.status}
                 onChange={(status) => setFormData({ ...formData, status })}
                 statusHistory={application.status_history}
+                triggerClassName="w-full md:w-40"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="application_date">Application Date</Label>
-              <Input
-                id="application_date"
-                type="date"
-                value={formData.application_date}
-                onChange={(e) => setFormData({ ...formData, application_date: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
+              <Label htmlFor="priority" className="whitespace-nowrap">
+                Priority
+              </Label>
               <Select
                 value={formData.priority}
                 onValueChange={(value) =>
                   setFormData({ ...formData, priority: value as Priority })
                 }
               >
-                <SelectTrigger id="priority">
+                <SelectTrigger id="priority" className="w-full md:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -201,15 +194,17 @@ export function EditApplicationDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="employment_type">Employment Type</Label>
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-2">
+              <Label htmlFor="employment_type" className="whitespace-nowrap">
+                Employment Type
+              </Label>
               <Select
                 value={formData.employment_type}
                 onValueChange={(value) =>
                   setFormData({ ...formData, employment_type: value as EmploymentType })
                 }
               >
-                <SelectTrigger id="employment_type">
+                <SelectTrigger id="employment_type" className="w-full md:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -225,6 +220,15 @@ export function EditApplicationDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label htmlFor="application_date">Application Date</Label>
+              <Input
+                id="application_date"
+                type="date"
+                value={formData.application_date}
+                onChange={(e) => setFormData({ ...formData, application_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
               <Input
                 id="location"
@@ -233,6 +237,9 @@ export function EditApplicationDialog({
                 placeholder="e.g. Remote, San Francisco, CA"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="salary_range">Salary Range</Label>
               <Input
@@ -242,17 +249,16 @@ export function EditApplicationDialog({
                 placeholder="e.g. $120k - $160k"
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="job_url">Job URL</Label>
-            <Input
-              id="job_url"
-              type="url"
-              value={formData.job_url}
-              onChange={(e) => setFormData({ ...formData, job_url: e.target.value })}
-              placeholder="https://company.com/careers/job-id"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="job_url">Job URL</Label>
+              <Input
+                id="job_url"
+                type="url"
+                value={formData.job_url}
+                onChange={(e) => setFormData({ ...formData, job_url: e.target.value })}
+                placeholder="https://company.com/careers/job-id"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
