@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { ArrowDownAZ, ArrowUpAZ } from "lucide-react"
+import { ArrowDownAZ, ArrowUpAZ, Search } from "lucide-react"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -278,12 +278,15 @@ export default function FollowUpsPage() {
               <CardHeader className="gap-4">
               
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <Input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search by company or role"
-                    className="w-full sm:max-w-sm"
-                  />
+                  <div className="relative w-full sm:max-w-sm">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search by company or role..."
+                      className="w-full pl-9"
+                    />
+                  </div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <ToggleGroup
                       type="single"

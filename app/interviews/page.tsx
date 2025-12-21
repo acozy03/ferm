@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { CalendarClock, CalendarIcon, ClipboardPen, NotebookPen, Plus } from "lucide-react"
+import { CalendarClock, CalendarIcon, ClipboardPen, NotebookPen, Plus, Search } from "lucide-react"
 
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -393,14 +393,18 @@ export default function InterviewsPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="w-full sm:max-w-md">
                   <Label htmlFor="interview-search" className="sr-only">
-                    Search interviews
+                    Search interviews...
                   </Label>
-                  <Input
-                    id="interview-search"
-                    placeholder="Search interviews"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                  />
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="interview-search"
+                      placeholder="Search interviews..."
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
