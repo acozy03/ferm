@@ -657,7 +657,6 @@ export default function PrepPage() {
                 <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/40 p-3">
                   <div className="space-y-1">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Focus mode</p>
-                    <p className="text-sm text-foreground">Immersive chat with audio playback.</p>
                   </div>
                   <Switch checked={isFocusMode} onCheckedChange={setIsFocusMode} id="focus-toggle" />
                 </div>
@@ -731,9 +730,7 @@ export default function PrepPage() {
                   </div>
                 )}
 
-                <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                  Select a role and stay in this window while you prep. Use the + menu by the chat box for voice controls.
-                </div>
+                
               </aside>
 
               <div
@@ -748,7 +745,6 @@ export default function PrepPage() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">Focus mode</p>
-                          <p className="text-sm text-muted-foreground">Immersive view with Prep narrating and listening back.</p>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {isVoiceReplyEnabled ? "Voice replies on" : "Voice replies muted"}
