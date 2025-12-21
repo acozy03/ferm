@@ -500,7 +500,7 @@ export default function InterviewsPage() {
                           <Button
                             variant="outline"
                             className={cn(
-                              "w-full justify-start text-left font-normal",
+                              "w-full justify-start text-left font-normal sm:w-auto sm:flex-1",
                               formErrors.scheduled_date &&
                                 "border-destructive focus-visible:ring-destructive",
                             )}
