@@ -16,6 +16,7 @@ import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 
 const SANKEY_BASE_NODE = "Applications Submitted"
+const SANKEY_BASE_COLOR = "#0EA5E9"
 const ACTIVITY_LEVEL_CLASSES = [
   "bg-muted/60",
   "bg-sky-200/70",
@@ -43,6 +44,9 @@ const CustomSankeyNode = ({ x, y, width, height, payload }: {
   payload: SankeyNodeWithCount
 }) => {
   const labelY = y + height / 2
+  const isBaseNode = payload.name === SANKEY_BASE_NODE
+  const labelX = isBaseNode ? x + width + 12 : x - 12
+  const textAnchor = isBaseNode ? "start" : "end"
 
   return (
     <g>
@@ -75,9 +79,9 @@ const CustomSankeyNode = ({ x, y, width, height, payload }: {
         {payload.name}
       </text> */}
       <text
-        x={x - 12}
+        x={labelX}
         y={labelY}
-        textAnchor="end"
+        textAnchor={textAnchor}
         alignmentBaseline="middle"
         style={{
           fontSize: "30px",
@@ -105,7 +109,7 @@ export default function AnalyticsPage() {
   } | null>(null)
   const sankeyData = useMemo(() => {
     const baseNode = SANKEY_BASE_NODE
-    const baseColor = getStatusChartColor("Applied")
+    const baseColor = SANKEY_BASE_COLOR
     const links = new Map<string, number>()
     const nodes = new Map<string, { color: string; count: number; order: number }>([
       [baseNode, { color: baseColor, count: 0, order: -100 }],
@@ -400,7 +404,6 @@ export default function AnalyticsPage() {
                               style={{ backgroundColor: node.color }}
                             />
                             <span className="text-muted-foreground">{node.name}</span>
-                            <span className="font-medium text-foreground">{node.count}</span>
                           </div>
                         ))}
                     </div>
