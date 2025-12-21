@@ -305,11 +305,11 @@ export function ApplicationsDrawer({
               </div>
 
               <div className="rounded-lg border bg-background/60 p-3">
-                <div className="flex flex-col gap-1 lg:max-w-md">
+                <div className="flex flex-col gap-1">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Sort applications
                   </span>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <Select value={selectedSortField} onValueChange={handleSortFieldSelect}>
                       <SelectTrigger className="sm:w-56">
                         <SelectValue />
@@ -327,7 +327,7 @@ export function ApplicationsDrawer({
                       value={sort.direction}
                       onValueChange={handleSortDirectionChange}
                       variant="outline"
-                      className="flex w-full flex-nowrap overflow-hidden sm:w-auto"
+                      className="flex w-full flex-nowrap overflow-hidden sm:ml-auto sm:w-auto"
                     >
                       <ToggleGroupItem value="asc" className="flex items-center gap-2 px-3" aria-label="Sort ascending">
                         <ArrowUpAZ className="h-4 w-4" />
@@ -357,7 +357,7 @@ export function ApplicationsDrawer({
                           type="button"
                           variant={isActive ? "secondary" : "outline"}
                           size="sm"
-                          className="justify-center"
+                          className="w-full justify-center"
                           onClick={() => handleStatusToggle(option.value as PipelineStage)}
                         >
                           {option.label}
@@ -379,7 +379,7 @@ export function ApplicationsDrawer({
                           type="button"
                           variant={isActive ? "secondary" : "outline"}
                           size="sm"
-                          className="justify-center"
+                          className="w-full justify-center"
                           onClick={() => handlePriorityToggle(priority)}
                         >
                           {priority}
