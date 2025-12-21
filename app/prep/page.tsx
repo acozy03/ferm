@@ -638,7 +638,7 @@ export default function PrepPage() {
   return (
     <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.08),_transparent_35%),_radial-gradient(circle_at_20%_20%,_rgba(34,197,94,0.05),_transparent_25%)]">
       <Header />
-      <main className="max-w-6xl mx-auto px-3 sm:px-6 pt-24 pb-10">
+      <main className="mx-auto max-w-[83rem] px-3 sm:px-6 pt-24 pb-10">
         <Card className="overflow-hidden border-border/70 shadow-xl">
           <div className="grid h-[calc(100vh-12rem)] max-h-[1040px] grid-rows-[auto_1fr]">
             <div className="flex items-center justify-between border-b border-border/60 bg-background/80 px-4 py-3 sm:px-6">
@@ -663,7 +663,7 @@ export default function PrepPage() {
             </div>
 
             <div className="grid h-full overflow-hidden lg:grid-cols-[320px_1fr]">
-              <aside className="flex flex-col gap-4 border-border/60 bg-background/70 p-4 sm:p-6 lg:border-r">
+              <aside className="flex min-w-0 flex-col gap-4 border-border/60 bg-background/70 p-4 sm:p-6 lg:border-r">
                 <div className="space-y-2">
                   <Label htmlFor="role-select">Job application</Label>
                   <Select
@@ -671,8 +671,8 @@ export default function PrepPage() {
                     onValueChange={(value) => setSelectedApplicationId(value)}
                     disabled={isLoading || jobOptions.length === 0}
                   >
-                    <SelectTrigger id="role-select" className="bg-background/70">
-                      <SelectValue placeholder={isLoading ? "Loading roles..." : "Pick a role"} />
+                    <SelectTrigger id="role-select" className="w-full bg-background/70 text-left">
+                      <SelectValue placeholder={isLoading ? "Loading roles..." : "Pick a role"} className="truncate" />
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
                       {jobOptions.map((job) => (
@@ -716,17 +716,15 @@ export default function PrepPage() {
                     </div>
                   </div>
                 )}
-
-                
               </aside>
 
               <div
                 className={cn(
-                  "flex h-full flex-col overflow-hidden bg-background", 
+                  "flex h-full flex-col overflow-hidden bg-background",
                   isFocusMode && "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70",
                 )}
               >
-                <div className="flex-1 flex flex-col gap-4 p-4 sm:p-6 overflow-hidden">
+                <div className="flex-1 flex min-w-0 flex-col gap-4 p-4 sm:p-6 overflow-hidden">
                   {isFocusMode && (
                     <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/30 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -795,7 +793,7 @@ export default function PrepPage() {
                         </div>
                       ))}
                       {messages.length === 0 && (
-                        <div className="text-center text-muted-foreground text-sm">Start chatting to see your transcript.</div>
+                        <div className="text-center text-muted-foreground text-sm">Start chatting to begin your interview</div>
                       )}
                     </div>
                   </ScrollArea>
@@ -806,10 +804,8 @@ export default function PrepPage() {
                       handleSend()
                     }}
                   >
-                    <Label htmlFor="prep-input" className="text-xs text-muted-foreground">
-                      Answer a prompt or ask for feedback
-                    </Label>
-                    <div className="flex gap-2 items-start">
+                    
+                    <div className="flex items-center gap-2">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
@@ -920,11 +916,11 @@ export default function PrepPage() {
                         id="prep-input"
                         value={input}
                         onChange={(event) => setInput(event.target.value)}
-                        placeholder={isSessionEnded ? "Session ended. Restart to continue." : "Share your answer..."}
-                        className="min-h-[96px] flex-1 resize-none"
+                        placeholder={isSessionEnded ? "Session ended. Restart to continue." : "..."}
+                        className="h-9 min-h-[2.25rem] flex-1 resize-none"
                         disabled={isGenerating || isSessionEnded}
                       />
-                      <Button type="submit" className="self-start" disabled={!input.trim() || isGenerating || isSessionEnded}>
+                      <Button type="submit" disabled={!input.trim() || isGenerating || isSessionEnded}>
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
