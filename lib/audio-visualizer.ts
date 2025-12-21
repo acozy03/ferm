@@ -50,6 +50,8 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
   let animationFrameId: number | null = null
   let sourceNode: MediaElementAudioSourceNode | MediaStreamAudioSourceNode | null = null
   let outputNode: GainNode | AudioDestinationNode | null = null
+  let currentSource: VisualizerSource | null = null
+  let mediaElementSource: MediaElementAudioSourceNode | null = null
 
   const render = () => {
     const { clientWidth, clientHeight } = container
@@ -110,9 +112,21 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
   const connectSource = async (source: VisualizerSource) => {
     stopRendering()
 
-    if (audioContext.state === "suspended") {
-      await audioContext.resume()
+    if (audioContext.state === "closed") {
+      throw new Error("AudioContext is closed. Visualization unavailable.")
     }
+
+    if (audioContext.state === "suspended") {
+      try {
+        await audioContext.resume()
+      } catch (error) {
+        throw new Error(
+          `Unable to resume audio context: ${error instanceof Error ? error.message : "Unknown error"}`,
+        )
+      }
+    }
+
+    analyser.disconnect()
 
     if (sourceNode) {
       sourceNode.disconnect()
@@ -122,19 +136,31 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
       outputNode.disconnect()
     }
 
-    if (source instanceof MediaStream) {
-      sourceNode = audioContext.createMediaStreamSource(source)
-      const silentOutput = audioContext.createGain()
-      silentOutput.gain.value = 0
-      outputNode = silentOutput
-      sourceNode.connect(analyser)
-      analyser.connect(silentOutput)
-      silentOutput.connect(audioContext.destination)
-    } else {
-      sourceNode = audioContext.createMediaElementSource(source)
-      outputNode = audioContext.destination
-      sourceNode.connect(analyser)
-      analyser.connect(audioContext.destination)
+    try {
+      if (source instanceof MediaStream) {
+        sourceNode = audioContext.createMediaStreamSource(source)
+        const silentOutput = audioContext.createGain()
+        silentOutput.gain.value = 0
+        outputNode = silentOutput
+        sourceNode.connect(analyser)
+        analyser.connect(silentOutput)
+        silentOutput.connect(audioContext.destination)
+      } else {
+        const reuseExistingSource = mediaElementSource && currentSource === source
+        const elementSource = reuseExistingSource ? mediaElementSource : audioContext.createMediaElementSource(source)
+        mediaElementSource = elementSource
+        sourceNode = elementSource
+        outputNode = audioContext.destination
+        sourceNode.connect(analyser)
+        analyser.connect(audioContext.destination)
+      }
+
+      currentSource = source
+    } catch (error) {
+      sourceNode = null
+      outputNode = null
+      currentSource = null
+      throw error instanceof Error ? error : new Error("Failed to connect audio source")
     }
 
     startRendering()

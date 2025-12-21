@@ -37,6 +37,7 @@ export default function PrepPage() {
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [isVoiceReplyEnabled, setIsVoiceReplyEnabled] = useState(true)
   const [isFocusMode, setIsFocusMode] = useState(false)
+  const [visualizerNotice, setVisualizerNotice] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const chatRef = useRef<HTMLDivElement | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -97,6 +98,26 @@ export default function PrepPage() {
     }
   }, [])
 
+  const handleVisualizerFailure = useCallback(
+    (error: unknown) => {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Audio visualization is unavailable. Playing audio without visuals."
+
+      setVisualizerNotice(message)
+
+      if (isFocusMode) {
+        // Focus mode regression check: surface a warning when we fall back to audio-only playback.
+        console.warn(
+          "[Prep focus mode] Visualizer setup failed; continuing with audio-only playback.",
+          error,
+        )
+      }
+    },
+    [isFocusMode],
+  )
+
   const initializeVisualizer = useCallback(
     async (source: MediaStream | HTMLAudioElement | null) => {
       if (!isFocusMode || !source || !visualizerContainerRef.current) return
@@ -107,8 +128,10 @@ export default function PrepPage() {
         }
 
         await visualizerInstanceRef.current.connectSource(source)
-      } catch {
+        setVisualizerNotice(null)
+      } catch (error) {
         teardownVisualizer()
+        throw error instanceof Error ? error : new Error("Unable to start visualizer")
       }
     },
     [isFocusMode, teardownVisualizer],
@@ -122,12 +145,13 @@ export default function PrepPage() {
       micVisualizationStreamRef.current = stream
       await initializeVisualizer(stream)
       return stream
-    } catch {
+    } catch (error) {
       stopMicVisualizationStream()
       teardownVisualizer()
+      handleVisualizerFailure(error)
       return null
     }
-  }, [initializeVisualizer, isFocusMode, stopMicVisualizationStream, teardownVisualizer])
+  }, [handleVisualizerFailure, initializeVisualizer, isFocusMode, stopMicVisualizationStream, teardownVisualizer])
 
   useEffect(
     () => () => {
@@ -154,6 +178,7 @@ export default function PrepPage() {
     if (!isFocusMode) {
       stopMicVisualizationStream()
       teardownVisualizer()
+      setVisualizerNotice(null)
     }
   }, [isFocusMode, stopMicVisualizationStream, teardownVisualizer])
 
@@ -307,6 +332,7 @@ export default function PrepPage() {
     setIsRecording(false)
     setIsProcessingVoice(false)
     setIsSessionEnded(true)
+    setVisualizerNotice(null)
   }
 
   const handleRestart = () => {
@@ -327,6 +353,7 @@ export default function PrepPage() {
     setVoiceTranscript("")
     setVoiceError(null)
     setVoiceReplyUrl(null)
+    setVisualizerNotice(null)
   }
 
   const stopRecordingTimer = () => {
@@ -523,7 +550,6 @@ export default function PrepPage() {
         if (isVoiceReplyEnabled) {
           const audioElement = new Audio(objectUrl)
           voicePlaybackRef.current = audioElement
-          void initializeVisualizer(audioElement)
           audioElement.addEventListener("ended", () => {
             voicePlaybackRef.current = null
             if (!isSessionEnded) {
@@ -535,7 +561,21 @@ export default function PrepPage() {
               voicePlaybackRef.current = null
             }
           })
-          void audioElement.play().catch(() => undefined)
+
+          try {
+            await audioElement.play()
+          } catch (playbackError) {
+            setVoiceError(
+              playbackError instanceof Error ? playbackError.message : "Unable to play the audio reply.",
+            )
+            return
+          }
+
+          try {
+            await initializeVisualizer(audioElement)
+          } catch (error) {
+            handleVisualizerFailure(error)
+          }
         }
       } else {
         setVoiceReplyUrl(null)
@@ -717,12 +757,39 @@ export default function PrepPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      if (voiceReplyUrl) {
-                        const audioElement = new Audio(voiceReplyUrl)
-                        voicePlaybackRef.current = audioElement
-                        void initializeVisualizer(audioElement)
-                        void audioElement.play().catch(() => undefined)
+                    onClick={async () => {
+                      if (!voiceReplyUrl) return
+
+                      const audioElement = new Audio(voiceReplyUrl)
+                      voicePlaybackRef.current = audioElement
+
+                      audioElement.addEventListener("ended", () => {
+                        if (voicePlaybackRef.current === audioElement) {
+                          voicePlaybackRef.current = null
+                        }
+                      })
+
+                      audioElement.addEventListener("pause", () => {
+                        if (voicePlaybackRef.current === audioElement) {
+                          voicePlaybackRef.current = null
+                        }
+                      })
+
+                      try {
+                        await audioElement.play()
+                      } catch (playbackError) {
+                        setVoiceError(
+                          playbackError instanceof Error
+                            ? playbackError.message
+                            : "Unable to replay the audio reply.",
+                        )
+                        return
+                      }
+
+                      try {
+                        await initializeVisualizer(audioElement)
+                      } catch (error) {
+                        handleVisualizerFailure(error)
                       }
                     }}
                     disabled={!voiceReplyUrl}
@@ -737,6 +804,12 @@ export default function PrepPage() {
                 </p>
 
                 {voiceError && <p className="text-xs text-destructive">{voiceError}</p>}
+
+                {visualizerNotice && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {visualizerNotice}
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -961,6 +1034,12 @@ export default function PrepPage() {
                   <span>{isVoiceReplyEnabled ? "Voice replies on" : "Voice replies muted"}</span>
                 </div>
               </div>
+
+              {visualizerNotice && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+                  {visualizerNotice}
+                </div>
+              )}
             </div>
           </div>
         </div>
