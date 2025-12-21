@@ -223,7 +223,7 @@ export function FollowUpDraftDialog({
               onChange={(event) => setDraft(event.target.value)}
               rows={10}
               placeholder="Your AI-generated follow-up will appear here."
-              className="pr-12"
+              className="max-h-80 min-h-[18rem] resize-none pr-12"
             />
             {isGenerating && !draft && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-background/80 text-sm text-muted-foreground">
