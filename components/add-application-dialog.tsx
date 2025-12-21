@@ -319,7 +319,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none sm:overflow-visible sm:max-w-4xl">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Add New Job Application</DialogTitle>
         </DialogHeader>
@@ -333,6 +333,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 onChange={(e) => updateFormData("company_name", e.target.value)}
                 placeholder="e.g. Vercel, Linear, Stripe"
                 className={cn(
+                  "truncate",
                   formErrors.company_name && "border-destructive focus-visible:ring-destructive",
                 )}
               />
@@ -348,6 +349,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 onChange={(e) => updateFormData("position_title", e.target.value)}
                 placeholder="e.g. Frontend Engineer, Full Stack Developer"
                 className={cn(
+                  "truncate",
                   formErrors.position_title && "border-destructive focus-visible:ring-destructive",
                 )}
               />
@@ -444,6 +446,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 id="location"
                 value={formData.location}
                 onChange={(e) => updateFormData("location", e.target.value)}
+                className="truncate"
                 placeholder="e.g. Remote, San Francisco, CA"
               />
             </div>
@@ -456,6 +459,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 id="salary"
                 value={formData.salary_range}
                 onChange={(e) => updateFormData("salary_range", e.target.value)}
+                className="truncate"
                 placeholder="e.g. $120k - $160k"
               />
             </div>
@@ -468,7 +472,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                   value={formData.job_url}
                   onChange={(e) => updateFormData("job_url", e.target.value)}
                   placeholder="https://company.com/careers/job-id"
-                  className="flex-1"
+                  className="flex-1 truncate"
                 />
                 <Button
                   type="button"
@@ -508,6 +512,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 id="contactPerson"
                 value={formData.contact_person}
                 onChange={(e) => updateFormData("contact_person", e.target.value)}
+                className="truncate"
                 placeholder="e.g. Sarah Johnson"
               />
             </div>
@@ -518,6 +523,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                 type="email"
                 value={formData.contact_email}
                 onChange={(e) => updateFormData("contact_email", e.target.value)}
+                className="truncate"
                 placeholder="recruiter@company.com"
               />
             </div>

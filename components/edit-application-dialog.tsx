@@ -133,7 +133,7 @@ export function EditApplicationDialog({
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none sm:overflow-visible sm:max-w-4xl">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Edit Application</DialogTitle>
         </DialogHeader>
@@ -145,6 +145,7 @@ export function EditApplicationDialog({
                 id="company_name"
                 value={formData.company_name}
                 onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                className="truncate"
                 required
               />
             </div>
@@ -154,6 +155,7 @@ export function EditApplicationDialog({
                 id="position_title"
                 value={formData.position_title}
                 onChange={(e) => setFormData({ ...formData, position_title: e.target.value })}
+                className="truncate"
                 required
               />
             </div>
@@ -226,6 +228,7 @@ export function EditApplicationDialog({
                 type="date"
                 value={formData.application_date}
                 onChange={(e) => setFormData({ ...formData, application_date: e.target.value })}
+                className="truncate"
               />
             </div>
             <div className="space-y-2">
@@ -234,6 +237,7 @@ export function EditApplicationDialog({
                 id="location"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                className="truncate"
                 placeholder="e.g. Remote, San Francisco, CA"
               />
             </div>
@@ -246,6 +250,7 @@ export function EditApplicationDialog({
                 id="salary_range"
                 value={formData.salary_range}
                 onChange={(e) => setFormData({ ...formData, salary_range: e.target.value })}
+                className="truncate"
                 placeholder="e.g. $120k - $160k"
               />
             </div>
@@ -256,6 +261,7 @@ export function EditApplicationDialog({
                 type="url"
                 value={formData.job_url}
                 onChange={(e) => setFormData({ ...formData, job_url: e.target.value })}
+                className="truncate"
                 placeholder="https://company.com/careers/job-id"
               />
             </div>
@@ -268,6 +274,7 @@ export function EditApplicationDialog({
                 id="contact_person"
                 value={formData.contact_person}
                 onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                className="truncate"
                 placeholder="e.g. Sarah Johnson"
               />
             </div>
@@ -278,6 +285,7 @@ export function EditApplicationDialog({
                 type="email"
                 value={formData.contact_email}
                 onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                className="truncate"
                 placeholder="recruiter@company.com"
               />
             </div>
