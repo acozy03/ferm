@@ -369,9 +369,13 @@ export default function FollowUpsPage() {
                                   : format(row.nextReminder, "MMM d, yyyy")
                                 : "Not scheduled"
                               const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
+                              const isNotScheduled = row.status === "disabled"
 
                               return (
-                                <TableRow key={row.application.id} className="align-top [&>td]:py-5">
+                                <TableRow
+                                  key={row.application.id}
+                                  className={`align-top [&>td]:py-5 transition-colors `}
+                                >
                                   <TableCell className="max-w-[280px]">
                                     <div className="space-y-1">
                                       <div
@@ -397,7 +401,7 @@ export default function FollowUpsPage() {
                                         ? "Follow-up due"
                                         : row.status === "upcoming"
                                           ? "Scheduled"
-                                          : "Off"}
+                                          : "Not scheduled"}
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="min-w-[220px]">
@@ -518,6 +522,6 @@ function getStatusBadgeTone(status: FollowUpRow["status"]) {
     case "upcoming":
       return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-200 dark:border-emerald-500/40"
     default:
-      return "bg-background text-muted-foreground border-border"
+      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700"
   }
 }
