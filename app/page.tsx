@@ -448,7 +448,7 @@ export default function Dashboard() {
   <TabsList className="shrink-0 whitespace-nowrap overflow-x-auto">
     <TabsTrigger value="pipeline" className="gap-2" href={buildDashboardHref({ view: "pipeline" })}>
       <LayoutPanelLeft className="h-4 w-4" />
-      Pipeline
+      Full
     </TabsTrigger>
     <TabsTrigger value="table" className="gap-2" href={buildDashboardHref({ view: "table" })}>
       <Table2 className="h-4 w-4" />
@@ -456,7 +456,7 @@ export default function Dashboard() {
     </TabsTrigger>
     <TabsTrigger value="timeline" className="gap-2" href={buildDashboardHref({ view: "timeline" })}>
       <CalendarClock className="h-4 w-4" />
-      Timeline
+      Condensed
     </TabsTrigger>
   </TabsList>
   {/* Search bar (flexes) */}
