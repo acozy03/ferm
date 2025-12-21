@@ -422,8 +422,8 @@ export default function Dashboard() {
             <StatsOverview />
           </div>
 
-          <div className="grid h-full grid-cols-1 gap-6 overflow-hidden lg:grid-cols-3">
-            <div className="flex flex-col gap-6 overflow-hidden lg:col-span-1">
+          <div className="grid h-full grid-cols-1 gap-6 overflow-hidden lg:grid-cols-[0.95fr_2.05fr]">
+            <div className="flex flex-col gap-6 overflow-hidden">
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <UpcomingReminders />
               </div>
@@ -432,7 +432,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-col gap-6 overflow-hidden lg:col-span-2">
+            <div className="flex min-h-0 flex-col gap-6 overflow-hidden">
               <div className="flex min-h-0 flex-1 flex-col gap-4 pb-4">
                   <Tabs
                     value={view}
@@ -580,12 +580,12 @@ export default function Dashboard() {
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="w-[150px] text-center">Match score</TableHead>
+                                    <TableHead className="min-w-[40rem]">Role</TableHead>
+                                    <TableHead className="w-[120px] text-right">Status</TableHead>
+                                    <TableHead className="w-[150px] text-right">Match score</TableHead>
                                     <TableHead>Applied</TableHead>
-                                    <TableHead className="hidden lg:table-cell">Location</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead className="hidden lg:table-cell w-[190px]">Location</TableHead>
+                                    <TableHead className="w-[72px] text-right">Actions</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -610,7 +610,7 @@ export default function Dashboard() {
                                           handleSelectApplication(application.id, !isSelected)
                                         }}
                                       >
-                                        <TableCell className="w-[32%] max-w-[18rem]">
+                                        <TableCell className="w-[50%] max-w-[40rem]">
                                           <div className="min-w-0 space-y-1">
                                             <p
                                               className="text-sm font-medium leading-tight truncate"
@@ -626,13 +626,13 @@ export default function Dashboard() {
                                             </p>
                                           </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="w-[190px] flex justify-center">
                                           <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
                                             {formatStatusLabel(application.status)}
                                           </Badge>
                                         </TableCell>
                                         <TableCell className="text-justify">
-                                          <div className="flex justify-center">
+                                          <div className="flex justify-end">
                                             <JobScoreIndicator
                                               score={application.resume_match_score ?? null}
                                               createdAt={application.created_at}
@@ -651,7 +651,7 @@ export default function Dashboard() {
                                             </span>
                                           </div>
                                         </TableCell>
-                                        <TableCell className="hidden max-w-[14rem] lg:table-cell">
+                                        <TableCell className="hidden w-[190px] max-w-[14rem] lg:table-cell">
                                           {application.location ? (
                                             <span className="block truncate text-sm" title={application.location}>
                                               {application.location}
@@ -660,7 +660,7 @@ export default function Dashboard() {
                                             <span className="text-xs text-muted-foreground">—</span>
                                           )}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="w-[72px] text-right">
                                           <div className="flex justify-end">
                                             <ApplicationActionsMenu
                                               application={application}
