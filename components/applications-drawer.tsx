@@ -304,7 +304,7 @@ export function ApplicationsDrawer({
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="rounded-lg border bg-background/60 p-3">
                 <div className="flex flex-col gap-1 lg:max-w-md">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Sort applications
@@ -345,7 +345,7 @@ export function ApplicationsDrawer({
 
             <ScrollArea className="h-[60vh] pr-4">
               <div className="space-y-6 pb-6">
-                <div>
+                <div className="rounded-lg border bg-background/60 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {STATUS_STAGE_FILTER_OPTIONS.map((option) => {
@@ -357,7 +357,7 @@ export function ApplicationsDrawer({
                           type="button"
                           variant={isActive ? "secondary" : "outline"}
                           size="sm"
-                          className="justify-start"
+                          className="justify-center"
                           onClick={() => handleStatusToggle(option.value as PipelineStage)}
                         >
                           {option.label}
@@ -367,7 +367,7 @@ export function ApplicationsDrawer({
                   </div>
                 </div>
 
-                <div>
+                <div className="rounded-lg border bg-background/60 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Priority</p>
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {priorityOptions.map((priority) => {
