@@ -254,21 +254,7 @@ export function ApplicationsDrawer({
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent position="right" className="sm:max-w-4xl">
-        <DrawerHeader className="relative pb-2 pr-12 sm:pr-16">
-          <DrawerTitle>Filters</DrawerTitle>
-          <DrawerDescription>Adjust how applications are filtered and sorted on your dashboard.</DrawerDescription>
-          <DrawerClose asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close filters</span>
-            </Button>
-          </DrawerClose>
-        </DrawerHeader>
+       
 
         <div className="border-t">
           <div className="flex flex-col gap-4 p-4">
