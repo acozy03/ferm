@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -47,6 +46,17 @@ export const dynamic = "force-dynamic"
 
 const interviewTypeOptions: InterviewType[] = ["Phone", "Video", "In-person", "Technical", "Final"]
 const interviewStatusOptions: InterviewStatus[] = ["Scheduled", "Completed", "Cancelled", "Rescheduled"]
+const timeOptions = Array.from({ length: 96 }, (_, index) => {
+  const hours = Math.floor(index / 4)
+  const minutes = (index % 4) * 15
+
+  const value = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+  const period = hours >= 12 ? "PM" : "AM"
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12
+  const label = `${displayHour}:${minutes.toString().padStart(2, "0")} ${period}`
+
+  return { value, label }
+})
 const statusClassMap: Record<InterviewStatus, string> = {
   Scheduled: "border-primary/30 text-primary",
   Completed: "border-emerald-500/40 text-emerald-500",
@@ -384,56 +394,59 @@ export default function InterviewsPage() {
                   <DialogTitle>Log interview</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                    <Label className="sm:w-40">Job application</Label>
-                    <Select
-                      value={formState.job_application_id}
-                      onValueChange={(value) => {
-                        setFormState((prev) => ({ ...prev, job_application_id: value }))
-                        setFormErrors((prev) => ({ ...prev, job_application_id: undefined }))
-                      }}
-                      disabled={eligibleApplications.length === 0}
-                    >
-                      <SelectTrigger
-                        className={cn(
-                          "w-full sm:max-w-xl",
-                          formErrors.job_application_id &&
-                            "border-destructive focus-visible:ring-destructive",
-                        )}
-                      >
-                        <SelectValue placeholder={
-                          isLoadingApplications
-                            ? "Loading applications..."
-                            : eligibleApplications.length === 0
-                                ? "Update job statuses to log interviews"
-                                : "Select a job"
-                        } />
-                      </SelectTrigger>
-                      <SelectContent className="w-[--radix-select-trigger-width]">
-                        {eligibleApplications.length === 0 ? (
-                          <SelectItem value="" disabled>
-                            No jobs ready for interviews yet
-                          </SelectItem>
-                        ) : (
-                          eligibleApplications.map((application) => (
-                            <SelectItem key={application.id} value={application.id}>
-                              {application.company_name} — {application.position_title}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                      <Label className="sm:w-40">Interview type</Label>
+                    <div className="space-y-2">
+                      <Label>Job application</Label>
+                      <Select
+                        value={formState.job_application_id}
+                        onValueChange={(value) => {
+                          setFormState((prev) => ({ ...prev, job_application_id: value }))
+                          setFormErrors((prev) => ({ ...prev, job_application_id: undefined }))
+                        }}
+                        disabled={eligibleApplications.length === 0}
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            "w-full",
+                            formErrors.job_application_id &&
+                              "border-destructive focus-visible:ring-destructive",
+                          )}
+                        >
+                          <SelectValue placeholder={
+                            isLoadingApplications
+                              ? "Loading applications..."
+                              : eligibleApplications.length === 0
+                                  ? "Update job statuses to log interviews"
+                                  : "Select a job"
+                          } />
+                        </SelectTrigger>
+                        <SelectContent className="w-[--radix-select-trigger-width]">
+                          {eligibleApplications.length === 0 ? (
+                            <SelectItem value="" disabled>
+                              No jobs ready for interviews yet
+                            </SelectItem>
+                          ) : (
+                            eligibleApplications.map((application) => (
+                              <SelectItem key={application.id} value={application.id}>
+                                {application.company_name} — {application.position_title}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {formErrors.job_application_id ? (
+                        <p className="text-sm text-destructive">{formErrors.job_application_id}</p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Interview type</Label>
                       <Select
                         value={formState.interview_type}
                         onValueChange={(value) =>
                           setFormState((prev) => ({ ...prev, interview_type: value as InterviewType }))
                         }
                       >
-                        <SelectTrigger className="w-full sm:w-64">
+                        <SelectTrigger className="w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="w-[--radix-select-trigger-width]">
@@ -445,15 +458,17 @@ export default function InterviewsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                      <Label className="sm:w-40">Status</Label>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Status</Label>
                       <Select
                         value={formState.status}
                         onValueChange={(value) =>
                           setFormState((prev) => ({ ...prev, status: value as InterviewStatus }))
                         }
                       >
-                        <SelectTrigger className="w-full sm:w-64">
+                        <SelectTrigger className="w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="w-[--radix-select-trigger-width]">
@@ -464,59 +479,6 @@ export default function InterviewsPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Scheduled for</Label>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                formErrors.scheduled_date &&
-                                  "border-destructive focus-visible:ring-destructive",
-                              )}
-                              onClick={() =>
-                                setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
-                              }
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {scheduledDate ? format(scheduledDate, "PPP") : "Pick a date"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={scheduledDate}
-                              onSelect={(date) => {
-                                setScheduledDate(date ?? undefined)
-                                setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <Input
-                          type="time"
-                          value={scheduledTime}
-                          onChange={(event) => {
-                            setScheduledTime(event.target.value)
-                            setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
-                          }}
-                          className={cn(
-                            "w-full sm:w-[160px]",
-                            formErrors.scheduled_date &&
-                              "border-destructive focus-visible:ring-destructive",
-                          )}
-                          placeholder="hh:mm"
-                        />
-                      </div>
-                      {formErrors.scheduled_date ? (
-                        <p className="text-sm text-destructive">{formErrors.scheduled_date}</p>
-                      ) : null}
                     </div>
                     <div className="space-y-2">
                       <Label>Duration (minutes)</Label>
@@ -529,6 +491,67 @@ export default function InterviewsPage() {
                         }
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Scheduled for</Label>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              formErrors.scheduled_date &&
+                                "border-destructive focus-visible:ring-destructive",
+                            )}
+                            onClick={() =>
+                              setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
+                            }
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {scheduledDate ? format(scheduledDate, "PPP") : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={scheduledDate}
+                            onSelect={(date) => {
+                              setScheduledDate(date ?? undefined)
+                              setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Select
+                        value={scheduledTime || undefined}
+                        onValueChange={(value) => {
+                          setScheduledTime(value)
+                          setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
+                        }}
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            "w-full sm:w-[200px]",
+                            formErrors.scheduled_date &&
+                              "border-destructive focus-visible:ring-destructive",
+                          )}
+                        >
+                          <SelectValue placeholder="Pick a time" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64 w-[--radix-select-trigger-width]">
+                          {timeOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {formErrors.scheduled_date ? (
+                      <p className="text-sm text-destructive">{formErrors.scheduled_date}</p>
+                    ) : null}
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
