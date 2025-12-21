@@ -86,31 +86,33 @@ function InterviewNotesCard({ interview, onSave, pendingId }: InterviewNotesCard
   const isPending = pendingId === interview.id
 
   return (
-    <Card className="shadow-sm border-border/70">
-      <CardContent className="space-y-5">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <ClipboardPen className="h-4 w-4" />
-            <span>Prep notes</span>
+    <Card className="flex h-full flex-col border-border/70 shadow-sm">
+      <CardContent className="flex flex-1 flex-col gap-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 md:flex-row">
+          <div className="flex min-h-0 flex-1 flex-col space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <ClipboardPen className="h-4 w-4" />
+              <span>Prep notes</span>
+            </div>
+            <Textarea
+              value={prepNotes}
+              onChange={(event) => setPrepNotes(event.target.value)}
+              placeholder="Research the company, confirm portfolio links, outline stories to share..."
+              className="min-h-0 flex-1 resize-none"
+            />
           </div>
-          <Textarea
-            value={prepNotes}
-            onChange={(event) => setPrepNotes(event.target.value)}
-            placeholder="Research the company, confirm portfolio links, outline stories to share..."
-            className="min-h-[90px]"
-          />
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <NotebookPen className="h-4 w-4" />
-            <span>Post-interview recap</span>
+          <div className="flex min-h-0 flex-1 flex-col space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <NotebookPen className="h-4 w-4" />
+              <span>Post-interview recap</span>
+            </div>
+            <Textarea
+              value={postNotes}
+              onChange={(event) => setPostNotes(event.target.value)}
+              placeholder="Document how the conversation went, follow-up questions, or next steps."
+              className="min-h-0 flex-1 resize-none"
+            />
           </div>
-          <Textarea
-            value={postNotes}
-            onChange={(event) => setPostNotes(event.target.value)}
-            placeholder="Document how the conversation went, follow-up questions, or next steps."
-            className="min-h-[90px]"
-          />
         </div>
         <div className="flex items-center justify-end gap-2">
           <Button
@@ -783,12 +785,52 @@ export default function InterviewsPage() {
                           </div>
                         </div>
 
-                        <div className="min-h-0 flex-1 overflow-y-auto">
-                          <InterviewNotesCard
-                            interview={selectedInterview}
-                            onSave={handleSaveNotes}
-                            pendingId={pendingId}
-                          />
+                        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+                          <div className="grid gap-3 rounded-lg border bg-muted/50 p-3 sm:grid-cols-3 sm:p-4">
+                            <div className="rounded-md border bg-background/60 p-3 shadow-sm">
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Duration
+                              </p>
+                              <p className="text-sm font-semibold text-foreground">
+                                {selectedInterview.duration_minutes
+                                  ? `${selectedInterview.duration_minutes} minutes`
+                                  : "Not set"}
+                              </p>
+                            </div>
+                            <div className="rounded-md border bg-background/60 p-3 shadow-sm">
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Interviewee
+                              </p>
+                              <p className="text-sm font-semibold text-foreground">
+                                {selectedInterview.interviewer_name ?? "Not provided"}
+                              </p>
+                            </div>
+                            <div className="rounded-md border bg-background/60 p-3 shadow-sm">
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Interviewer email
+                              </p>
+                              <p className="text-sm font-semibold text-foreground break-words">
+                                {selectedInterview.interviewer_email ? (
+                                  <a
+                                    href={`mailto:${selectedInterview.interviewer_email}`}
+                                    className="hover:underline"
+                                  >
+                                    {selectedInterview.interviewer_email}
+                                  </a>
+                                ) : (
+                                  "Not provided"
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="min-h-0 flex-1 overflow-y-auto">
+                            <InterviewNotesCard
+                              interview={selectedInterview}
+                              onSave={handleSaveNotes}
+                              pendingId={pendingId}
+                            />
+                          </div>
                         </div>
                       </div>
                     ) : (
