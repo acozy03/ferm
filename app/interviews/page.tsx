@@ -379,14 +379,13 @@ export default function InterviewsPage() {
                 <Plus className="h-4 w-4" />
                 Log interview
               </Button>
-              <DialogContent className="max-w-lg">
+              <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
                 <DialogHeader>
                   <DialogTitle>Log interview</DialogTitle>
-                  <DialogDescription>Attach an interview to a job and capture prep details.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
-                  <div className="space-y-2">
-                    <Label>Job application</Label>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                    <Label className="sm:w-40">Job application</Label>
                     <Select
                       value={formState.job_application_id}
                       onValueChange={(value) => {
@@ -397,6 +396,7 @@ export default function InterviewsPage() {
                     >
                       <SelectTrigger
                         className={cn(
+                          "w-full sm:max-w-xl",
                           formErrors.job_application_id &&
                             "border-destructive focus-visible:ring-destructive",
                         )}
@@ -409,7 +409,7 @@ export default function InterviewsPage() {
                                 : "Select a job"
                         } />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="w-[--radix-select-trigger-width]">
                         {eligibleApplications.length === 0 ? (
                           <SelectItem value="" disabled>
                             No jobs ready for interviews yet
@@ -425,18 +425,18 @@ export default function InterviewsPage() {
                     </Select>
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Interview type</Label>
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                      <Label className="sm:w-40">Interview type</Label>
                       <Select
                         value={formState.interview_type}
                         onValueChange={(value) =>
                           setFormState((prev) => ({ ...prev, interview_type: value as InterviewType }))
                         }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-64">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="w-[--radix-select-trigger-width]">
                           {interviewTypeOptions.map((type) => (
                             <SelectItem key={type} value={type}>
                               {type}
@@ -445,18 +445,18 @@ export default function InterviewsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Status</Label>
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                      <Label className="sm:w-40">Status</Label>
                       <Select
                         value={formState.status}
                         onValueChange={(value) =>
                           setFormState((prev) => ({ ...prev, status: value as InterviewStatus }))
                         }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-64">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="w-[--radix-select-trigger-width]">
                           {interviewStatusOptions.map((status) => (
                             <SelectItem key={status} value={status}>
                               {status}
