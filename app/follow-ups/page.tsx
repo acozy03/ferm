@@ -455,16 +455,7 @@ export default function FollowUpsPage() {
         }}
       >
         <DialogContent className="flex flex-col gap-4 sm:max-w-[420px]">
-          <DialogHeader className="text-center">
-            <DialogTitle>
-              {reminderDialog?.isEnabling ? "Schedule your next reminder" : "Update reminder"}
-            </DialogTitle>
-            <DialogDescription>
-              {reminderDialog
-                ? `Choose when ferm.dev should remind you about ${reminderDialog.application.company_name}.`
-                : ""}
-            </DialogDescription>
-          </DialogHeader>
+        
           <div className="flex flex-1 items-center justify-center">
             <Calendar
               mode="single"

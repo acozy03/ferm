@@ -217,9 +217,7 @@ export function FollowUpDraftDialog({
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Draft a follow-up email</DialogTitle>
-          <DialogDescription>
-            We&rsquo;ll help you compose a concise, friendly message to send to {application.contact_person ?? "the hiring team"}.
-          </DialogDescription>
+        
         </DialogHeader>
         <div className="space-y-3">
           <div className="relative">
@@ -247,9 +245,7 @@ export function FollowUpDraftDialog({
               <span className="sr-only">{hasCopied ? "Draft copied" : "Copy draft"}</span>
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Edit anything you&rsquo;d like before sending it to your recruiter or hiring manager.
-          </p>
+        
         </div>
         <DialogFooter className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
           <span className="text-xs text-muted-foreground">
