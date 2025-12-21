@@ -1,10 +1,9 @@
 "use client"
 
 import { useMemo } from "react"
-import { BellRing, CalendarClock, Calendar } from "lucide-react"
+import { BellRing } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -27,22 +26,29 @@ function computeNextReminder(followUp: ApplicationFollowUp): Date | null {
 type ReminderStatus = "overdue" | "soon" | "scheduled"
 
 type ReminderTheme = {
-  badge: string
+  card: string
+  label: string
   time: string
 }
 
 const reminderThemes: Record<ReminderStatus, ReminderTheme> = {
   overdue: {
-    badge: "border-destructive/40 bg-destructive/10 text-destructive",
+    card:
+      "border-destructive/40 bg-destructive/10 text-destructive/90 shadow-[0_0_0_1px_rgba(239,68,68,0.05)] dark:bg-destructive/5",
+    label: "text-destructive",
     time: "text-destructive",
   },
   soon: {
-    badge: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    time: "text-amber-600 dark:text-amber-400",
+    card:
+      "border-amber-500/40 bg-amber-500/10 text-amber-700/90 shadow-[0_0_0_1px_rgba(245,158,11,0.05)] dark:bg-amber-500/5 dark:text-amber-300",
+    label: "text-amber-700 dark:text-amber-300",
+    time: "text-amber-700 dark:text-amber-300",
   },
   scheduled: {
-    badge: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    time: "text-emerald-600 dark:text-emerald-400",
+    card:
+      "border-emerald-500/30 bg-emerald-500/10 text-emerald-700/90 shadow-[0_0_0_1px_rgba(16,185,129,0.05)] dark:bg-emerald-500/5 dark:text-emerald-300",
+    label: "text-emerald-700 dark:text-emerald-300",
+    time: "text-emerald-700 dark:text-emerald-300",
   },
 }
 
@@ -156,7 +162,13 @@ export function UpcomingReminders() {
                 {reminders.map((reminder) => {
                   const theme = reminderThemes[reminder.status]
                   return (
-                    <div key={reminder.id} className="rounded-lg border bg-card/70 p-4">
+                    <div
+                      key={reminder.id}
+                      className={cn(
+                        "rounded-lg border bg-card/70 p-4 transition-colors",
+                        theme.card,
+                      )}
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium text-card-foreground">
@@ -166,15 +178,12 @@ export function UpcomingReminders() {
                             {reminder.application.position_title}
                           </p>
                         </div>
-                        <Badge variant="outline" className={cn("border", theme.badge)}>
-                          {reminder.countdownLabel}
-                        </Badge>
+                    
                       </div>
 
                       <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                         <div className="flex items-center gap-2">
-                       
-                          <span className="whitespace-nowrap">
+                          <span className={cn("whitespace-nowrap", theme.time)}>
                             {dateFormatter.format(reminder.nextReminder)} at {"9:00 AM EST"}
                           </span>
                         </div>
