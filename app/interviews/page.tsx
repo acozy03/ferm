@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { CalendarClock, CalendarIcon, CheckCircle2, ClipboardPen, NotebookPen, Plus } from "lucide-react"
+import { CalendarClock, CalendarIcon, ClipboardPen, NotebookPen, Plus } from "lucide-react"
 
 import { Header } from "@/components/header"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -68,11 +68,10 @@ const statusClassMap: Record<InterviewStatus, string> = {
 interface InterviewNotesCardProps {
   interview: InterviewWithApplication
   onSave: (id: string, payload: NotesUpdatePayload) => Promise<void>
-  onStatusChange: (id: string, status: InterviewStatus) => Promise<void>
   pendingId: string | null
 }
 
-function InterviewNotesCard({ interview, onSave, onStatusChange, pendingId }: InterviewNotesCardProps) {
+function InterviewNotesCard({ interview, onSave, pendingId }: InterviewNotesCardProps) {
   const [prepNotes, setPrepNotes] = useState(interview.prep_notes ?? "")
   const [postNotes, setPostNotes] = useState(interview.post_interview_notes ?? "")
 
@@ -81,14 +80,6 @@ function InterviewNotesCard({ interview, onSave, onStatusChange, pendingId }: In
     setPostNotes(interview.post_interview_notes ?? "")
   }, [interview.id, interview.post_interview_notes, interview.prep_notes])
 
-  const scheduledDate = new Date(interview.scheduled_date)
-  const formattedDate = Number.isNaN(scheduledDate.getTime())
-    ? "Date unavailable"
-    : format(scheduledDate, "MMM d, yyyy • h:mm a")
-  const relativeTime = Number.isNaN(scheduledDate.getTime())
-    ? ""
-    : formatDistanceToNow(scheduledDate, { addSuffix: true })
-
   const isDirty =
     prepNotes !== (interview.prep_notes ?? "") || postNotes !== (interview.post_interview_notes ?? "")
 
@@ -96,44 +87,6 @@ function InterviewNotesCard({ interview, onSave, onStatusChange, pendingId }: In
 
   return (
     <Card className="shadow-sm border-border/70">
-      <CardHeader className="space-y-1">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              {interview.job_applications?.company_name ?? "Company"}
-            </p>
-            <h3 className="text-lg font-semibold tracking-tight">
-              {interview.job_applications?.position_title ?? "Interview"}
-            </h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select
-              value={interview.status}
-              onValueChange={(value) => onStatusChange(interview.id, value as InterviewStatus)}
-              disabled={isPending}
-            >
-              <SelectTrigger className="w-[140px] text-left">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {interviewStatusOptions.map((status) => (
-                  <SelectItem value={status} key={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Badge variant="outline" className={statusClassMap[interview.status]}>
-              {interview.interview_type}
-            </Badge>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <CalendarClock className="h-4 w-4" />
-          <span>{formattedDate}</span>
-          {relativeTime && <span className="text-xs text-muted-foreground">({relativeTime})</span>}
-        </div>
-      </CardHeader>
       <CardContent className="space-y-5">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
@@ -204,19 +157,6 @@ export default function InterviewsPage() {
   }>({})
   const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
 
-  const upcoming = useMemo(() => {
-    const current = Date.now()
-    return interviews.filter((interview) => {
-      const when = new Date(interview.scheduled_date).getTime()
-      return interview.status === "Scheduled" && when >= current
-    })
-  }, [interviews])
-
-  const completed = useMemo(
-    () => interviews.filter((interview) => interview.status === "Completed"),
-    [interviews],
-  )
-
   const sortedInterviews = useMemo(() => {
     return [...interviews].sort((a, b) => {
       const first = new Date(a.scheduled_date).getTime()
@@ -256,20 +196,38 @@ export default function InterviewsPage() {
     }
   }
 
+  const [searchQuery, setSearchQuery] = useState("")
+
+  const filteredInterviews = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    if (!query) {
+      return sortedInterviews
+    }
+
+    return sortedInterviews.filter((interview) => {
+      const company = interview.job_applications?.company_name?.toLowerCase() ?? ""
+      const title = interview.job_applications?.position_title?.toLowerCase() ?? ""
+      const type = interview.interview_type?.toLowerCase() ?? ""
+
+      return company.includes(query) || title.includes(query) || type.includes(query)
+    })
+  }, [searchQuery, sortedInterviews])
+
   useEffect(() => {
-    if (sortedInterviews.length === 0) {
+    if (filteredInterviews.length === 0) {
       setSelectedInterviewId(null)
       return
     }
 
     setSelectedInterviewId((current) => {
-      if (current && sortedInterviews.some((interview) => interview.id === current)) {
+      if (current && filteredInterviews.some((interview) => interview.id === current)) {
         return current
       }
 
-      return sortedInterviews[0]?.id ?? null
+      return filteredInterviews[0]?.id ?? null
     })
-  }, [sortedInterviews])
+  }, [filteredInterviews])
 
   const handleCreateInterview = async () => {
     const newErrors: typeof formErrors = {}
@@ -404,9 +362,26 @@ export default function InterviewsPage() {
   }
 
   const selectedInterview = useMemo(
-    () => sortedInterviews.find((interview) => interview.id === selectedInterviewId) ?? null,
-    [selectedInterviewId, sortedInterviews],
+    () => filteredInterviews.find((interview) => interview.id === selectedInterviewId) ?? null,
+    [filteredInterviews, selectedInterviewId],
   )
+
+  const selectedInterviewSchedule = useMemo(() => {
+    if (!selectedInterview?.scheduled_date) {
+      return null
+    }
+
+    const scheduledDate = new Date(selectedInterview.scheduled_date)
+
+    if (Number.isNaN(scheduledDate.getTime())) {
+      return null
+    }
+
+    return {
+      formatted: format(scheduledDate, "MMM d, yyyy • h:mm a"),
+      relative: formatDistanceToNow(scheduledDate, { addSuffix: true }),
+    }
+  }, [selectedInterview])
 
   return (
     <div className="flex h-screen flex-col bg-background overflow-hidden">
@@ -414,9 +389,19 @@ export default function InterviewsPage() {
       <main className="flex-1 overflow-hidden px-6 pb-6 pt-24">
         <div className="mx-auto flex h-full max-w-7xl flex-col gap-6">
           <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <CardHeader className="gap-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                
+            <CardHeader className="gap-3 pb-2 sm:pb-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="w-full sm:max-w-md">
+                  <Label htmlFor="interview-search" className="sr-only">
+                    Search interviews
+                  </Label>
+                  <Input
+                    id="interview-search"
+                    placeholder="Search interviews"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                  />
+                </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
                   <Button onClick={() => handleDialogChange(true)} className="gap-2">
@@ -681,6 +666,15 @@ export default function InterviewsPage() {
                     </p>
                   </div>
                 </div>
+              ) : filteredInterviews.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center text-center">
+                  <div className="space-y-2">
+                    <p className="text-lg font-semibold">No matches found</p>
+                    <p className="text-sm text-muted-foreground">
+                      Adjust your search to find a saved interview.
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[360px_1fr]">
                   <div className="flex min-h-0 flex-col rounded-lg border bg-muted/40">
@@ -690,7 +684,7 @@ export default function InterviewsPage() {
                     </div>
                     <ScrollArea className="flex-1">
                       <div className="space-y-3 p-4 pr-2">
-                        {sortedInterviews.map((interview) => {
+                        {filteredInterviews.map((interview) => {
                           const scheduledDate = new Date(interview.scheduled_date)
                           const formattedDate = Number.isNaN(scheduledDate.getTime())
                             ? "Date unavailable"
@@ -744,41 +738,51 @@ export default function InterviewsPage() {
                   <div className="min-h-0 rounded-lg border bg-card p-4 shadow-sm">
                     {selectedInterview ? (
                       <div className="flex h-full flex-col gap-4 overflow-hidden">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm text-muted-foreground">
-                              {selectedInterview.job_applications?.company_name ?? "Company"}
-                            </p>
-                            <h2 className="text-xl font-semibold tracking-tight">
-                              {selectedInterview.job_applications?.position_title ?? "Interview"}
-                            </h2>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                            <CalendarClock className="h-4 w-4" />
+                            {selectedInterviewSchedule ? (
+                              <>
+                                <span>{selectedInterviewSchedule.formatted}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({selectedInterviewSchedule.relative})
+                                </span>
+                              </>
+                            ) : (
+                              <span>Date unavailable</span>
+                            )}
                           </div>
-                          <Badge variant="outline" className={statusClassMap[selectedInterview.status]}>
-                            {selectedInterview.interview_type}
-                          </Badge>
-                        </div>
-
-                        <div className="text-sm text-muted-foreground">
-                          {selectedInterview.scheduled_date ? (
-                            <div className="flex items-center gap-2">
-                              <CalendarClock className="h-4 w-4" />
-                              <span>
-                                {format(new Date(selectedInterview.scheduled_date), "MMM d, yyyy • h:mm a")}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                ({formatDistanceToNow(new Date(selectedInterview.scheduled_date), { addSuffix: true })})
-                              </span>
-                            </div>
-                          ) : (
-                            <p>Date unavailable</p>
-                          )}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Select
+                              value={selectedInterview.status}
+                              onValueChange={(value) =>
+                                handleStatusChange(selectedInterview.id, value as InterviewStatus)
+                              }
+                              disabled={pendingId === selectedInterview.id}
+                            >
+                              <SelectTrigger className="w-[140px] text-left">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {interviewStatusOptions.map((status) => (
+                                  <SelectItem value={status} key={status}>
+                                    {status}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {selectedInterview.interview_type ? (
+                              <Badge variant="outline" className={statusClassMap[selectedInterview.status]}>
+                                {selectedInterview.interview_type}
+                              </Badge>
+                            ) : null}
+                          </div>
                         </div>
 
                         <div className="min-h-0 flex-1 overflow-y-auto">
                           <InterviewNotesCard
                             interview={selectedInterview}
                             onSave={handleSaveNotes}
-                            onStatusChange={handleStatusChange}
                             pendingId={pendingId}
                           />
                         </div>

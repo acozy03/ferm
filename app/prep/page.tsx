@@ -662,8 +662,8 @@ export default function PrepPage() {
               </div>
             </div>
 
-            <div className="grid h-full overflow-hidden lg:grid-cols-[320px_1fr]">
-              <aside className="flex min-w-0 flex-col gap-4 border-border/60 bg-background/70 p-4 sm:p-6 lg:border-r">
+            <div className="grid h-full min-h-0 overflow-hidden lg:grid-cols-[320px_1fr]">
+              <aside className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto border-border/60 bg-background/70 p-4 sm:p-6 lg:border-r">
                 <div className="space-y-2">
            
                   <Select
@@ -802,11 +802,11 @@ export default function PrepPage() {
 
               <div
                 className={cn(
-                  "flex h-full flex-col overflow-hidden bg-background",
+                  "flex h-full min-h-0 flex-col overflow-hidden bg-background",
                   isFocusMode && "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70",
                 )}
               >
-                <div className="flex-1 flex min-w-0 flex-col gap-4 p-4 sm:p-6 overflow-hidden">
+                <div className="flex-1 flex min-h-0 min-w-0 flex-col gap-4 p-4 sm:p-6 overflow-hidden">
                   {isFocusMode && (
                     <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/30 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
