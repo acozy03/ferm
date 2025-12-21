@@ -422,7 +422,7 @@ export default function Dashboard() {
             <StatsOverview />
           </div>
 
-          <div className="grid h-full grid-cols-1 gap-6 overflow-hidden lg:grid-cols-[0.95fr_2.05fr]">
+          <div className="grid h-full grid-cols-1 gap-6 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
             <div className="flex flex-col gap-6 overflow-hidden">
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <UpcomingReminders />
@@ -432,7 +432,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-col gap-6 overflow-hidden">
+            <div className="flex min-h-0 flex-col gap-6 overflow-hidden lg:col-span-1">
               <div className="flex min-h-0 flex-1 flex-col gap-4 pb-4">
                   <Tabs
                     value={view}
