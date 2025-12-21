@@ -642,41 +642,28 @@ export default function PrepPage() {
         <Card className="overflow-hidden border-border/70 shadow-xl">
           <div className="grid h-[calc(100vh-12rem)] max-h-[1040px] grid-rows-[auto_1fr]">
             <div className="flex items-center justify-between border-b border-border/60 bg-background/80 px-4 py-3 sm:px-6">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Prep practice</p>
-                <p className="text-sm text-foreground">Get feedback, rehearse answers, and stay in one window.</p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleRestart} disabled={messages.length === 0}>
+                  Restart
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleEndSession} disabled={isSessionEnded}>
+                  <StopCircle className="h-4 w-4 mr-1" />
+                  End
+                </Button>
               </div>
-              <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-                {isSessionEnded ? "Session ended" : isGenerating ? "Prep is replying" : "Ready for your answer"}
-                <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.18)]" />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={isFocusMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsFocusMode((previous) => !previous)}
+                >
+                  {isFocusMode ? "Focus mode on" : "Focus mode"}
+                </Button>
               </div>
             </div>
 
             <div className="grid h-full overflow-hidden lg:grid-cols-[320px_1fr]">
               <aside className="flex flex-col gap-4 border-border/60 bg-background/70 p-4 sm:p-6 lg:border-r">
-                <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/40 p-3">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Focus mode</p>
-                  </div>
-                  <Switch checked={isFocusMode} onCheckedChange={setIsFocusMode} id="focus-toggle" />
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={handleRestart} disabled={messages.length === 0} className="flex-1">
-                    Restart
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleEndSession}
-                    disabled={isSessionEnded}
-                    className="flex-1"
-                  >
-                    <StopCircle className="h-4 w-4 mr-1" />
-                    End
-                  </Button>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="role-select">Job application</Label>
                   <Select
