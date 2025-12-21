@@ -71,7 +71,7 @@ export function ActivityTimeline() {
         trigger={
           <button
             type="button"
-            className="flex w-full items-start gap-3 rounded-lg border border-transparent p-3 text-left transition hover:border-border hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex w-full items-start gap-3 rounded-lg border border-border/60 bg-card/70 p-3 text-left transition hover:border-border hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <div className={`mt-1 ${colorClass}`}>
               <Icon className="h-4 w-4" />
