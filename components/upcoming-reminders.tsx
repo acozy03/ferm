@@ -34,21 +34,21 @@ type ReminderTheme = {
 const reminderThemes: Record<ReminderStatus, ReminderTheme> = {
   overdue: {
     card:
-      "border-destructive/40 bg-destructive/10 text-destructive/90 shadow-[0_0_0_1px_rgba(239,68,68,0.05)] dark:bg-destructive/5",
-    label: "text-destructive",
-    time: "text-destructive",
+      "text-destructive/80 shadow-none  dark:text-destructive/70",
+    label: "text-destructive dark:text-destructive/80",
+    time: "text-destructive dark:text-destructive/80",
   },
   soon: {
     card:
-      "border-amber-500/40 bg-amber-500/10 text-amber-700/90 shadow-[0_0_0_1px_rgba(245,158,11,0.05)] dark:bg-amber-500/5 dark:text-amber-300",
-    label: "text-amber-700 dark:text-amber-300",
-    time: "text-amber-700 dark:text-amber-300",
+      "  text-amber-800/80 shadow-none  dark:text-amber-200/80",
+    label: "text-amber-800 dark:text-amber-200",
+    time: "text-amber-800 dark:text-amber-200",
   },
   scheduled: {
     card:
-      "border-emerald-500/30 bg-emerald-500/10 text-emerald-700/90 shadow-[0_0_0_1px_rgba(16,185,129,0.05)] dark:bg-emerald-500/5 dark:text-emerald-300",
-    label: "text-emerald-700 dark:text-emerald-300",
-    time: "text-emerald-700 dark:text-emerald-300",
+      " text-emerald-800/80 shadow-none  dark:text-emerald-200/80",
+    label: "text-emerald-800 dark:text-emerald-200",
+    time: "text-emerald-800 dark:text-emerald-200",
   },
 }
 

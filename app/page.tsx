@@ -743,49 +743,51 @@ export default function Dashboard() {
                                             </p>
                                           </div>
 
-                                          <div className="flex items-center gap-2">
-                                            <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
-                                              {formatStatusLabel(application.status)}
-                                            </Badge>
-
-                                            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
-                                              <JobScoreIndicator
-                                                score={application.resume_match_score ?? null}
-                                                createdAt={application.created_at}
-                                                size={48}
-                                                showDescription={false}
-                                              />
-                                              <ApplicationActionsMenu
-                                                application={application}
-                                                onStatusUpdate={(status, note) =>
-                                                  handleStatusChange(application.id, status, note)
-                                                }
-                                                onApplicationUpdate={handleApplicationUpdate}
-                                              />
-                                            </div>
+                                          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
+                                            <JobScoreIndicator
+                                              score={application.resume_match_score ?? null}
+                                              createdAt={application.created_at}
+                                              size={48}
+                                              showDescription={false}
+                                            />
+                                            <ApplicationActionsMenu
+                                              application={application}
+                                              onStatusUpdate={(status, note) =>
+                                                handleStatusChange(application.id, status, note)
+                                              }
+                                              onApplicationUpdate={handleApplicationUpdate}
+                                            />
                                           </div>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                          <span>Applied {formatApplicationDate(application.application_date)}</span>
-                                          <span>•</span>
-                                          <span>{formatDaysSinceApplied(application.application_date)}</span>
-                                          {application.location && (
-                                            <>
-                                              <span>•</span>
-                                              <span
-                                                className="inline-block max-w-[14rem] truncate"
-                                                title={application.location}
-                                              >
-                                                {application.location}
-                                              </span>
-                                            </>
-                                          )}
                                         </div>
                                         {application.notes && (
                                           <p className="line-clamp-3 break-words text-sm text-muted-foreground">
                                             {application.notes}
                                           </p>
                                         )}
+                                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+                                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                            <span>Applied {formatApplicationDate(application.application_date)}</span>
+                                            <span>•</span>
+                                            <span>{formatDaysSinceApplied(application.application_date)}</span>
+                                            {application.location && (
+                                              <>
+                                                <span>•</span>
+                                                <span
+                                                  className="inline-block max-w-[14rem] truncate"
+                                                  title={application.location}
+                                                >
+                                                  {application.location}
+                                                </span>
+                                              </>
+                                            )}
+                                          </div>
+                                          <Badge
+                                            variant="outline"
+                                            className={cn("shrink-0", getStatusBadgeClass(application.status))}
+                                          >
+                                            {formatStatusLabel(application.status)}
+                                          </Badge>
+                                        </div>
                                       </div>
                                     </div>
                                   )
