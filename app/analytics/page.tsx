@@ -317,7 +317,7 @@ export default function AnalyticsPage() {
             <Card>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-muted-foreground">Application journey</p>
+                  <p className="text-sm font-medium text-muted-foreground">Job Hunt Journey</p>
                   <Button
                     onClick={handleExportSankey}
                     variant="outline"
@@ -395,7 +395,7 @@ export default function AnalyticsPage() {
             <Card>
               <CardContent>
                 <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm font-medium text-muted-foreground">Application activity</p>
+                  <p className="text-sm font-medium text-muted-foreground">Application Activity</p>
                 </div>
                 {appsLoading ? (
                   <div className="space-y-2">
@@ -482,7 +482,7 @@ export default function AnalyticsPage() {
                         </div>
                         <span>More</span>
                       </div>
-                      <p className="text-muted-foreground">
+                      <p className="text-muted-foreground flex justify-end">
                         {hasActivityData
                           ? `${applications.length} application${applications.length === 1 ? "" : "s"} added in the last 52 weeks`
                           : "No applications tracked in the past year yet."}
