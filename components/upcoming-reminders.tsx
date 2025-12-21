@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { BellRing, CalendarClock } from "lucide-react"
+import { BellRing, CalendarClock, Calendar } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -98,11 +98,11 @@ export function UpcomingReminders() {
           countdownLabel =
             overdueDays === 1 ? "Overdue by 1 day" : `Overdue by ${overdueDays} days`
         } else if (difference <= dayMs) {
-          countdownLabel = "<24hrs remaining"
+          countdownLabel = "in <24hrs"
         } else {
           const daysLeft = Math.ceil(remainingDays)
           countdownLabel =
-            daysLeft === 1 ? "1 day remaining" : `${daysLeft} days remaining`
+            daysLeft === 1 ? "in 1 day" : `in ${daysLeft} days`
         }
 
         return {
@@ -173,8 +173,8 @@ export function UpcomingReminders() {
 
                       <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                         <div className="flex items-center gap-2">
-                          <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span>
+                       
+                          <span className="whitespace-nowrap">
                             {dateFormatter.format(reminder.nextReminder)} at {"9:00 AM EST"}
                           </span>
                         </div>
