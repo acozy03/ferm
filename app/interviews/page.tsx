@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { CalendarClock, CalendarIcon, ClipboardPen, NotebookPen, Plus, Search } from "lucide-react"
+import {
+  CalendarClock,
+  CalendarIcon,
+  ChevronDown,
+  ClipboardPen,
+  NotebookPen,
+  Plus,
+  Search,
+} from "lucide-react"
 
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -141,6 +149,7 @@ export default function InterviewsPage() {
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
   const [formState, setFormState] = useState({
     job_application_id: "",
+    interview_round: "1",
     interview_type: interviewTypeOptions[0],
     duration_minutes: "60",
     interviewer_name: "",
@@ -156,8 +165,10 @@ export default function InterviewsPage() {
   const [formErrors, setFormErrors] = useState<{
     job_application_id?: string
     scheduled_date?: string
+    interview_round?: string
   }>({})
   const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const sortedInterviews = useMemo(() => {
     return [...interviews].sort((a, b) => {
@@ -177,11 +188,37 @@ export default function InterviewsPage() {
     })
   }, [applications])
 
+  const selectedApplication = useMemo(
+    () => eligibleApplications.find((application) => application.id === formState.job_application_id),
+    [eligibleApplications, formState.job_application_id],
+  )
+
+  const selectedApplicationRoundCap = useMemo(() => {
+    if (!selectedApplication) return null
+
+    return getStatusRound(selectedApplication.status) ?? null
+  }, [selectedApplication])
+
+  useEffect(() => {
+    if (!selectedApplication) {
+      setFormState((prev) => ({ ...prev, interview_round: "1" }))
+      return
+    }
+
+    const nextRound = Math.min(
+      (selectedApplication.interviews?.length ?? 0) + 1,
+      selectedApplicationRoundCap ?? (selectedApplication.interviews?.length ?? 0) + 1,
+    )
+
+    setFormState((prev) => ({ ...prev, interview_round: String(nextRound) }))
+  }, [selectedApplication, selectedApplicationRoundCap])
+
   const handleDialogChange = (open: boolean) => {
     setIsDialogOpen(open)
     if (!open) {
       setFormState({
         job_application_id: "",
+        interview_round: "1",
         interview_type: interviewTypeOptions[0],
         duration_minutes: "60",
         interviewer_name: "",
@@ -216,6 +253,62 @@ export default function InterviewsPage() {
     })
   }, [searchQuery, sortedInterviews])
 
+  const groupedInterviews = useMemo(() => {
+    const order: string[] = []
+    const groups = new Map<
+      string,
+      {
+        id: string
+        company: string
+        position: string
+        interviews: InterviewWithApplication[]
+      }
+    >()
+
+    filteredInterviews.forEach((interview) => {
+      const groupId = interview.job_application_id || "unknown"
+      if (!groups.has(groupId)) {
+        order.push(groupId)
+        groups.set(groupId, {
+          id: groupId,
+          company: interview.job_applications?.company_name ?? "Company",
+          position: interview.job_applications?.position_title ?? "Interview",
+          interviews: [],
+        })
+      }
+
+      const group = groups.get(groupId)
+      if (group) {
+        group.interviews.push(interview)
+      }
+    })
+    return order.map((id) => groups.get(id)!)
+  }, [filteredInterviews])
+
+  useEffect(() => {
+    setExpandedGroups((previous) => {
+      const next = { ...previous }
+      let changed = false
+      const validIds = new Set(groupedInterviews.map((group) => group.id))
+
+      groupedInterviews.forEach((group) => {
+        if (next[group.id] === undefined) {
+          next[group.id] = true
+          changed = true
+        }
+      })
+
+      Object.keys(next).forEach((id) => {
+        if (!validIds.has(id)) {
+          delete next[id]
+          changed = true
+        }
+      })
+
+      return changed ? next : previous
+    })
+  }, [groupedInterviews])
+
   useEffect(() => {
     if (filteredInterviews.length === 0) {
       setSelectedInterviewId(null)
@@ -236,6 +329,13 @@ export default function InterviewsPage() {
 
     if (!formState.job_application_id) {
       newErrors.job_application_id = "Select a job"
+    }
+
+    const parsedRound = Number(formState.interview_round)
+    if (!Number.isFinite(parsedRound) || parsedRound < 1) {
+      newErrors.interview_round = "Enter a valid round"
+    } else if (selectedApplicationRoundCap && parsedRound > selectedApplicationRoundCap) {
+      newErrors.interview_round = `Round must be ${selectedApplicationRoundCap} or below`
     }
 
     if (!scheduledDate || !scheduledTime.trim()) {
@@ -281,8 +381,12 @@ export default function InterviewsPage() {
 
     setIsSubmitting(true)
     try {
+      const cappedRound = Number.isFinite(parsedRound)
+        ? Math.min(parsedRound, selectedApplicationRoundCap ?? parsedRound)
+        : undefined
       const payload = {
         ...formState,
+        interview_round: cappedRound,
         scheduled_date: scheduledDateTime.toISOString(),
         duration_minutes: Number(formState.duration_minutes) || 60,
         notes: formState.notes.trim() || undefined,
@@ -486,7 +590,7 @@ export default function InterviewsPage() {
                           </Select>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_140px]">
                         <div className="space-y-2">
                           <Label>Status</Label>
                           <Select
@@ -517,6 +621,27 @@ export default function InterviewsPage() {
                               setFormState((prev) => ({ ...prev, duration_minutes: event.target.value }))
                             }
                           />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <Label>Round *</Label>
+                            {selectedApplicationRoundCap ? (
+                              <span className="text-xs text-muted-foreground">Max {selectedApplicationRoundCap}</span>
+                            ) : null}
+                          </div>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={selectedApplicationRoundCap ?? undefined}
+                            value={formState.interview_round}
+                            onChange={(event) => {
+                              setFormState((prev) => ({ ...prev, interview_round: event.target.value }))
+                              setFormErrors((prev) => ({ ...prev, interview_round: undefined }))
+                            }}
+                          />
+                          {formErrors.interview_round ? (
+                            <p className="text-sm text-destructive">{formErrors.interview_round}</p>
+                          ) : null}
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -684,50 +809,87 @@ export default function InterviewsPage() {
               ) : (
                 <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[360px_1fr]">
                   <div className="flex min-h-0 flex-col rounded-lg border bg-muted/40">
-                    
+
                     <ScrollArea className="flex-1">
                       <div className="space-y-3 p-4 pr-2">
-                        {filteredInterviews.map((interview) => {
-                          const scheduledDate = new Date(interview.scheduled_date)
-                          const formattedDate = Number.isNaN(scheduledDate.getTime())
-                            ? "Date unavailable"
-                            : format(scheduledDate, "MMM d, yyyy")
-                          const timeLabel = Number.isNaN(scheduledDate.getTime())
-                            ? ""
-                            : format(scheduledDate, "h:mm a")
+                        {groupedInterviews.map((group) => {
+                          const isExpanded = expandedGroups[group.id] ?? true
 
                           return (
-                            <button
-                              key={interview.id}
-                              type="button"
-                              onClick={() => setSelectedInterviewId(interview.id)}
-                              className={cn(
-                                "w-full rounded-lg border p-3 text-left transition",
-                                selectedInterviewId === interview.id
-                                  ? "border-primary bg-primary/5 shadow-sm"
-                                  : "border-border/70 bg-card hover:border-primary/40",
-                              )}
-                            >
-                              <div className="flex items-start justify-between gap-3">
+                            <div key={group.id} className="rounded-lg border bg-card shadow-sm">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedGroups((previous) => ({
+                                    ...previous,
+                                    [group.id]: !isExpanded,
+                                  }))
+                                }
+                                className="flex w-full items-start justify-between gap-3 rounded-lg p-3 text-left"
+                              >
                                 <div className="space-y-1">
                                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                    {interview.job_applications?.company_name ?? "Company"}
+                                    {group.company}
                                   </p>
-                                  <p className="text-sm font-semibold leading-tight">
-                                    {interview.job_applications?.position_title ?? "Interview"}
+                                  <p className="text-sm font-semibold leading-tight">{group.position}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {group.interviews.length} interview{group.interviews.length === 1 ? "" : "s"}
                                   </p>
                                 </div>
-                                <Badge variant="outline" className={statusClassMap[interview.status]}>
-                                  {interview.status}
-                                </Badge>
-                              </div>
-                              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <CalendarClock className="h-3.5 w-3.5" />
-                                <span>{formattedDate}</span>
-                                {timeLabel ? <span>• {timeLabel}</span> : null}
-                           
-                              </div>
-                            </button>
+                                <ChevronDown
+                                  className={cn(
+                                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                                    isExpanded ? "rotate-180" : "rotate-0",
+                                  )}
+                                />
+                              </button>
+                              {isExpanded ? (
+                                <div className="space-y-2 border-t bg-muted/40 p-3">
+                                  {group.interviews.map((interview) => {
+                                    const scheduledDate = new Date(interview.scheduled_date)
+                                    const formattedDate = Number.isNaN(scheduledDate.getTime())
+                                      ? "Date unavailable"
+                                      : format(scheduledDate, "MMM d, yyyy")
+                                    const timeLabel = Number.isNaN(scheduledDate.getTime())
+                                      ? ""
+                                      : format(scheduledDate, "h:mm a")
+
+                                    return (
+                                      <button
+                                        key={interview.id}
+                                        type="button"
+                                        onClick={() => setSelectedInterviewId(interview.id)}
+                                        className={cn(
+                                          "w-full rounded-lg border bg-background p-3 text-left transition",
+                                          selectedInterviewId === interview.id
+                                            ? "border-primary bg-primary/5 shadow-sm"
+                                            : "border-border/70 hover:border-primary/40",
+                                        )}
+                                      >
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="space-y-1">
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                              Round {interview.interview_round ?? "—"}
+                                            </p>
+                                            <p className="text-sm font-semibold leading-tight">
+                                              {interview.interview_type ?? "Interview"}
+                                            </p>
+                                          </div>
+                                          <Badge variant="outline" className={statusClassMap[interview.status]}>
+                                            {interview.status}
+                                          </Badge>
+                                        </div>
+                                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                          <CalendarClock className="h-3.5 w-3.5" />
+                                          <span>{formattedDate}</span>
+                                          {timeLabel ? <span>• {timeLabel}</span> : null}
+                                        </div>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              ) : null}
+                            </div>
                           )
                         })}
                       </div>
@@ -786,7 +948,17 @@ export default function InterviewsPage() {
                         </div>
 
                         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-                          <div className="grid gap-3 rounded-lg border bg-muted/50 p-3 sm:grid-cols-3 sm:p-4">
+                          <div className="grid gap-3 rounded-lg border bg-muted/50 p-3 sm:grid-cols-4 sm:p-4">
+                            <div className="rounded-md border bg-background/60 p-3 shadow-sm">
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Round
+                              </p>
+                              <p className="text-sm font-semibold text-foreground">
+                                {selectedInterview.interview_round
+                                  ? `Round ${selectedInterview.interview_round}`
+                                  : "Not set"}
+                              </p>
+                            </div>
                             <div className="rounded-md border bg-background/60 p-3 shadow-sm">
                               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                                 Duration

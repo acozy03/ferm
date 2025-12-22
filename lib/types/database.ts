@@ -61,6 +61,7 @@ export interface Interview {
   id: string
   user_id: string
   job_application_id: string
+  interview_round: number
   interview_type: InterviewType
   scheduled_date: string
   duration_minutes: number
@@ -151,6 +152,7 @@ export interface UpdateJobApplicationData extends Partial<CreateJobApplicationDa
 
 export interface CreateInterviewData {
   job_application_id: string
+  interview_round?: number
   interview_type: InterviewType
   scheduled_date: string
   duration_minutes?: number
