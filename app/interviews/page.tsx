@@ -421,7 +421,7 @@ export default function InterviewsPage() {
                     <div className="space-y-4 py-2">
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <Label>Job application</Label>
+                          <Label>Job application *</Label>
                           <Select
                             value={formState.job_application_id}
                             onValueChange={(value) => {
@@ -520,7 +520,7 @@ export default function InterviewsPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Scheduled for</Label>
+                        <Label>Scheduled for *</Label>
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                           <Popover>
                             <PopoverTrigger asChild>
