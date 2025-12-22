@@ -328,11 +328,17 @@ export default function Dashboard() {
   }
 
   const handleSelectApplication = (id: string, selected: boolean) => {
-    if (selected) {
-      setSelectedApplications([...selectedApplications, id])
-    } else {
-      setSelectedApplications(selectedApplications.filter((appId) => appId !== id))
-    }
+    setSelectedApplications((previous) => {
+      if (selected) {
+        if (previous.includes(id)) {
+          return previous
+        }
+
+        return [...previous, id]
+      }
+
+      return previous.filter((appId) => appId !== id)
+    })
   }
 
   const handleBulkStatusUpdate = async (status: string) => {

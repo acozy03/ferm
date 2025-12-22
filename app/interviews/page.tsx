@@ -684,10 +684,7 @@ export default function InterviewsPage() {
               ) : (
                 <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[360px_1fr]">
                   <div className="flex min-h-0 flex-col rounded-lg border bg-muted/40">
-                    <div className="border-b px-4 py-3">
-                      <p className="text-sm font-medium">All interviews</p>
-                      <p className="text-xs text-muted-foreground">Tap a row to view prep and notes.</p>
-                    </div>
+                    
                     <ScrollArea className="flex-1">
                       <div className="space-y-3 p-4 pr-2">
                         {filteredInterviews.map((interview) => {
@@ -728,11 +725,7 @@ export default function InterviewsPage() {
                                 <CalendarClock className="h-3.5 w-3.5" />
                                 <span>{formattedDate}</span>
                                 {timeLabel ? <span>• {timeLabel}</span> : null}
-                                {interview.interview_type ? (
-                                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
-                                    {interview.interview_type}
-                                  </span>
-                                ) : null}
+                           
                               </div>
                             </button>
                           )
@@ -759,6 +752,11 @@ export default function InterviewsPage() {
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
+                             {selectedInterview.interview_type ? (
+                              <Badge variant="outline" className={statusClassMap[selectedInterview.status]}>
+                                {selectedInterview.interview_type}
+                              </Badge>
+                            ) : null}
                             <Select
                               value={selectedInterview.status}
                               onValueChange={(value) =>
@@ -777,11 +775,7 @@ export default function InterviewsPage() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            {selectedInterview.interview_type ? (
-                              <Badge variant="outline" className={statusClassMap[selectedInterview.status]}>
-                                {selectedInterview.interview_type}
-                              </Badge>
-                            ) : null}
+                           
                           </div>
                         </div>
 
@@ -799,7 +793,7 @@ export default function InterviewsPage() {
                             </div>
                             <div className="rounded-md border bg-background/60 p-3 shadow-sm">
                               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Interviewee
+                                Interviewer
                               </p>
                               <p className="text-sm font-semibold text-foreground">
                                 {selectedInterview.interviewer_name ?? "Not provided"}
