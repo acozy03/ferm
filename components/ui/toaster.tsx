@@ -1,6 +1,8 @@
 'use client'
 
-import { useToast } from '@/hooks/use-toast'
+import { useEffect } from 'react'
+
+import { useToast } from '@/components/ui/use-toast'
 import {
   Toast,
   ToastClose,
@@ -12,6 +14,16 @@ import {
 
 export function Toaster() {
   const { toasts } = useToast()
+
+  useEffect(() => {
+    console.info('[toast] Toaster provider mounted')
+  }, [])
+
+  useEffect(() => {
+    if (toasts.length > 0) {
+      console.info(`[toast] active toast count: ${toasts.length}`)
+    }
+  }, [toasts.length])
 
   return (
     <ToastProvider>

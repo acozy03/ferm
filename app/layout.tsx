@@ -6,6 +6,7 @@ import { Suspense } from "react"
 import "./globals.css"
 import { MinimalScrollRail } from "@/components/minimal-scroll-rail"
 import { Providers } from "./providers"
+import { Toaster } from "@/components/ui/toaster"
 
 const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body className={`font-sans ${jetBrainsMono.variable} antialiased`}>
         <Providers>
           <Suspense fallback={null}>{children}</Suspense>
+          <Toaster />
         </Providers>
         <MinimalScrollRail />
         <Analytics />
