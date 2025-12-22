@@ -275,7 +275,7 @@ export default function FollowUpsPage() {
         <div className="mx-auto flex h-full max-w-7xl flex-col space-y-8 overflow-hidden">
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <CardHeader className="gap-4">
+              <CardHeader className="gap-3">
               
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="relative w-full sm:max-w-sm">
