@@ -632,10 +632,12 @@ export default function Dashboard() {
                                             </p>
                                           </div>
                                         </TableCell>
-                                        <TableCell className="w-[190px] flex justify-center">
-                                          <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
+                                        <TableCell className="w-[190px] align-middle">
+                                          <div>
+                                            <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
                                             {formatStatusLabel(application.status)}
                                           </Badge>
+                                          </div>
                                         </TableCell>
                                         <TableCell className="text-justify">
                                           <div className="flex justify-end">

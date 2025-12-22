@@ -133,7 +133,10 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <Badge className={`${getStatusBadgeClass(application.status)} shrink-0`} variant="outline">
+            <Badge
+              className={`${getStatusBadgeClass(application.status)} shrink-0 h-8 px-3 text-sm`}
+              variant="outline"
+            >
               {formatStatusLabel(application.status)}
             </Badge>
             <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
