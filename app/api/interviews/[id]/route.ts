@@ -29,9 +29,69 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     delete (updates as { id?: string }).id
     delete (updates as { user_id?: string }).user_id
 
+    const { data: currentInterview, error: currentError } = await supabase
+      .from("interviews")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single()
+
+    if (currentError) {
+      const status = currentError.code === "PGRST116" ? 404 : 500
+      const message = currentError.code === "PGRST116" ? "Interview not found" : currentError.message
+      return NextResponse.json({ error: message }, { status })
+    }
+
+    const mergedInterview = { ...currentInterview, ...updates }
+    const parsedRound = Number.isFinite(Number(mergedInterview.interview_round))
+      ? Math.max(1, Number(mergedInterview.interview_round))
+      : null
+    const scheduledDate = mergedInterview.scheduled_date
+      ? new Date(mergedInterview.scheduled_date)
+      : null
+
+    if (!parsedRound) {
+      return NextResponse.json({ error: "Invalid interview round" }, { status: 400 })
+    }
+
+    if (!scheduledDate || Number.isNaN(scheduledDate.getTime())) {
+      return NextResponse.json({ error: "Invalid scheduled date" }, { status: 400 })
+    }
+
+    const { data: relatedInterviews, error: relatedError } = await supabase
+      .from("interviews")
+      .select("id, interview_round, scheduled_date")
+      .eq("user_id", user.id)
+      .eq("job_application_id", mergedInterview.job_application_id)
+      .neq("id", id)
+
+    if (relatedError) {
+      return NextResponse.json({ error: relatedError.message }, { status: 500 })
+    }
+
+    if (relatedInterviews?.some((interview) => interview.interview_round === parsedRound)) {
+      return NextResponse.json({ error: `Interview round ${parsedRound} already exists` }, { status: 400 })
+    }
+
+    const previousInterview = relatedInterviews
+      ?.filter((interview) =>
+        typeof interview.interview_round === "number" && interview.interview_round < parsedRound,
+      )
+      .sort((a, b) => (b.interview_round ?? 0) - (a.interview_round ?? 0))[0]
+
+    if (previousInterview) {
+      const previousDate = new Date(previousInterview.scheduled_date)
+      if (!Number.isNaN(previousDate.getTime()) && scheduledDate <= previousDate) {
+        return NextResponse.json(
+          { error: "Scheduled time must be after the previous interview" },
+          { status: 400 },
+        )
+      }
+    }
+
     const { data, error } = await supabase
       .from("interviews")
-      .update(updates)
+      .update({ ...updates, interview_round: parsedRound, scheduled_date: scheduledDate.toISOString() })
       .eq("id", id)
       .eq("user_id", user.id)
       .select(`

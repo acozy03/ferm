@@ -76,11 +76,53 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
     const body: CreateInterviewData = await request.json()
+
+    const parsedRound = Number.isFinite(Number(body.interview_round))
+      ? Math.max(1, Number(body.interview_round))
+      : 1
+    const scheduledDate = new Date(body.scheduled_date)
+
+    if (Number.isNaN(scheduledDate.getTime())) {
+      return NextResponse.json({ error: "Invalid scheduled date" }, { status: 400 })
+    }
+
+    const { data: existingInterviews, error: existingError } = await supabase
+      .from("interviews")
+      .select("id, interview_round, scheduled_date")
+      .eq("user_id", user.id)
+      .eq("job_application_id", body.job_application_id)
+
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 500 })
+    }
+
+    if (existingInterviews?.some((interview) => interview.interview_round === parsedRound)) {
+      return NextResponse.json({ error: `Interview round ${parsedRound} already exists` }, { status: 400 })
+    }
+
+    const previousInterview = existingInterviews
+      ?.filter((interview) =>
+        typeof interview.interview_round === "number" && interview.interview_round < parsedRound,
+      )
+      .sort((a, b) => (b.interview_round ?? 0) - (a.interview_round ?? 0))[0]
+
+    if (previousInterview) {
+      const previousDate = new Date(previousInterview.scheduled_date)
+      if (!Number.isNaN(previousDate.getTime()) && scheduledDate <= previousDate) {
+        return NextResponse.json(
+          { error: "Scheduled time must be after the previous interview" },
+          { status: 400 },
+        )
+      }
+    }
 
     const { data, error } = await supabase
       .from("interviews")
-      .insert([{ ...body, user_id: user.id }])
+      .insert([
+        { ...body, interview_round: parsedRound, scheduled_date: scheduledDate.toISOString(), user_id: user.id },
+      ])
       .select()
       .single()
 

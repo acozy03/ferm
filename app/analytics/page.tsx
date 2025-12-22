@@ -527,25 +527,27 @@ export default function AnalyticsPage() {
         </div>
       </main>
       <Dialog open={!!selectedDay} onOpenChange={(isOpen) => !isOpen && setSelectedDay(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Applications on {selectedDayLabel}</DialogTitle>
             <DialogDescription>Review the roles you added to your tracker on this date.</DialogDescription>
           </DialogHeader>
           {selectedDay ? (
             selectedDay.applications.length ? (
-              <div className="space-y-3">
-                {selectedDay.applications.map((application) => {
-                  const status = parseStatus(application.status)
-                  return (
-                    <div key={application.id} className="rounded-md border bg-muted/30 p-3">
-                      <p className="text-sm font-medium text-foreground">{application.position_title}</p>
-                      <p className="text-sm text-muted-foreground">{application.company_name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Status: {status.label}</p>
-                    </div>
-                  )
-                })}
-              </div>
+              <ScrollArea className="max-h-[60vh] pr-4">
+                <div className="space-y-3">
+                  {selectedDay.applications.map((application) => {
+                    const status = parseStatus(application.status)
+                    return (
+                      <div key={application.id} className="rounded-md border bg-muted/30 p-3">
+                        <p className="text-sm font-medium text-foreground">{application.position_title}</p>
+                        <p className="text-sm text-muted-foreground">{application.company_name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Status: {status.label}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
             ) : (
               <p className="text-sm text-muted-foreground">No applications were logged on this day.</p>
             )
