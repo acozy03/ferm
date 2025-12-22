@@ -403,17 +403,20 @@ export default function InterviewsPage() {
       })
 
       if (!response.ok) {
-        throw new Error("Failed to create interview")
-      }
+  const data = await response.json().catch(() => null)
+  const message = data?.error || data?.message || `Request failed (${response.status})`
+  throw new Error(message)
+}
 
+      
       toast({ title: "Interview logged", description: "Keep prepping and add notes as you go." })
       handleDialogChange(false)
       await mutate()
     } catch (error) {
       console.error(error)
       toast({
-        title: "Unable to save interview",
-        description: "Please try again.",
+        title: "Unable to create interview",
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       })
     } finally {

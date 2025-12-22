@@ -268,6 +268,15 @@ export default function FollowUpsPage() {
     })
   }, [])
 
+  const disableReminder = useCallback(() => {
+    if (!reminderDialog) {
+      return
+    }
+
+    void updateFollowUp(reminderDialog.application.id, false, null)
+    setReminderDialog(null)
+  }, [reminderDialog, updateFollowUp])
+
   return (
     <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Header />
@@ -471,6 +480,16 @@ export default function FollowUpsPage() {
             />
           </div>
           <DialogFooter className="gap-2">
+            {!reminderDialog?.isEnabling && (
+              <Button
+                variant="ghost"
+                className="mr-auto"
+                onClick={disableReminder}
+                disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+              >
+                Turn off reminders
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setReminderDialog(null)}
