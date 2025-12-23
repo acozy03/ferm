@@ -1116,7 +1116,7 @@ export default function InterviewsPage() {
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            {selectedInterview.interview_type ? (
+                            {/* {selectedInterview.interview_type ? (
                               <Badge
                                 variant="outline"
                                 className={cn(
@@ -1126,41 +1126,22 @@ export default function InterviewsPage() {
                               >
                                 {selectedInterview.interview_type}
                               </Badge>
-                            ) : null}
+                            ) : null} */}
                             <Button
                               variant="secondary"
                               size="sm"
                               onClick={() => handleEditInterview(selectedInterview)}
                             >
-                              <NotebookPen className="mr-2 h-4 w-4" />
-                              Edit
+                              <NotebookPen/>
                             </Button>
-                            <Select
-                              value={selectedInterview.status}
-                              onValueChange={(value) =>
-                                handleStatusChange(selectedInterview.id, value as InterviewStatus)
-                              }
-                              disabled={pendingId === selectedInterview.id}
-                            >
-                              <SelectTrigger className="w-[140px] text-left">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {interviewStatusOptions.map((status) => (
-                                  <SelectItem value={status} key={status}>
-                                    {status}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                        
                             <Button
                               variant="destructive"
                               size="sm"
                               onClick={() => setIsDeleteDialogOpen(true)}
                               disabled={deletingId === selectedInterview.id}
                             >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Delete
+                              <Trash/>
                             </Button>
 
                           </div>
