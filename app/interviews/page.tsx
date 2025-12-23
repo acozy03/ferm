@@ -145,6 +145,8 @@ export default function InterviewsPage() {
     include_interviews: true,
   })
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
   const [formState, setFormState] = useState({
@@ -189,8 +191,8 @@ export default function InterviewsPage() {
   }, [applications])
 
   const selectedApplication = useMemo(
-    () => eligibleApplications.find((application) => application.id === formState.job_application_id),
-    [eligibleApplications, formState.job_application_id],
+    () => applications.find((application) => application.id === formState.job_application_id),
+    [applications, formState.job_application_id],
   )
 
   const selectedApplicationRoundCap = useMemo(() => {
@@ -199,7 +201,14 @@ export default function InterviewsPage() {
     return getStatusRound(selectedApplication.status) ?? null
   }, [selectedApplication])
 
+  const applicationOptions = useMemo(
+    () => (isEditing ? applications : eligibleApplications),
+    [applications, eligibleApplications, isEditing],
+  )
+
   useEffect(() => {
+    if (isEditing) return
+
     if (!selectedApplication) {
       setFormState((prev) => ({ ...prev, interview_round: "1" }))
       return
@@ -211,11 +220,13 @@ export default function InterviewsPage() {
     )
 
     setFormState((prev) => ({ ...prev, interview_round: String(nextRound) }))
-  }, [selectedApplication, selectedApplicationRoundCap])
+  }, [isEditing, selectedApplication, selectedApplicationRoundCap])
 
   const handleDialogChange = (open: boolean) => {
     setIsDialogOpen(open)
     if (!open) {
+      setIsEditing(false)
+      setEditingInterviewId(null)
       setFormState({
         job_application_id: "",
         interview_round: "1",
@@ -233,6 +244,44 @@ export default function InterviewsPage() {
       setFormErrors({})
       setFormErrorMessage(null)
     }
+  }
+
+  const handleOpenCreateDialog = () => {
+    setIsEditing(false)
+    setEditingInterviewId(null)
+    handleDialogChange(true)
+  }
+
+  const handleEditInterview = (interview: InterviewWithApplication) => {
+    const scheduledDateValue = interview.scheduled_date ? new Date(interview.scheduled_date) : undefined
+    const isValidDate = !!(scheduledDateValue && !Number.isNaN(scheduledDateValue.getTime()))
+
+    setIsEditing(true)
+    setEditingInterviewId(interview.id)
+    setFormState({
+      job_application_id: interview.job_application_id ?? "",
+      interview_round: interview.interview_round ? String(interview.interview_round) : "1",
+      interview_type: interview.interview_type ?? interviewTypeOptions[0],
+      duration_minutes: interview.duration_minutes ? String(interview.duration_minutes) : "60",
+      interviewer_name: interview.interviewer_name ?? "",
+      interviewer_email: interview.interviewer_email ?? "",
+      notes: interview.notes ?? "",
+      prep_notes: interview.prep_notes ?? "",
+      post_interview_notes: interview.post_interview_notes ?? "",
+      status: interview.status,
+    })
+    setScheduledDate(isValidDate ? scheduledDateValue : undefined)
+    setScheduledTime(
+      isValidDate
+        ? `${scheduledDateValue.getHours().toString().padStart(2, "0")}:${scheduledDateValue
+            .getMinutes()
+            .toString()
+            .padStart(2, "0")}`
+        : "",
+    )
+    setFormErrors({})
+    setFormErrorMessage(null)
+    handleDialogChange(true)
   }
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -324,7 +373,7 @@ export default function InterviewsPage() {
     })
   }, [filteredInterviews])
 
-  const handleCreateInterview = async () => {
+  const handleSubmitInterview = async () => {
     const newErrors: typeof formErrors = {}
 
     if (!formState.job_application_id) {
@@ -370,7 +419,7 @@ export default function InterviewsPage() {
       (application) => application.id === formState.job_application_id,
     )
 
-    if (!isEligible) {
+    if (!isEditing && !isEligible) {
       toast({
         title: "Update job status first",
         description: "Progress the job to the next interview round before logging it.",
@@ -396,8 +445,12 @@ export default function InterviewsPage() {
         interviewer_email: formState.interviewer_email.trim() || undefined,
       }
 
-      const response = await fetch("/api/interviews", {
-        method: "POST",
+      const isUpdate = isEditing && editingInterviewId
+      const requestUrl = isUpdate ? `/api/interviews/${editingInterviewId}` : "/api/interviews"
+      const requestMethod = isUpdate ? "PUT" : "POST"
+
+      const response = await fetch(requestUrl, {
+        method: requestMethod,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
@@ -408,10 +461,16 @@ export default function InterviewsPage() {
   throw new Error(message)
 }
 
-      
-      toast({ title: "Interview logged", description: "Keep prepping and add notes as you go." })
+
+      toast({
+        title: isEditing ? "Interview updated" : "Interview logged",
+        description: isEditing ? "Details saved." : "Keep prepping and add notes as you go.",
+      })
       handleDialogChange(false)
       await mutate()
+      if (editingInterviewId) {
+        setSelectedInterviewId(editingInterviewId)
+      }
     } catch (error) {
       console.error(error)
       toast({
@@ -517,13 +576,13 @@ export default function InterviewsPage() {
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-                  <Button onClick={() => handleDialogChange(true)} className="gap-2">
+                  <Button onClick={handleOpenCreateDialog} className="gap-2">
                     <Plus className="h-4 w-4" />
                     Log interview
                   </Button>
                   <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
                     <DialogHeader>
-                      <DialogTitle>Log interview</DialogTitle>
+                      <DialogTitle>{isEditing ? "Edit interview" : "Log interview"}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -535,7 +594,7 @@ export default function InterviewsPage() {
                               setFormState((prev) => ({ ...prev, job_application_id: value }))
                               setFormErrors((prev) => ({ ...prev, job_application_id: undefined }))
                             }}
-                            disabled={eligibleApplications.length === 0}
+                            disabled={applicationOptions.length === 0 && !isEditing}
                           >
                             <SelectTrigger
                               className={cn(
@@ -548,19 +607,19 @@ export default function InterviewsPage() {
                                 placeholder={
                                   isLoadingApplications
                                     ? "Loading applications..."
-                                    : eligibleApplications.length === 0
+                                    : applicationOptions.length === 0
                                         ? "Update job statuses to log interviews"
                                         : "Select a job"
                                 }
                               />
                             </SelectTrigger>
                             <SelectContent className="w-[--radix-select-trigger-width]">
-                              {eligibleApplications.length === 0 ? (
+                              {applicationOptions.length === 0 ? (
                                 <SelectItem value="" disabled>
                                   No jobs ready for interviews yet
                                 </SelectItem>
                               ) : (
-                                eligibleApplications.map((application) => (
+                                applicationOptions.map((application) => (
                                   <SelectItem key={application.id} value={application.id}>
                                     {application.company_name} — {application.position_title}
                                   </SelectItem>
@@ -770,8 +829,8 @@ export default function InterviewsPage() {
                       <Button variant="ghost" onClick={() => handleDialogChange(false)}>
                         Cancel
                       </Button>
-                      <Button onClick={handleCreateInterview} disabled={isSubmitting}>
-                        Save interview
+                      <Button onClick={handleSubmitInterview} disabled={isSubmitting}>
+                        {isSubmitting ? "Saving..." : isEditing ? "Save changes" : "Save interview"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -928,6 +987,14 @@ export default function InterviewsPage() {
                                 {selectedInterview.interview_type}
                               </Badge>
                             ) : null}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleEditInterview(selectedInterview)}
+                            >
+                              <NotebookPen className="mr-2 h-4 w-4" />
+                              Edit
+                            </Button>
                             <Select
                               value={selectedInterview.status}
                               onValueChange={(value) =>
