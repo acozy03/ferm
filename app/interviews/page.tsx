@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ClipboardPen,
   NotebookPen,
+  Trash,
   Plus,
   Search,
 } from "lucide-react"
@@ -149,6 +150,8 @@ export default function InterviewsPage() {
   const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [formState, setFormState] = useState({
     job_application_id: "",
     interview_round: "1",
@@ -533,6 +536,39 @@ export default function InterviewsPage() {
     () => filteredInterviews.find((interview) => interview.id === selectedInterviewId) ?? null,
     [filteredInterviews, selectedInterviewId],
   )
+
+  const handleDeleteInterview = async () => {
+    if (!selectedInterview) return
+
+    const interviewId = selectedInterview.id
+
+    const nextSelection = (() => {
+      const currentIndex = filteredInterviews.findIndex((interview) => interview.id === interviewId)
+      if (currentIndex === -1) return null
+
+      return filteredInterviews[currentIndex + 1]?.id ?? filteredInterviews[currentIndex - 1]?.id ?? null
+    })()
+
+    setDeletingId(interviewId)
+
+    try {
+      const response = await fetch(`/api/interviews/${interviewId}`, { method: "DELETE" })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete interview")
+      }
+
+      toast({ title: "Interview deleted" })
+      setSelectedInterviewId(nextSelection)
+      await mutate()
+    } catch (error) {
+      console.error(error)
+      toast({ title: "Unable to delete interview", variant: "destructive" })
+    } finally {
+      setDeletingId(null)
+      setIsDeleteDialogOpen(false)
+    }
+  }
 
   const selectedInterviewSchedule = useMemo(() => {
     if (!selectedInterview?.scheduled_date) {
@@ -1013,7 +1049,16 @@ export default function InterviewsPage() {
                                 ))}
                               </SelectContent>
                             </Select>
-                           
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setIsDeleteDialogOpen(true)}
+                              disabled={deletingId === selectedInterview.id}
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Delete
+                            </Button>
+
                           </div>
                         </div>
 
@@ -1090,6 +1135,32 @@ export default function InterviewsPage() {
               )}
             </CardContent>
           </Card>
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete interview</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                This action cannot be undone. Are you sure you want to delete this interview?
+              </p>
+              <DialogFooter className="gap-2 sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDeleteDialogOpen(false)}
+                  disabled={deletingId === selectedInterview?.id}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteInterview}
+                  disabled={deletingId === selectedInterview?.id || !selectedInterview}
+                >
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
     </div>
