@@ -38,25 +38,28 @@ export function EditApplicationDialog({
   open: controlledOpen,
   onOpenChange,
 }: EditApplicationDialogProps) {
+  const mapApplicationToFormData = (jobApplication: JobApplication) => ({
+    company_name: jobApplication.company_name,
+    position_title: jobApplication.position_title,
+    status: jobApplication.status as JobApplicationStatus, // explicitly type as JobApplicationStatus
+    application_date: jobApplication.application_date.split("T")[0],
+    location: jobApplication.location || "",
+    salary_range: jobApplication.salary_range || "",
+    job_url: jobApplication.job_url || "",
+    contact_person: jobApplication.contact_person || "",
+    contact_email: jobApplication.contact_email || "",
+    notes: jobApplication.notes || "",
+    job_description: jobApplication.job_description || "",
+    qualifications: jobApplication.qualifications || "",
+    job_responsibilities: jobApplication.job_responsibilities || "",
+    employment_type: jobApplication.employment_type as EmploymentType,
+    priority: jobApplication.priority as Priority,
+  })
+
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    company_name: application.company_name,
-    position_title: application.position_title,
-    status: application.status as JobApplicationStatus, // explicitly type as JobApplicationStatus
-    application_date: application.application_date.split("T")[0],
-    location: application.location || "",
-    salary_range: application.salary_range || "",
-    job_url: application.job_url || "",
-    contact_person: application.contact_person || "",
-    contact_email: application.contact_email || "",
-    notes: application.notes || "",
-    job_description: application.job_description || "",
-    qualifications: application.qualifications || "",
-    job_responsibilities: application.job_responsibilities || "",
-    employment_type: application.employment_type as EmploymentType,
-    priority: application.priority as Priority,
-  })
+  const [formData, setFormData] = useState(mapApplicationToFormData(application))
+  const [initialFormData, setInitialFormData] = useState(mapApplicationToFormData(application))
 
   const isControlled = typeof controlledOpen === "boolean" && typeof onOpenChange === "function"
   const dialogOpen = isControlled ? controlledOpen : open
@@ -70,28 +73,20 @@ export function EditApplicationDialog({
 
   useEffect(() => {
     if (dialogOpen) {
-      setFormData({
-        company_name: application.company_name,
-        position_title: application.position_title,
-        status: application.status as JobApplicationStatus, // explicitly type as JobApplicationStatus
-        application_date: application.application_date.split("T")[0],
-        location: application.location || "",
-        salary_range: application.salary_range || "",
-        job_url: application.job_url || "",
-        contact_person: application.contact_person || "",
-        contact_email: application.contact_email || "",
-        notes: application.notes || "",
-        job_description: application.job_description || "",
-        qualifications: application.qualifications || "",
-        job_responsibilities: application.job_responsibilities || "",
-        employment_type: application.employment_type as EmploymentType,
-        priority: application.priority as Priority,
-      })
+      const nextFormData = mapApplicationToFormData(application)
+      setFormData(nextFormData)
+      setInitialFormData(nextFormData)
     }
   }, [dialogOpen, application])
 
+  const hasChanges = Object.keys(formData).some((key) => {
+    const typedKey = key as keyof typeof formData
+    return formData[typedKey] !== initialFormData[typedKey]
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!hasChanges) return
     setIsLoading(true)
 
     try {
@@ -340,7 +335,7 @@ export function EditApplicationDialog({
             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || !hasChanges}>
               {isLoading ? "Updating..." : "Update Application"}
             </Button>
           </div>
