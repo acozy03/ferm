@@ -467,6 +467,10 @@ export default function FollowUpsPage() {
         }}
       >
         <DialogContent className="flex flex-col gap-4 sm:max-w-[420px]" showCloseButton={false}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Set follow-up reminder</DialogTitle>
+          </DialogHeader>
+
           <div className="relative flex flex-1 items-center justify-center">
             <Calendar
               mode="single"
