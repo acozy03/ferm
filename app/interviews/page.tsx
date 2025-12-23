@@ -76,6 +76,38 @@ const statusClassMap: Record<InterviewStatus, string> = {
 
 const scheduledInPastMessage = "Scheduled interviews must use a future date and time."
 
+type InterviewFormState = {
+  job_application_id: string
+  interview_round: string
+  interview_type: InterviewType
+  duration_minutes: string
+  interviewer_name: string
+  interviewer_email: string
+  notes: string
+  prep_notes: string
+  post_interview_notes: string
+  status: InterviewStatus
+}
+
+type FormSnapshot = {
+  formState: InterviewFormState
+  scheduledDate: string | null
+  scheduledTime: string
+}
+
+const createDefaultFormState = (): InterviewFormState => ({
+  job_application_id: "",
+  interview_round: "1",
+  interview_type: interviewTypeOptions[0],
+  duration_minutes: "60",
+  interviewer_name: "",
+  interviewer_email: "",
+  notes: "",
+  prep_notes: "",
+  post_interview_notes: "",
+  status: "Scheduled",
+})
+
 interface InterviewNotesCardProps {
   interview: InterviewWithApplication
   onSave: (id: string, payload: NotesUpdatePayload) => Promise<void>
@@ -158,18 +190,7 @@ export default function InterviewsPage() {
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [formState, setFormState] = useState({
-    job_application_id: "",
-    interview_round: "1",
-    interview_type: interviewTypeOptions[0],
-    duration_minutes: "60",
-    interviewer_name: "",
-    interviewer_email: "",
-    notes: "",
-    prep_notes: "",
-    post_interview_notes: "",
-    status: "Scheduled" as InterviewStatus,
-  })
+  const [formState, setFormState] = useState<InterviewFormState>(createDefaultFormState)
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined)
   const [scheduledTime, setScheduledTime] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -180,6 +201,28 @@ export default function InterviewsPage() {
   }>({})
   const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const [initialFormSnapshot, setInitialFormSnapshot] = useState<FormSnapshot | null>(null)
+
+  const createFormSnapshot = (
+    state: InterviewFormState,
+    date: Date | undefined,
+    time: string,
+  ): FormSnapshot => ({
+    formState: state,
+    scheduledDate: date ? date.toISOString() : null,
+    scheduledTime: time,
+  })
+
+  const resetFormState = () => {
+    const defaults = createDefaultFormState()
+    setFormState(defaults)
+    setScheduledDate(undefined)
+    setScheduledTime("")
+    setFormErrors({})
+    setFormErrorMessage(null)
+
+    return defaults
+  }
 
   const sortedInterviews = useMemo(() => {
     return [...interviews].sort((a, b) => {
@@ -236,29 +279,17 @@ export default function InterviewsPage() {
     if (!open) {
       setIsEditing(false)
       setEditingInterviewId(null)
-      setFormState({
-        job_application_id: "",
-        interview_round: "1",
-        interview_type: interviewTypeOptions[0],
-        duration_minutes: "60",
-        interviewer_name: "",
-        interviewer_email: "",
-        notes: "",
-        prep_notes: "",
-        post_interview_notes: "",
-        status: "Scheduled",
-      })
-      setScheduledDate(undefined)
-      setScheduledTime("")
-      setFormErrors({})
-      setFormErrorMessage(null)
+      resetFormState()
+      setInitialFormSnapshot(null)
     }
   }
 
   const handleOpenCreateDialog = () => {
     setIsEditing(false)
     setEditingInterviewId(null)
-    handleDialogChange(true)
+    const defaults = resetFormState()
+    setInitialFormSnapshot(createFormSnapshot(defaults, undefined, ""))
+    setIsDialogOpen(true)
   }
 
   const handleEditInterview = (interview: InterviewWithApplication) => {
@@ -267,7 +298,7 @@ export default function InterviewsPage() {
 
     setIsEditing(true)
     setEditingInterviewId(interview.id)
-    setFormState({
+    const nextFormState: InterviewFormState = {
       job_application_id: interview.job_application_id ?? "",
       interview_round: interview.interview_round ? String(interview.interview_round) : "1",
       interview_type: interview.interview_type ?? interviewTypeOptions[0],
@@ -278,19 +309,23 @@ export default function InterviewsPage() {
       prep_notes: interview.prep_notes ?? "",
       post_interview_notes: interview.post_interview_notes ?? "",
       status: interview.status,
-    })
-    setScheduledDate(isValidDate ? scheduledDateValue : undefined)
-    setScheduledTime(
+    }
+    const nextScheduledDate = isValidDate ? scheduledDateValue : undefined
+    const nextScheduledTime =
       isValidDate
         ? `${scheduledDateValue.getHours().toString().padStart(2, "0")}:${scheduledDateValue
             .getMinutes()
             .toString()
             .padStart(2, "0")}`
-        : "",
-    )
+        : ""
+
+    setFormState(nextFormState)
+    setScheduledDate(nextScheduledDate)
+    setScheduledTime(nextScheduledTime)
     setFormErrors({})
     setFormErrorMessage(null)
-    handleDialogChange(true)
+    setInitialFormSnapshot(createFormSnapshot(nextFormState, nextScheduledDate, nextScheduledTime))
+    setIsDialogOpen(true)
   }
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -382,7 +417,32 @@ export default function InterviewsPage() {
     })
   }, [filteredInterviews])
 
+  const currentFormSnapshot = useMemo(
+    () => createFormSnapshot(formState, scheduledDate, scheduledTime),
+    [formState, scheduledDate, scheduledTime],
+  )
+
+  const hasChanges = useMemo(() => {
+    if (!initialFormSnapshot) return true
+
+    const formStateEqual = Object.entries(initialFormSnapshot.formState).every(
+      ([key, value]) =>
+        currentFormSnapshot.formState[key as keyof InterviewFormState] ===
+        value,
+    )
+
+    return !(
+      formStateEqual &&
+      initialFormSnapshot.scheduledDate === currentFormSnapshot.scheduledDate &&
+      initialFormSnapshot.scheduledTime === currentFormSnapshot.scheduledTime
+    )
+  }, [currentFormSnapshot, initialFormSnapshot])
+
   const handleSubmitInterview = async () => {
+    if (!hasChanges) {
+      return
+    }
+
     const newErrors: typeof formErrors = {}
 
     if (!formState.job_application_id) {
@@ -909,7 +969,7 @@ export default function InterviewsPage() {
                       <Button variant="ghost" onClick={() => handleDialogChange(false)}>
                         Cancel
                       </Button>
-                      <Button onClick={handleSubmitInterview} disabled={isSubmitting}>
+                      <Button onClick={handleSubmitInterview} disabled={isSubmitting || !hasChanges}>
                         {isSubmitting ? "Saving..." : isEditing ? "Save changes" : "Save interview"}
                       </Button>
                     </DialogFooter>
