@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { ArrowDownAZ, ArrowUpAZ, Search, X } from "lucide-react"
+import { ArrowDownAZ, ArrowUpAZ, Search, RotateCcw} from "lucide-react"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -493,7 +493,7 @@ export default function FollowUpsPage() {
                 disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
                 aria-label="Clear reminder"
               >
-                <X className="size-4" aria-hidden />
+                <RotateCcw className="size-4" aria-hidden />
               </Button>
             )}
 
@@ -503,7 +503,7 @@ export default function FollowUpsPage() {
                 onClick={() => setReminderDialog(null)}
                 disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
               >
-                Cancel
+                Close
               </Button>
 
               <Button
