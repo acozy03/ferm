@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
   SelectContent,
@@ -15,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { CalendarIcon } from "lucide-react"
+import { format, parseISO } from "date-fns"
 import type {
   EmploymentType,
   JobApplication,
@@ -22,6 +26,7 @@ import type {
   Priority,
 } from "@/lib/types/database"
 import { SequentialStatusSelect } from "@/components/status-select"
+import { cn } from "@/lib/utils"
 
 interface EditApplicationDialogProps {
   application: JobApplication
@@ -217,14 +222,33 @@ export function EditApplicationDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="application_date">Application Date</Label>
-              <Input
-                id="application_date"
-                type="date"
-                value={formData.application_date}
-                onChange={(e) => setFormData({ ...formData, application_date: e.target.value })}
-                className="truncate"
-              />
+              <Label>Applied Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal bg-transparent")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.application_date
+                      ? format(parseISO(formData.application_date), "PPP")
+                      : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.application_date ? parseISO(formData.application_date) : undefined}
+                    onSelect={(date) =>
+                      setFormData({
+                        ...formData,
+                        application_date: date ? format(date, "yyyy-MM-dd") : "",
+                      })
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
