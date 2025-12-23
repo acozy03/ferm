@@ -504,7 +504,51 @@ export default function FollowUpsPage() {
   <Button
     onClick={() => {
       if (!reminderDialog) return
-      const iso = dateToLocalISOString(reminderDialog.date)
+      const selectedDate = reminderDialog.date
+      const normalizedSelectedDate =
+        selectedDate
+          ? new Date(
+              selectedDate.getFullYear(),
+              selectedDate.getMonth(),
+              selectedDate.getDate(),
+              0,
+              0,
+              0,
+              0,
+            )
+          : null
+
+      if (!normalizedSelectedDate || Number.isNaN(normalizedSelectedDate.getTime())) {
+        toast({
+          title: "Select a date",
+          description: "Pick when you’d like to be reminded.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      if (normalizedSelectedDate < today) {
+        toast({
+          title: "Choose a future date",
+          description: "Reminders can’t be scheduled in the past",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (normalizedSelectedDate.getTime() === today.getTime()) {
+  toast({
+    title: "Choose a future date",
+    description: "Reminders can’t be scheduled for the same day",
+    variant: "destructive",
+  })
+  return
+}
+
+      const iso = dateToLocalISOString(normalizedSelectedDate)
       if (!iso) {
         toast({
           title: "Select a date",
