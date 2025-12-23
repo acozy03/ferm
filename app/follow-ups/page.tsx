@@ -479,92 +479,94 @@ export default function FollowUpsPage() {
             />
             
           </div>
-       <DialogFooter className="gap-2 sm:flex sm:flex-row sm:items-center">
-  {!reminderDialog?.isEnabling && (
-    <Button
-      variant="outline"
-      size="icon"
-      className="mr-21 border-destructive text-destructive hover:border-destructive/80 hover:bg-destructive/10"
-      onClick={disableReminder}
-      disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
-      aria-label="Clear reminder"
-    >
-      <X className="size-4" aria-hidden />
-    </Button>
-  )}
+ <DialogFooter className="mx-auto flex w-full max-w-[360px] items-center gap-2">
+            {!reminderDialog?.isEnabling && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="border-destructive text-destructive hover:border-destructive/80 hover:bg-destructive/10"
+                onClick={disableReminder}
+                disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+                aria-label="Clear reminder"
+              >
+                <X className="size-4" aria-hidden />
+              </Button>
+            )}
 
-  <Button
-    variant="outline"
-    onClick={() => setReminderDialog(null)}
-    disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
-  >
-    Cancel
-  </Button>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setReminderDialog(null)}
+                disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+              >
+                Cancel
+              </Button>
 
-  <Button
-    onClick={() => {
-      if (!reminderDialog) return
-      const selectedDate = reminderDialog.date
-      const normalizedSelectedDate =
-        selectedDate
-          ? new Date(
-              selectedDate.getFullYear(),
-              selectedDate.getMonth(),
-              selectedDate.getDate(),
-              0,
-              0,
-              0,
-              0,
-            )
-          : null
+              <Button
+                onClick={() => {
+                  if (!reminderDialog) return
+                  const selectedDate = reminderDialog.date
+                  const normalizedSelectedDate =
+                    selectedDate
+                      ? new Date(
+                          selectedDate.getFullYear(),
+                          selectedDate.getMonth(),
+                          selectedDate.getDate(),
+                          0,
+                          0,
+                          0,
+                          0,
+                        )
+                      : null
 
-      if (!normalizedSelectedDate || Number.isNaN(normalizedSelectedDate.getTime())) {
-        toast({
-          title: "Select a date",
-          description: "Pick when you’d like to be reminded.",
-          variant: "destructive",
-        })
-        return
-      }
+                  if (!normalizedSelectedDate || Number.isNaN(normalizedSelectedDate.getTime())) {
+                    toast({
+                      title: "Select a date",
+                      description: "Pick when you’d like to be reminded.",
+                      variant: "destructive",
+                    })
+                    return
+                  }
 
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
 
-      if (normalizedSelectedDate < today) {
-        toast({
-          title: "Choose a future date",
-          description: "Reminders can’t be scheduled in the past",
-          variant: "destructive",
-        })
-        return
-      }
+                  if (normalizedSelectedDate < today) {
+                    toast({
+                      title: "Choose a future date",
+                      description: "Reminders can’t be scheduled in the past",
+                      variant: "destructive",
+                    })
+                    return
+                  }
 
-      if (normalizedSelectedDate.getTime() === today.getTime()) {
-  toast({
-    title: "Choose a future date",
-    description: "Reminders can’t be scheduled for the same day",
-    variant: "destructive",
-  })
-  return
-}
+                  if (normalizedSelectedDate.getTime() === today.getTime()) {
+                    toast({
+                      title: "Choose a future date",
+                      description: "Reminders can’t be scheduled for the same day",
+                      variant: "destructive",
+                    })
+                    return
+                  }
 
-      const iso = dateToLocalISOString(normalizedSelectedDate)
-      if (!iso) {
-        toast({
-          title: "Select a date",
-          description: "Pick when you’d like to be reminded.",
-          variant: "destructive",
-        })
-        return
-      }
-      void updateFollowUp(reminderDialog.application.id, true, iso)
-      setReminderDialog(null)
-    }}
-    disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
-  >
-    Save reminder
-  </Button>
-</DialogFooter>
+                  const iso = dateToLocalISOString(normalizedSelectedDate)
+                  if (!iso) {
+                    toast({
+                      title: "Select a date",
+                      description: "Pick when you’d like to be reminded",
+                      variant: "destructive",
+                    })
+                    return
+                  }
+                  void updateFollowUp(reminderDialog.application.id, true, iso)
+                  setReminderDialog(null)
+                }}
+                disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+              >
+                Save reminder
+              </Button>
+            </div>
+          </DialogFooter>
 
 
         </DialogContent>
