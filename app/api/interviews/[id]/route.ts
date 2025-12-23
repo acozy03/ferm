@@ -139,7 +139,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: message }, { status })
     }
 
-    return NextResponse.json({}, { status: 204 })
+    return new NextResponse(null, { status: 204 })
   } catch (error) {
     console.error("Failed to delete interview", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
