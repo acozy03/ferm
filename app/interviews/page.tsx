@@ -74,7 +74,7 @@ const statusClassMap: Record<InterviewStatus, string> = {
   Rescheduled: "border-amber-500/40 text-amber-500",
 }
 
-const scheduledInPastMessage = "Scheduled interviews must use a future date and time."
+const scheduledInPastMessage = "Scheduled interviews must use a future date and time"
 
 type InterviewFormState = {
   job_application_id: string
