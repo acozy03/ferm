@@ -74,6 +74,8 @@ const statusClassMap: Record<InterviewStatus, string> = {
   Rescheduled: "border-amber-500/40 text-amber-500",
 }
 
+const scheduledInPastMessage = "Scheduled interviews must use a future date and time."
+
 interface InterviewNotesCardProps {
   interview: InterviewWithApplication
   onSave: (id: string, payload: NotesUpdatePayload) => Promise<void>
@@ -431,6 +433,17 @@ export default function InterviewsPage() {
       return
     }
 
+    if (formState.status === "Scheduled" && scheduledDateTime.getTime() < Date.now()) {
+      toast({
+        title: "Pick a future time",
+        description: scheduledInPastMessage,
+        variant: "destructive",
+      })
+      setFormErrorMessage(scheduledInPastMessage)
+      setFormErrors((prev) => ({ ...prev, scheduled_date: "Choose a future date and time" }))
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const cappedRound = Number.isFinite(parsedRound)
@@ -482,6 +495,17 @@ export default function InterviewsPage() {
       const errorCode = (error as { code?: string } | null)?.code
       const sequencingConflict =
         errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled after round")
+
+      if (message === scheduledInPastMessage) {
+        toast({
+          title: "Pick a future time",
+          description: scheduledInPastMessage,
+          variant: "destructive",
+        })
+        setFormErrorMessage(scheduledInPastMessage)
+        setFormErrors((prev) => ({ ...prev, scheduled_date: "Choose a future date and time" }))
+        return
+      }
 
       if (sequencingConflict) {
         toast({

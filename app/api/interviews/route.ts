@@ -84,6 +84,13 @@ export async function POST(request: NextRequest) {
       : 1
     const scheduledDate = new Date(body.scheduled_date)
 
+    if (body.status === "Scheduled" && scheduledDate.getTime() < Date.now()) {
+      return NextResponse.json(
+        { error: "Scheduled interviews must use a future date and time." },
+        { status: 400 },
+      )
+    }
+
     if (Number.isNaN(scheduledDate.getTime())) {
       return NextResponse.json({ error: "Invalid scheduled date" }, { status: 400 })
     }

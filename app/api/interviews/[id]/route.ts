@@ -58,6 +58,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Invalid scheduled date" }, { status: 400 })
     }
 
+    if (mergedInterview.status === "Scheduled" && scheduledDate.getTime() < Date.now()) {
+      return NextResponse.json(
+        { error: "Scheduled interviews must use a future date and time." },
+        { status: 400 },
+      )
+    }
+
     const { data: relatedInterviews, error: relatedError } = await supabase
       .from("interviews")
       .select("id, interview_round, scheduled_date")
