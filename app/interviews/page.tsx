@@ -459,10 +459,12 @@ export default function InterviewsPage() {
       })
 
       if (!response.ok) {
-  const data = await response.json().catch(() => null)
-  const message = data?.error || data?.message || `Request failed (${response.status})`
-  throw new Error(message)
-}
+        const data = await response.json().catch(() => null)
+        const message = data?.message || data?.error || `Request failed (${response.status})`
+        const error = new Error(message) as Error & { code?: string }
+        error.code = data?.code
+        throw error
+      }
 
 
       toast({
@@ -476,9 +478,23 @@ export default function InterviewsPage() {
       }
     } catch (error) {
       console.error(error)
+      const message = error instanceof Error ? error.message : String(error)
+      const errorCode = (error as { code?: string } | null)?.code
+      const sequencingConflict =
+        errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled after round")
+
+      if (sequencingConflict) {
+        toast({
+          title: "Interview order conflict",
+          description: message,
+          variant: "destructive",
+        })
+        return
+      }
+
       toast({
-        title: "Unable to create interview",
-        description: error instanceof Error ? error.message : String(error),
+        title: isEditing ? "Unable to update interview" : "Unable to create interview",
+        description: message,
         variant: "destructive",
       })
     } finally {

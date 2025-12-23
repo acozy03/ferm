@@ -112,7 +112,13 @@ export async function POST(request: NextRequest) {
       const previousDate = new Date(previousInterview.scheduled_date)
       if (!Number.isNaN(previousDate.getTime()) && scheduledDate <= previousDate) {
         return NextResponse.json(
-          { error: "Scheduled time must be after the previous interview" },
+          {
+            error: `Interview round ${parsedRound} must be scheduled after round ${previousInterview.interview_round}`,
+            code: "ROUND_SEQUENCE_CONFLICT",
+            blocked_round: parsedRound,
+            latest_completed_round: previousInterview.interview_round,
+            latest_completed_date: previousInterview.scheduled_date,
+          },
           { status: 400 },
         )
       }
