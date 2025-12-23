@@ -143,7 +143,11 @@ function InterviewNotesCard({ interview, onSave, pendingId }: InterviewNotesCard
 export default function InterviewsPage() {
   const { toast } = useToast()
   const { interviews, isLoading, mutate } = useInterviews()
-  const { applications, isLoading: isLoadingApplications } = useJobApplications<undefined, true>({
+  const {
+    applications,
+    isLoading: isLoadingApplications,
+    mutate: mutateApplications,
+  } = useJobApplications<undefined, true>({
     limit: 200,
     include_interviews: true,
   })
@@ -485,7 +489,7 @@ export default function InterviewsPage() {
         description: isEditing ? "Details saved." : "Keep prepping and add notes as you go.",
       })
       handleDialogChange(false)
-      await mutate()
+      await Promise.all([mutate(), mutateApplications()])
       if (editingInterviewId) {
         setSelectedInterviewId(editingInterviewId)
       }
@@ -540,7 +544,7 @@ export default function InterviewsPage() {
       }
 
       toast({ title: "Notes saved" })
-      await mutate()
+      await Promise.all([mutate(), mutateApplications()])
     } catch (error) {
       console.error(error)
       toast({ title: "Unable to update interview", variant: "destructive" })
@@ -563,7 +567,7 @@ export default function InterviewsPage() {
       }
 
       toast({ title: "Interview updated", description: `Marked as ${status}.` })
-      await mutate()
+      await Promise.all([mutate(), mutateApplications()])
     } catch (error) {
       console.error(error)
       toast({ title: "Unable to change status", variant: "destructive" })
@@ -600,7 +604,7 @@ export default function InterviewsPage() {
 
       toast({ title: "Interview deleted" })
       setSelectedInterviewId(nextSelection)
-      await mutate()
+      await Promise.all([mutate(), mutateApplications()])
     } catch (error) {
       console.error(error)
       toast({ title: "Unable to delete interview", variant: "destructive" })
