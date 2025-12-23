@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { ArrowDownAZ, ArrowUpAZ, Search } from "lucide-react"
+import { ArrowDownAZ, ArrowUpAZ, Search, X } from "lucide-react"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -467,8 +467,7 @@ export default function FollowUpsPage() {
         }}
       >
         <DialogContent className="flex flex-col gap-4 sm:max-w-[420px]" showCloseButton={false}>
-        
-          <div className="flex flex-1 items-center justify-center">
+          <div className="relative flex flex-1 items-center justify-center">
             <Calendar
               mode="single"
               selected={reminderDialog?.date ?? undefined}
@@ -478,50 +477,52 @@ export default function FollowUpsPage() {
               }}
               className="w-full max-w-[360px] rounded-md border p-4"
             />
+            
           </div>
-          <DialogFooter className="gap-2">
-            {!reminderDialog?.isEnabling && (
-              <Button
-                variant="ghost"
-                className="mr-auto"
-                onClick={disableReminder}
-                disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
-              >
-                Turn off reminders
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => setReminderDialog(null)}
-              disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!reminderDialog) {
-                  return
-                }
+       <DialogFooter className="gap-2 sm:flex sm:flex-row sm:items-center">
+  {!reminderDialog?.isEnabling && (
+    <Button
+      variant="outline"
+      size="icon"
+      className="mr-21 border-destructive text-destructive hover:border-destructive/80 hover:bg-destructive/10"
+      onClick={disableReminder}
+      disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+      aria-label="Clear reminder"
+    >
+      <X className="size-4" aria-hidden />
+    </Button>
+  )}
 
-                const iso = dateToLocalISOString(reminderDialog.date)
+  <Button
+    variant="outline"
+    onClick={() => setReminderDialog(null)}
+    disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+  >
+    Cancel
+  </Button>
 
-                if (!iso) {
-                  toast({
-                    title: "Select a date",
-                    description: "Pick when you’d like to be reminded.",
-                    variant: "destructive",
-                  })
-                  return
-                }
+  <Button
+    onClick={() => {
+      if (!reminderDialog) return
+      const iso = dateToLocalISOString(reminderDialog.date)
+      if (!iso) {
+        toast({
+          title: "Select a date",
+          description: "Pick when you’d like to be reminded.",
+          variant: "destructive",
+        })
+        return
+      }
+      void updateFollowUp(reminderDialog.application.id, true, iso)
+      setReminderDialog(null)
+    }}
+    disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
+  >
+    Save reminder
+  </Button>
+</DialogFooter>
 
-                void updateFollowUp(reminderDialog.application.id, true, iso)
-                setReminderDialog(null)
-              }}
-              disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
-            >
-              Save reminder
-            </Button>
-          </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </div>
