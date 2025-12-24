@@ -196,14 +196,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
           )}
         </div>
 
-        {application.notes && (
-          <div className="flex items-start gap-2 text-sm">
-            <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-muted-foreground text-pretty line-clamp-3 break-words">
-              {application.notes}
-            </p>
-          </div>
-        )}
+     
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="flex flex-wrap items-center gap-2">

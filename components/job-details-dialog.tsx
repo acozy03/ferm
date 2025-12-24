@@ -279,7 +279,7 @@ export function JobDetailsDialog({
                 rows={4}
               />
             ) : (
-              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md">
+              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md break-words max-w-[39rem]">
                 {application.notes || "No notes added yet."}
               </div>
             )}
