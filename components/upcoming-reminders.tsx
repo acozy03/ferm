@@ -13,8 +13,6 @@ import type { ApplicationFollowUp } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 import { getDateOrNull } from "@/lib/date"
 
-const MAX_VISIBLE_REMINDERS = 4
-
 function computeNextReminder(followUp: ApplicationFollowUp): Date | null {
   if (!followUp.enabled) {
     return null
@@ -121,7 +119,6 @@ export function UpcomingReminders() {
       })
       .filter((value): value is NonNullable<typeof value> => value !== null)
       .sort((left, right) => left.nextReminder.getTime() - right.nextReminder.getTime())
-      .slice(0, MAX_VISIBLE_REMINDERS)
   }, [applications, followUps])
 
   return (
@@ -171,10 +168,10 @@ export function UpcomingReminders() {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-card-foreground">
+                          <p className="text-sm font-medium text-card-foreground break-words max-w-[14rem]">
                             {reminder.application.company_name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground break-words max-w-[14rem]">
                             {reminder.application.position_title}
                           </p>
                         </div>

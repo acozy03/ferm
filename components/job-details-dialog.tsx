@@ -3,18 +3,13 @@
 import type React from "react"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   MapPin,
   DollarSign,
   Calendar,
   FileText,
-  Edit,
-  Save,
-  X,
   Briefcase,
   Tag,
   Link as LinkIcon,
@@ -52,8 +47,6 @@ export function JobDetailsDialog({
       setUncontrolledOpen(nextOpen)
     }
   }
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedNotes, setEditedNotes] = useState<string>(application.notes ?? "")
 
   const jobDescription = application.job_description?.trim() ? application.job_description : null
   const qualifications = application.qualifications?.trim() ? application.qualifications : null
@@ -82,30 +75,6 @@ export function JobDetailsDialog({
     })
   }
 
-  const handleSaveNotes = async () => {
-    try {
-      const payload = {
-        notes: editedNotes.trim() === "" ? null : editedNotes,
-      }
-      // update notes on the server so parent can refetch
-      const resp = await fetch(`/api/job-applications/${application.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      if (!resp.ok) throw new Error("Failed to save notes")
-      onUpdate() // parent will reload data
-      setIsEditing(false)
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setEditedNotes(application.notes ?? "")
-    setIsEditing(false)
-  }
-
   const computedDaysSinceApplied = (() => {
     const appliedDate = getDateOrNull(application.application_date)
     if (!appliedDate) {
@@ -119,11 +88,8 @@ export function JobDetailsDialog({
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl text-balance">{application.position_title}</DialogTitle>
-          <div>
-            <span className="text-lg font-medium block">{application.company_name}</span>
-         
-          </div>
+          <DialogTitle className="text-xl truncate max-w-[35rem]"title={application.position_title}>{application.position_title}</DialogTitle>
+            <h3 className="text-lg font-medium truncate max-w-[35rem]" title={application.company_name}>{application.company_name}</h3>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -132,7 +98,7 @@ export function JobDetailsDialog({
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Applied:</span>
-                <span>{formatDate(application.application_date)}</span>
+                <span className="truncate">{(application.application_date)}</span>
               </div>
               {application.location && (
                 <div className="flex items-center gap-2 text-sm">
@@ -252,49 +218,10 @@ export function JobDetailsDialog({
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <Label className="text-sm font-medium">Notes</Label>
               </div>
-              {!isEditing ? (
-                <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="gap-1">
-                  <Edit className="h-3 w-3" />
-                  Edit
-                </Button>
-              ) : (
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={handleSaveNotes} className="gap-1">
-                    <Save className="h-3 w-3" />
-                    Save
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="gap-1">
-                    <X className="h-3 w-3" />
-                    Cancel
-                  </Button>
-                </div>
-              )}
             </div>
 
-            {isEditing ? (
-              <Textarea
-                value={editedNotes}
-                onChange={(e) => setEditedNotes(e.target.value)}
-                placeholder="Add notes about this application..."
-                rows={4}
-              />
-            ) : (
-              <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md break-words max-w-[39rem]">
-                {application.notes || "No notes added yet."}
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Close
-            </Button>
-            <div className="flex gap-2">
-              {/* Hook these up later as needed */}
-              <Button variant="outline">Edit Application</Button>
-              <Button variant="destructive">Delete Application</Button>
+            <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-md break-words max-w-[39rem]">
+              {application.notes || "No notes added yet."}
             </div>
           </div>
         </div>

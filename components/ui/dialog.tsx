@@ -73,18 +73,7 @@ const DialogContent = React.forwardRef<
         data-prevent-card-toggle="true"
         data-prevent-selection-toggle="true"
         aria-describedby={ariaDescribedBy ?? undefined}
-className={cn(
-  'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[var(--dialog-max-height,min(calc(100vh-4rem),38rem))] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
-  'supports-[-moz-appearance:none]:animate-none',
-  'supports-[-moz-appearance:none]:transition-opacity',
-  'supports-[-moz-appearance:none]:duration-150',
-  'supports-[-moz-appearance:none]:ease-out',
-  'supports-[-moz-appearance:none]:data-[state=open]:opacity-100',
-  'supports-[-moz-appearance:none]:data-[state=closed]:opacity-0',
-  'supports-[-moz-appearance:none]:transform-gpu',
-
-  className,
-)}
+className={cn( 'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[var(--dialog-max-height,min(calc(100vh-4rem),38rem))] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg', "supports-[-moz-appearance:none]:animate-none", "supports-[-moz-appearance:none]:transition-none", "supports-[-moz-appearance:none]:duration-0", "supports-[-moz-appearance:none]:data-[state=open]:opacity-100", "supports-[-moz-appearance:none]:data-[state=closed]:opacity-0", "supports-[-moz-appearance:none]:data-[state=open]:scale-100", "supports-[-moz-appearance:none]:data-[state=closed]:scale-100", className, )}
 
         {...props}
       >

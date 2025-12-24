@@ -124,10 +124,10 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
       <CardHeader className="pb-4">
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
           <div className="min-w-0 space-y-1">
-            <h3 className="text-lg font-semibold leading-tight line-clamp-2 break-words">
+            <h3 className="text-lg font-semibold leading-tight truncate max-w-[30rem]" title={application.position_title}>
               {application.position_title}
             </h3>
-            <p className="font-medium text-muted-foreground line-clamp-1 break-words">
+            <p className="font-medium text-muted-foreground truncate max-w-[25rem]" title={application.company_name}>
               {application.company_name}
             </p>
           </div>
