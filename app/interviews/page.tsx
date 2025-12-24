@@ -558,7 +558,7 @@ export default function InterviewsPage() {
       const message = error instanceof Error ? error.message : String(error)
       const errorCode = (error as { code?: string } | null)?.code
       const sequencingConflict =
-        errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled after round")
+        errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled")
 
       if (message === scheduledInPastMessage) {
         toast({

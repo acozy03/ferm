@@ -102,6 +102,28 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
+    const nextInterview = relatedInterviews
+      ?.filter((interview) =>
+        typeof interview.interview_round === "number" && interview.interview_round > parsedRound,
+      )
+      .sort((a, b) => (a.interview_round ?? 0) - (b.interview_round ?? 0))[0]
+
+    if (nextInterview) {
+      const nextDate = new Date(nextInterview.scheduled_date)
+      if (!Number.isNaN(nextDate.getTime()) && scheduledDate >= nextDate) {
+        return NextResponse.json(
+          {
+            error: `Interview round ${parsedRound} must be scheduled before round ${nextInterview.interview_round}`,
+            code: "ROUND_SEQUENCE_CONFLICT",
+            blocked_round: parsedRound,
+            earliest_scheduled_round: nextInterview.interview_round,
+            earliest_scheduled_date: nextInterview.scheduled_date,
+          },
+          { status: 400 },
+        )
+      }
+    }
+
     const { data, error } = await supabase
       .from("interviews")
       .update({ ...updates, interview_round: parsedRound, scheduled_date: scheduledDate.toISOString() })
