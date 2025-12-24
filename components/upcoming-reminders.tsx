@@ -168,10 +168,10 @@ export function UpcomingReminders() {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-card-foreground break-words max-w-[14rem]">
+                          <p className="text-sm font-medium text-card-foreground truncate max-w-[14rem]"title={reminder.application.company_name}>
                             {reminder.application.company_name}
                           </p>
-                          <p className="text-xs text-muted-foreground break-words max-w-[14rem]">
+                          <p className="text-xs text-muted-foreground truncate max-w-[14rem]"title={reminder.application.position_title}>
                             {reminder.application.position_title}
                           </p>
                         </div>
