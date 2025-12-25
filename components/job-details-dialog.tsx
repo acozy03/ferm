@@ -75,13 +75,14 @@ export function JobDetailsDialog({
     })
   }
 
-  const computedDaysSinceApplied = (() => {
-    const appliedDate = getDateOrNull(application.application_date)
-    if (!appliedDate) {
-      return null
-    }
-    return Math.floor((Date.now() - appliedDate.getTime()) / (1000 * 60 * 60 * 24))
-  })()
+ const computedDaysSinceApplied = (() => {
+  const appliedDate = getDateOrNull(application.created_at)
+  if (!appliedDate) return null
+
+  const msPerDay = 1000 * 60 * 60 * 24
+  return Math.floor((Date.now() - appliedDate.getTime()) / msPerDay)
+})()
+
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
@@ -104,7 +105,7 @@ export function JobDetailsDialog({
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Location:</span>
-                  <span>{application.location}</span>
+                  <span className="truncate max-w-[10rem]"title={application.location}>{application.location}</span>
                 </div>
               )}
               {application.salary_range && (

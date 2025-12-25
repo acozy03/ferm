@@ -49,7 +49,7 @@ async function generateResumeMatchScore({ job, resumeText }: ResumeScoringPayloa
 
   const systemPrompt =
     "You are an expert career coach. Compare the candidate's resume against the job listing and respond with strict JSON. " +
-    "Return keys `score` (0-100 with one decimal) and `summary` (<=75 words).";
+    "Return keys `score` (0-100 with one decimal) and `summary` (<=75 words). You should be very harsh, honest and critical.";
 
   const userPrompt = `Job application details:\n${JSON.stringify(job, null, 2)}\n\nCandidate resume:\n"""\n${resumeText}\n"""`
 
@@ -67,7 +67,7 @@ async function generateResumeMatchScore({ job, resumeText }: ResumeScoringPayloa
           { role: "user", content: userPrompt },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.2,
+        temperature: 0.1,
       }),
       signal: controller.signal,
     })
@@ -263,7 +263,6 @@ export async function POST(request: NextRequest) {
     const { supabase, userId } = auth
     const body: CreateJobApplicationData = await request.json()
     
-    // Force user_id from server (never trust client)
     const insertData = {
       ...body,
       user_id: userId,
@@ -277,7 +276,7 @@ export async function POST(request: NextRequest) {
       qualifications: toNullableString(body.qualifications ?? null),
       job_responsibilities: toNullableString(body.job_responsibilities ?? null),
       resume_match_score: null as number | null,
-      resume_match_summary: null as string | null,
+      resume_match_summary: null as string | null
     }
 
     if (insertData.status) {
