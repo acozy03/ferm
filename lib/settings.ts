@@ -30,7 +30,7 @@ export interface SettingsState {
 
 export const defaultSettings: SettingsState = {
   theme: "system",
-  defaultView: "pipeline",
+  defaultView: "full",
   defaultSort: "recent",
 }
 

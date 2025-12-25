@@ -56,11 +56,27 @@ const isDashboardView = (value: string | null): value is DashboardView =>
 const INTERACTIVE_ELEMENT_SELECTOR =
   "button, a, [role='button'], input, textarea, select, [data-prevent-selection-toggle='true']"
 
+const countActiveFilters = (filters: JobApplicationFilters) => {
+  let count = 0
+
+  if (filters.search?.trim()) count++
+  if (filters.company_name?.trim()) count++
+
+  if (filters.status?.length) count+=filters.status.length
+  if (filters.priority?.length) count+=filters.priority.length
+  if (filters.employment_type?.length) count+=filters.employment_type.length
+
+  if (filters.date_from || filters.date_to) count++
+
+  return count
+}
+
 export default function Dashboard() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const { settings } = useSettings()
+
 
   const preferredView = useMemo<DashboardView>(() => settings.defaultView as DashboardView, [settings.defaultView])
 
@@ -103,7 +119,10 @@ export default function Dashboard() {
   const [view, setView] = useState<DashboardView>(viewFromParams)
   const [resultsLimit, setResultsLimit] = useState(DEFAULT_DASHBOARD_LIMIT)
   const filtersSignature = useMemo(() => serializeFilters(filters), [filters])
-
+  const activeFilterCount = useMemo(
+  () => countActiveFilters(filters),
+  [filters]
+)
   useEffect(() => {
     setFilters((previous) => {
       if (serializeFilters(previous) === serializeFilters(filtersFromParams)) {
@@ -505,16 +524,21 @@ export default function Dashboard() {
 
   {/* Open Library button */}
   <div className=" shrink-0">
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="gap-2"
-      onClick={() => setIsApplicationsDrawerOpen(true)}
-    >
-      <Filter className="h-4 w-4" />
-      Filters
-    </Button>
+<Button
+  type="button"
+  variant="ghost"
+  size="sm"
+  className="gap-2"
+  onClick={() => setIsApplicationsDrawerOpen(true)}
+>
+  <Filter className="h-4 w-4" />
+  Filters
+  {activeFilterCount > 0 && (
+    <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-medium">
+      {activeFilterCount}
+    </span>
+  )}
+</Button>
   </div>
 </div>
 

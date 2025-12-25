@@ -391,13 +391,13 @@ export default function FollowUpsPage() {
                                   <TableCell className="max-w-[280px]">
                                     <div className="space-y-1">
                                       <div
-                                        className="truncate font-medium leading-tight"
+                                        className="truncate max-w-[15rem] font-medium leading-tight"
                                         title={row.application.company_name ?? undefined}
                                       >
                                         {row.application.company_name}
                                       </div>
                                       <div
-                                        className="truncate text-sm text-muted-foreground leading-tight"
+                                        className="truncate text-sm max-w-[15rem] text-muted-foreground leading-tight"
                                         title={row.application.position_title ?? undefined}
                                       >
                                         {row.application.position_title}
