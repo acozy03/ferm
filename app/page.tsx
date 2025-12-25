@@ -452,7 +452,7 @@ export default function Dashboard() {
                <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
   {/* Tabs */}
   <TabsList className="shrink-0 whitespace-nowrap overflow-x-auto">
-    <TabsTrigger value="pipeline" className="gap-2" href={buildDashboardHref({ view: "pipeline" })}>
+    <TabsTrigger value="full" className="gap-2" href={buildDashboardHref({ view: "full" })}>
       <LayoutPanelLeft className="h-4 w-4" />
       Full
     </TabsTrigger>
@@ -460,7 +460,7 @@ export default function Dashboard() {
       <Table2 className="h-4 w-4" />
       Table
     </TabsTrigger>
-    <TabsTrigger value="timeline" className="gap-2" href={buildDashboardHref({ view: "timeline" })}>
+    <TabsTrigger value="condensed" className="gap-2" href={buildDashboardHref({ view: "condensed" })}>
       <CalendarClock className="h-4 w-4" />
       Condensed
     </TabsTrigger>
@@ -520,7 +520,7 @@ export default function Dashboard() {
 
 
 
-                    <TabsContent value="pipeline" className="flex min-h-0 flex-1 flex-col gap-4">
+                    <TabsContent value="full" className="flex min-h-0 flex-1 flex-col gap-4">
                       <BulkActions
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -690,7 +690,7 @@ export default function Dashboard() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="timeline" className="flex min-h-0 flex-1 flex-col gap-6">
+                    <TabsContent value="condensed" className="flex min-h-0 flex-1 flex-col gap-6">
                       <BulkActions
                         selectedCount={selectedApplications.length}
                         onBulkStatusUpdate={handleBulkStatusUpdate}
@@ -740,11 +740,11 @@ export default function Dashboard() {
                                       >
                                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                                           <div className="min-w-0">
-                                            <p className="line-clamp-2 break-words font-medium leading-tight">
+                                            <p className="truncate max-w-[40rem] font-medium leading-tight" title={application.position_title}>
                                               {application.position_title}
                                             </p>
                                             <p
-                                              className="line-clamp-1 break-words text-sm text-muted-foreground"
+                                              className="truncate max-w-[40rem] text-sm text-muted-foreground"
                                               title={application.company_name}
                                             >
                                               {application.company_name}
@@ -768,7 +768,7 @@ export default function Dashboard() {
                                           </div>
                                         </div>
                                         {application.notes && (
-                                          <p className="line-clamp-3 break-words text-sm text-muted-foreground">
+                                          <p className="line-clamp-2 break-words max-w-[35rem] text-sm text-muted-foreground"title={application.notes}>
                                             {application.notes}
                                           </p>
                                         )}

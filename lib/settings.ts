@@ -9,9 +9,9 @@ export const themeOptions = [
 ] as const
 
 export const defaultViewOptions = [
-  { label: "Pipeline", value: "pipeline" },
+  { label: "Full", value: "full" },
   { label: "Table", value: "table" },
-  { label: "Timeline", value: "timeline" },
+  { label: "Condensed", value: "condensed" },
 ] as const
 
 export const defaultSortOptions = [

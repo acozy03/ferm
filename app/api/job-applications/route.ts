@@ -49,7 +49,7 @@ async function generateResumeMatchScore({ job, resumeText }: ResumeScoringPayloa
 
   const systemPrompt =
     "You are an expert career coach. Compare the candidate's resume against the job listing and respond with strict JSON. " +
-    "Return keys `score` (0-100 with one decimal) and `summary` (<=75 words). You should be very harsh, honest and critical.";
+    "Return keys `score` (0-100 whole integers) and `summary` (<=75 words). You should be very harsh, honest and critical.";
 
   const userPrompt = `Job application details:\n${JSON.stringify(job, null, 2)}\n\nCandidate resume:\n"""\n${resumeText}\n"""`
 
