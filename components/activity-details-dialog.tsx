@@ -36,9 +36,9 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="space-y-2 text-left">
+        <DialogHeader className="space-y-0. text-left">
           <DialogTitle className="text-lg">{activityLabels[activity.action_type]}</DialogTitle>
-          <p className="text-sm font-medium text-pretty">
+          <p className="text-sm font-medium text-pretty line-clamp-2 max-w-[25rem]">
             {hasJobInfo ? (
               <>
                 {jobTitle ?? "Job title unavailable"}
@@ -48,9 +48,10 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
               "No job details available."
             )}
           </p>
+          
           <DialogDescription>Logged {format(timestamp, "PPpp")}</DialogDescription>
         </DialogHeader>
-
+            
         <div className="space-y-6 text-sm">
           {showValueComparison ? (
             <div className="grid grid-cols-1 gap-2 text-left sm:grid-cols-2">

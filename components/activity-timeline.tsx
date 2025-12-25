@@ -80,17 +80,19 @@ export function ActivityTimeline() {
               <p className="text-pretty text-sm text-muted-foreground">{item.description}</p>
               {hasJobInfo ? (
                 <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-foreground">
+                  <p className="text-xs font-medium text-foreground truncate max-w-[10rem]" title={jobTitle}>
                     {jobTitle ?? "Job title unavailable"}
-                    {companyName ? <span className="text-muted-foreground"> - {companyName}</span> : null}
                   </p>
+                  <p className="text-xs font-medium text-foreground truncate max-w-[10rem]">
+                    {companyName ? <p className="text-muted-foreground break-words"title={companyName}>{companyName}</p> : null}
+                  </p> 
                   {jobRemoved ? <p className="text-[11px] italic text-muted-foreground">Application removed</p> : null}
                 </div>
               ) : (
                 <p className="text-xs italic text-muted-foreground">Application removed</p>
               )}
               {item.new_value && item.old_value ? (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground truncate max-w-[10rem]"title={item.old_value + " -> " + item.new_value}>
                   <span className="line-through">{item.old_value}</span> {" -> "}
                   <span className="font-medium">{item.new_value}</span>
                 </div>
