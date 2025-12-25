@@ -221,60 +221,6 @@ export default function Dashboard() {
     [],
   )
 
-const sortedItems = useMemo(() => {
-  const items = [...applications]
-
-  const getTime = (v: string | null | undefined) => {
-    const d = getDateOrNull(v)
-    return d ? d.getTime() : Number.POSITIVE_INFINITY
-  }
-
-  const getNumber = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : Number.POSITIVE_INFINITY)
-
-  items.sort((a, b) => {
-    let left: number
-    let right: number
-
-    switch (sort.field) {
-      case "application_date":
-        left = getTime(a.application_date)
-        right = getTime(b.application_date)
-        break
-
-      case "created_at":
-        left = getTime(a.created_at)
-        right = getTime(b.created_at)
-        break
-
-      case "priority":
-        left = getNumber(a.priority)
-        right = getNumber(b.priority)
-        break
-
-      case "resume_match_score":
-        left = getNumber(a.resume_match_score)
-        right = getNumber(b.resume_match_score)
-        break
-
-      default:
-        left = getTime(a.created_at)
-        right = getTime(b.created_at)
-    }
-
-    const cmp = left - right
-    const ordered = sort.direction === "asc" ? cmp : -cmp
-    if (ordered !== 0 && Number.isFinite(ordered)) return ordered
-
-    const createdCmp = getTime(a.created_at) - getTime(b.created_at)
-    if (createdCmp !== 0) return createdCmp
-    return String(a.id).localeCompare(String(b.id))
-  })
-
-  return items
-}, [applications, sort.direction, sort.field])
-
-
-
   const relativeDayFormatter = useMemo(() => new Intl.RelativeTimeFormat("en", { numeric: "auto" }), [])
 
   const formatDaysSinceApplied = useCallback(
@@ -777,7 +723,7 @@ const sortedItems = useMemo(() => {
                                   <div key={index} className="h-20 rounded-md border bg-muted animate-pulse" />
                                 ))}
                               </div>
-                            ) : sortedItems.length === 0 ? (
+                            ) : applications.length === 0 ? (
                               <div className="py-12 text-center">
                                 <p className="text-muted-foreground">
                                   No applications to display yet. Apply to a role to start your timeline.
@@ -786,7 +732,7 @@ const sortedItems = useMemo(() => {
                             ) : (
                               <>
                                 <div className="absolute left-1.5 top-6 bottom-6 w-px bg-border" aria-hidden />
-                                {sortedItems.map((application) => {
+                                {applications.map((application) => {
                                   const isSelected = selectedApplications.includes(application.id)
 
                                   return (
