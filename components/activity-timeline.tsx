@@ -2,11 +2,10 @@
 
 import { useMemo } from "react"
 import { Calendar, CheckCircle, Clock, History, MessageSquare, Plus } from "lucide-react"
-
+import { useActivityLogInfinite } from "@/lib/hooks/use-activity-log-infinite"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ActivityDetailsDialog } from "@/components/activity-details-dialog"
-import { useActivityLog } from "@/lib/hooks/use-activity-log"
 import type { ActivityLogWithApplication } from "@/lib/types/database"
 
 const activityIcons = {
@@ -26,7 +25,15 @@ const activityColors = {
 }
 
 export function ActivityTimeline() {
-  const { activities, totalCount, isLoading, error } = useActivityLog()
+    const {
+    activities,
+    totalCount,
+    isLoading,
+    error,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } = useActivityLogInfinite(undefined, 30)
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
@@ -105,7 +112,7 @@ export function ActivityTimeline() {
     )
   }
 
-  return (
+   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="shrink-0">
         <CardTitle className="flex items-center justify-between gap-3 text-base">
@@ -115,21 +122,12 @@ export function ActivityTimeline() {
           </span>
         </CardTitle>
       </CardHeader>
+
       <CardContent className="flex-1 overflow-hidden">
         <ScrollArea className="h-full pr-3">
           {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="mt-1 h-4 w-4 animate-pulse rounded bg-muted" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                    <div className="h-3 w-32 animate-pulse rounded bg-muted" />
-                    <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            /* your skeleton */
+            <div>Loading...</div>
           ) : error ? (
             <p className="text-sm text-destructive">Error loading activity</p>
           ) : activities.length === 0 ? (
@@ -138,14 +136,27 @@ export function ActivityTimeline() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredActivities.map((item) => renderActivityItem(item))}
+              {activities.map((item) => renderActivityItem(item))}
             </div>
           )}
 
           {activities.length > 0 ? (
             <p className="mt-4 text-xs text-muted-foreground">
-              Showing {Math.min(filteredActivities.length, totalCount)} of {totalCount} updates
+              Showing {Math.min(activities.length, totalCount)} of {totalCount} updates
             </p>
+          ) : null}
+
+          {hasMore ? (
+            <div className="mt-3">
+              <button
+                type="button"
+                className="w-full rounded-md border bg-card px-3 py-2 text-sm hover:bg-muted/40 disabled:opacity-50"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore ? "Loading..." : "Load more"}
+              </button>
+            </div>
           ) : null}
         </ScrollArea>
       </CardContent>
