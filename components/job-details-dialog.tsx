@@ -80,7 +80,7 @@ export function JobDetailsDialog({
   if (!appliedDate) return null
 
   const msPerDay = 1000 * 60 * 60 * 24
-  return Math.floor((Date.now() - appliedDate.getTime()) / msPerDay)
+  return Math.ceil((Date.now() - appliedDate.getTime()) / msPerDay)
 })()
 
 

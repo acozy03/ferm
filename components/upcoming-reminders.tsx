@@ -152,7 +152,7 @@ export function UpcomingReminders() {
               <p className="text-sm text-destructive">Error loading reminders</p>
             ) : reminders.length === 0 ? (
               <div className="rounded-lg border border-dashed bg-muted/10 p-6 text-center text-sm text-muted-foreground">
-                No reminders scheduled yet. Enable follow-up reminders on your applications to see them here.
+                No reminders scheduled yet.
               </div>
             ) : (
               <div className="space-y-3">

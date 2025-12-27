@@ -4,6 +4,14 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Info } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -464,7 +472,28 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="jobUrl">Job Posting URL</Label>
+              <div className="flex items-center gap-2">
+  <Label htmlFor="jobUrl">Job Posting URL</Label>
+
+  <TooltipProvider delayDuration={150}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Job URL autofill info"
+        >
+          <Info className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-xs">
+        Some sites load job details after page load. If Autofill looks incomplete or returns something like 'closed job' or 'filled position', you should use the
+        Chrome extension for the most reliable import :)
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+</div>
+
               <div className="flex items-start gap-2">
                 <Input
                   id="jobUrl"

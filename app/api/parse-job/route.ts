@@ -189,19 +189,17 @@ URL: ${job_url}
     } catch {
       return NextResponse.json({ error: "LLM did not return valid JSON" }, { status: 500 });
     }
-
     const validated = LLMResponseSchema.safeParse(raw);
     if (!validated.success) {
       // If LLM messed up the shape, treat as invalid posting with reason
       const resMalformed = NextResponse.json(
-        { is_valid_job_posting: false, reason: "LLM returned malformed data", usage },
+        { is_valid_job_posting: false, reason: "LLM returned malformed data", usage, validated },
         { status: 200 }
       );
       resMalformed.headers.set("Cache-Control", "no-store");
       resMalformed.headers.set("Vary", "Authorization");
       return resMalformed;
     }
-
     // --- Supabase client bound to user token (for RPC/RLS) ---
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

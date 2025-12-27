@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import type { JobApplicationStatus, JobApplicationStatusHistory } from "@/lib/types/database"
 import {
   formatStatusOptionLabel,
@@ -37,7 +38,6 @@ export function StatusUpdateDialog({
 }: StatusUpdateDialogProps) {
   const currentMetadata = useMemo(() => parseStatus(currentStatus), [currentStatus])
   const [selectedStatus, setSelectedStatus] = useState<JobApplicationStatus>(currentMetadata.value)
-  const [note, setNote] = useState("")
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const selectedMetadata = useMemo(() => parseStatus(selectedStatus), [selectedStatus])
   const isControlled = typeof controlledOpen === "boolean" && typeof onOpenChange === "function"
@@ -60,17 +60,14 @@ export function StatusUpdateDialog({
   )
 
   const handleUpdate = () => {
-    onStatusUpdate(selectedStatus, note)
-    setNote("")
+    onStatusUpdate(selectedStatus)
     handleOpenChange(false)
   }
 
   const handleResetPipeline = () => {
     const resetStatus = "Applied" as JobApplicationStatus
-    const hasNote = note.trim().length > 0
-    onStatusUpdate(resetStatus, hasNote ? note : undefined)
+    onStatusUpdate(resetStatus)
     setSelectedStatus(resetStatus)
-    setNote("")
     handleOpenChange(false)
   }
 
@@ -79,10 +76,10 @@ export function StatusUpdateDialog({
   return (
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Update Application Status</DialogTitle>
-        </DialogHeader>
+      <DialogContent showCloseButton={false}>
+        <DialogTitle>
+          <VisuallyHidden>Update Status</VisuallyHidden>
+        </DialogTitle>
         <div className="space-y-6">
           <div className="rounded-lg border bg-muted/10 p-4">
             <p className="text-sm font-medium text-muted-foreground">Status Progress</p>
@@ -140,9 +137,6 @@ export function StatusUpdateDialog({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-medium">Need to start over?</p>
-                <p className="text-xs text-muted-foreground">
-                  Reset the pipeline to the initial &ldquo;Applied&rdquo; status if you need to re-run the progression.
-                </p>
               </div>
               <Button variant="secondary" onClick={handleResetPipeline} disabled={resetDisabled}>
                 Reset to Applied
@@ -150,22 +144,13 @@ export function StatusUpdateDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="note">Add Note (Optional)</Label>
-            <Textarea
-              id="note"
-              placeholder="Add any additional notes about this status change..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-            />
-          </div>
+          
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdate} disabled={selectedStatus === currentMetadata.value && note.trim().length === 0}>
+            <Button onClick={handleUpdate} disabled={selectedStatus === currentMetadata.value}>
               Update Status
             </Button>
           </div>
