@@ -403,10 +403,10 @@ export default function ResumePage() {
                 )}
 
                 {isAuthLoading || isFetching ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-9 w-32" />
+                  <div className="h-174.5 space-y-3">
+                    <Skeleton className="h-90 w-full" />
+                    <Skeleton className="h-45 w-full" />
+                    <Skeleton className="h-35 w-full" />
                   </div>
                 ) : !user ? (
                   <Alert>

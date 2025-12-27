@@ -211,9 +211,9 @@ export default function AnalyticsPage() {
     )
 
     const totalFlow = baseNode?.count ?? largestNode
-    const minHeight = 350
-    const maxHeight = 1200
-    const pixelsPerApplication = 25
+    const minHeight = 407
+    const maxHeight = 407
+    const pixelsPerApplication = 33.9
 
     return Math.max(minHeight, Math.min(maxHeight, totalFlow * pixelsPerApplication))
   }, [sankeyData.nodes])
@@ -382,7 +382,7 @@ export default function AnalyticsPage() {
     <div className="flex min-h-screen flex-col bg-background overflow-hidden">
       <Header />
       <main className="flex-1 overflow-hidden px-6 pt-24">
-        <div className="mx-auto flex h-full max-w-7xl flex-col gap-8 overflow-hidden">
+        <div className="mx-auto flex h-full max-w-7xl flex-col gap-5 overflow-hidden">
           <section>
             <Card>
               <CardContent className="space-y-4">
@@ -398,7 +398,7 @@ export default function AnalyticsPage() {
                   </Button>
                 </div>
                 {appsLoading ? (
-                  <div className="h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                  <div className="h-113.5 flex flex-col items-center justify-center gap-4 text-muted-foreground">
                     <Skeleton className="h-6 w-32" />
                     <Skeleton className="h-4 w-48" />
                     <Skeleton className="h-4 w-64" />
@@ -494,9 +494,9 @@ export default function AnalyticsPage() {
                   <p className="text-sm font-medium text-muted-foreground">Application Activity</p>
                 </div>
                 {appsLoading ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 h-54">
                     <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-40 w-full" />
                     <Skeleton className="h-3 w-48" />
                   </div>
                 ) : applicationActivity.weeks.length ? (
