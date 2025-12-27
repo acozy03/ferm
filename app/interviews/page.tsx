@@ -1030,10 +1030,10 @@ export default function InterviewsPage() {
                                 className="flex w-full items-start justify-between gap-3 rounded-lg p-3 text-left"
                               >
                                 <div className="space-y-1">
-                                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                  <p className="text-xs uppercase tracking-wide text-muted-foreground truncate max-w-[17rem]"title={group.company}>
                                     {group.company}
                                   </p>
-                                  <p className="text-sm font-semibold leading-tight">{group.position}</p>
+                                  <p className="text-sm font-semibold leading-tight truncate max-w-[17rem]"title={group.position}>{group.position}</p>
                                   <p className="text-xs text-muted-foreground">
                                     {group.interviews.length} interview{group.interviews.length === 1 ? "" : "s"}
                                   </p>

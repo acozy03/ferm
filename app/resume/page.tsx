@@ -384,7 +384,7 @@ export default function ResumePage() {
     <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Header />
       <main className="flex-1 overflow-hidden px-4 pt-24 sm:px-6">
-        <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
+        <div className="mx-auto flex h-full w-full max-w-7xl flex-col">
           <div className="flex-1 space-y-8 pb-8">
             <Card>
               {!resume && (
