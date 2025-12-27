@@ -27,7 +27,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_EXTENSIONS = ["pdf", "doc", "docx"] as const
 const RESUME_BUCKET = "resumes" as const
-const PDF_PREVIEW_HEIGHT = "clamp(360px, calc(100vh - 300px), 720px)" as const
+const PDF_PREVIEW_HEIGHT = "clamp(360px, calc(100vh - 100px), 702px)" as const
 
 type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number]
 

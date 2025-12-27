@@ -417,7 +417,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="h-screen bg-background">
         <Header />
         <main className="pt-24 p-6">
           <div className="max-w-7xl mx-auto">

@@ -694,7 +694,7 @@ export default function InterviewsPage() {
   return (
     <div className="flex h-screen flex-col bg-background overflow-hidden">
       <Header />
-      <main className="flex-1 overflow-hidden px-6 pb-6 pt-24">
+      <main className="flex-1 overflow-hidden px-6 pb-4 pt-24">
         <div className="mx-auto flex h-full max-w-7xl flex-col gap-6">
           <Card className="flex min-h-0 flex-1 flex-col overflow-hidden gap-2">
             <CardHeader className="gap-3 pb-2 sm:pb-4">

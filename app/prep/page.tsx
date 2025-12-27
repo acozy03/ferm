@@ -636,11 +636,11 @@ export default function PrepPage() {
   )
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.08),_transparent_35%),_radial-gradient(circle_at_20%_20%,_rgba(34,197,94,0.05),_transparent_25%)]">
+    <div className="min-h-screen overflow-hidden ">
       <Header />
-      <main className="mx-auto max-w-[83rem] px-3 sm:px-6 pt-24 pb-10">
+      <main className="mx-auto max-w-[83rem] px-3 sm:px-6 pt-24 pb-4">
         <Card className="overflow-hidden border-border/70 shadow-xl">
-          <div className="grid h-[calc(100vh-12rem)] max-h-[1040px] grid-rows-[auto_1fr]">
+          <div className="grid h-[calc(100vh-10.1rem)] max-h-[1040px] grid-rows-[auto_1fr]">
             <div className="flex items-center justify-between border-b border-border/60 bg-background/80 px-4 py-3 sm:px-6">
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={handleRestart} disabled={messages.length === 0}>
