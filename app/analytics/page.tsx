@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Header } from "@/components/header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -11,6 +11,7 @@ import { toPng } from "html-to-image"
 import { getStatusChartColor, parseStatus } from "@/lib/status"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
@@ -102,11 +103,14 @@ const CustomSankeyNode = ({ x, y, width, height, payload }: {
 
 export default function AnalyticsPage() {
   const sankeyContainerRef = useRef<HTMLDivElement>(null)
+  const sankeyLegendRef = useRef<HTMLDivElement>(null)
   const { applications, isLoading: appsLoading } = useJobApplications({ limit: 200, include_status_history: true })
   const [selectedDay, setSelectedDay] = useState<{
     date: string
     applications: (typeof applications)[number][]
   } | null>(null)
+  const [canScrollLegendLeft, setCanScrollLegendLeft] = useState(false)
+  const [canScrollLegendRight, setCanScrollLegendRight] = useState(false)
   const sankeyData = useMemo(() => {
     const baseNode = SANKEY_BASE_NODE
     const baseColor = SANKEY_BASE_COLOR
@@ -334,6 +338,45 @@ export default function AnalyticsPage() {
     return date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
   }, [selectedDay?.date])
 
+  const legendItems = useMemo(
+    () =>
+      sankeyData.nodes
+        .filter((node) => node.count > 0)
+        .map((node) => ({
+          name: node.name,
+          color: node.name === SANKEY_BASE_NODE ? SANKEY_BASE_COLOR : getStatusChartColor(node.name) ?? node.color,
+        })),
+    [sankeyData.nodes],
+  )
+
+  useEffect(() => {
+    const updateLegendScroll = () => {
+      const container = sankeyLegendRef.current
+      if (!container) return
+      setCanScrollLegendLeft(container.scrollLeft > 0)
+      setCanScrollLegendRight(container.scrollLeft + container.clientWidth < container.scrollWidth - 1)
+    }
+
+    const container = sankeyLegendRef.current
+    if (!container) return
+
+    updateLegendScroll()
+    container.addEventListener("scroll", updateLegendScroll)
+    window.addEventListener("resize", updateLegendScroll)
+
+    return () => {
+      container.removeEventListener("scroll", updateLegendScroll)
+      window.removeEventListener("resize", updateLegendScroll)
+    }
+  }, [legendItems.length])
+
+  const scrollLegend = (direction: "left" | "right") => {
+    const container = sankeyLegendRef.current
+    if (!container) return
+    const offset = direction === "left" ? -container.clientWidth : container.clientWidth
+    container.scrollBy({ left: offset, behavior: "smooth" })
+  }
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background overflow-hidden">
@@ -391,7 +434,22 @@ export default function AnalyticsPage() {
                         </Sankey>
                       </ResponsiveContainer>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-xs">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => scrollLegend("left")}
+                        disabled={!canScrollLegendLeft}
+                        aria-label="Scroll legend left"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div
+                          ref={sankeyLegendRef}
+                          className="flex items-center gap-3 overflow-x-auto whitespace-nowrap"
+                        >
                       {sankeyData.nodes
                         .filter((node) => node.count > 0)
                         .map((node) => (
@@ -406,6 +464,18 @@ export default function AnalyticsPage() {
                             <span className="text-muted-foreground">{node.name}</span>
                           </div>
                         ))}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => scrollLegend("right")}
+                        disabled={!canScrollLegendRight}
+                        aria-label="Scroll legend right"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ) : (
