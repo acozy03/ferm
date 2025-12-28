@@ -10,6 +10,7 @@ import {
   ListChecks,
   Loader2,
   Mic,
+  KeyRound,
   Plus,
   Send,
   Sparkles,
@@ -29,10 +30,41 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
 import { createAudioVisualizer, type AudioVisualizer } from "@/lib/audio-visualizer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 import type { JobApplicationWithInterviews, PrepChat, PrepMessage } from "@/lib/types/database"
+import { useSupabase } from "@/components/supabase-provider"
+
+const AI_KEY_STORAGE_KEY = "prep:ai-key"
+const AI_KEY_ENCRYPTION_SECRET = "prep-ai-key-secret-v1"
+
+async function getEncryptionKey() {
+  const encoder = new TextEncoder()
+  const hash = await crypto.subtle.digest("SHA-256", encoder.encode(AI_KEY_ENCRYPTION_SECRET))
+
+  return crypto.subtle.importKey("raw", hash, "AES-GCM", false, ["encrypt", "decrypt"])
+}
+
+async function encryptKey(value: string) {
+  const cryptoKey = await getEncryptionKey()
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, new TextEncoder().encode(value))
+  const encryptedBytes = new Uint8Array(encrypted)
+  const encryptedString = btoa(String.fromCharCode(...encryptedBytes))
+
+  return { iv: Array.from(iv), data: encryptedString }
+}
+
+async function decryptKey(payload: { iv: number[]; data: string }) {
+  const cryptoKey = await getEncryptionKey()
+  const iv = new Uint8Array(payload.iv)
+  const data = Uint8Array.from(atob(payload.data), (char) => char.charCodeAt(0))
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, data)
+
+  return new TextDecoder().decode(decrypted)
+}
 
 interface ChatMessage {
   id?: string
@@ -44,6 +76,7 @@ interface ChatMessage {
 
 export default function PrepPage() {
   const { applications, isLoading } = useJobApplications({ limit: 50, include_interviews: true })
+  const { session } = useSupabase()
   const [selectedApplicationId, setSelectedApplicationId] = useState<string>("")
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
   const [chats, setChats] = useState<PrepChat[]>([])
@@ -65,6 +98,12 @@ export default function PrepPage() {
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [visualizerNotice, setVisualizerNotice] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [aiKeyInput, setAiKeyInput] = useState("")
+  const [storedAiKey, setStoredAiKey] = useState<string | null>(null)
+  const [isSavingAiKey, setIsSavingAiKey] = useState(false)
+  const [usageRemaining, setUsageRemaining] = useState<number | null>(null)
+  const [usageLimit, setUsageLimit] = useState<number | null>(null)
+  const [usageError, setUsageError] = useState<string | null>(null)
   const chatRef = useRef<HTMLDivElement | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const recordingStartedAtRef = useRef<number | null>(null)
@@ -141,6 +180,89 @@ export default function PrepPage() {
     }
   }, [])
 
+  const loadStoredAiKey = useCallback(async () => {
+    if (typeof window === "undefined") return
+
+    const saved = window.localStorage.getItem(AI_KEY_STORAGE_KEY)
+    if (!saved) {
+      setStoredAiKey(null)
+      setAiKeyInput("")
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(saved) as { iv: number[]; data: string }
+      const decrypted = await decryptKey(parsed)
+      setStoredAiKey(decrypted)
+      setAiKeyInput(decrypted)
+    } catch {
+      window.localStorage.removeItem(AI_KEY_STORAGE_KEY)
+      setStoredAiKey(null)
+      setAiKeyInput("")
+    }
+  }, [])
+
+  const saveAiKey = useCallback(async () => {
+    if (!aiKeyInput.trim()) return
+    setIsSavingAiKey(true)
+
+    try {
+      const encrypted = await encryptKey(aiKeyInput.trim())
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(AI_KEY_STORAGE_KEY, JSON.stringify(encrypted))
+      }
+      setStoredAiKey(aiKeyInput.trim())
+    } finally {
+      setIsSavingAiKey(false)
+    }
+  }, [aiKeyInput])
+
+  const clearAiKey = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(AI_KEY_STORAGE_KEY)
+    }
+    setStoredAiKey(null)
+    setAiKeyInput("")
+  }, [])
+
+  const refreshUsage = useCallback(async () => {
+    if (!session?.access_token) return
+    setUsageError(null)
+
+    try {
+      const response = await fetch("/api/llm-usage", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to load usage." }))
+        throw new Error(errorPayload.error || "Unable to load usage.")
+      }
+
+      const usage = (await response.json()) as { remaining?: number; limit?: number }
+      setUsageRemaining(usage.remaining ?? null)
+      setUsageLimit(usage.limit ?? null)
+    } catch (error) {
+      setUsageError(error instanceof Error ? error.message : "Unable to load usage.")
+    }
+  }, [session?.access_token])
+
+  const updateUsageFromResponse = useCallback(
+    async (response: Response | null | undefined) => {
+      const remainingHeader = response?.headers.get("x-llm-remaining")
+      const limitHeader = response?.headers.get("x-llm-limit")
+
+      if (remainingHeader || limitHeader) {
+        setUsageRemaining(remainingHeader ? Number(remainingHeader) : usageRemaining)
+        setUsageLimit(limitHeader ? Number(limitHeader) : usageLimit)
+        return
+      }
+
+      await refreshUsage()
+    },
+    [refreshUsage, usageLimit, usageRemaining],
+  )
+
   const fetchChats = useCallback(
     async (interviewId: string | null) => {
       setIsChatsLoading(true)
@@ -173,6 +295,14 @@ export default function PrepPage() {
     },
     [],
   )
+
+  useEffect(() => {
+    void loadStoredAiKey()
+  }, [loadStoredAiKey])
+
+  useEffect(() => {
+    void refreshUsage()
+  }, [refreshUsage])
 
   const fetchMessages = useCallback(
     async (chatId: string) => {
@@ -525,10 +655,16 @@ export default function PrepPage() {
     }
   }, [isCreatingChat, selectedInterviewId])
 
+  const hasAiKey = Boolean(storedAiKey)
+
   const handleSend = async () => {
     if (!input.trim() || isGenerating || isSessionEnded || isMessagesLoading) return
     if (!selectedChatId) {
       setChatError("Create a chat to start messaging.")
+      return
+    }
+    if (!hasAiKey) {
+      setChatError("Add your AI key to start messaging.")
       return
     }
 
@@ -547,7 +683,10 @@ export default function PrepPage() {
     try {
       const appendResponse = await fetch("/api/prep/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(storedAiKey ? { "x-ai-key": storedAiKey } : {}),
+        },
         body: JSON.stringify({
           chatId: selectedChatId,
           userContent: trimmed,
@@ -582,7 +721,10 @@ export default function PrepPage() {
 
       const response = await fetch("/api/prep", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(storedAiKey ? { "x-ai-key": storedAiKey } : {}),
+        },
         body: JSON.stringify({
           applicationId: selectedApplication?.id ?? null,
           chatId: selectedChatId,
@@ -620,6 +762,7 @@ export default function PrepPage() {
       if (selectedChatId) {
         void fetchMessages(selectedChatId)
       }
+      void updateUsageFromResponse(response)
     } catch (error) {
       const fallbackMessage =
         error instanceof Error ? error.message : "We hit a snag fetching a response. Please try again."
@@ -717,6 +860,10 @@ export default function PrepPage() {
 
   const handleStartRecording = async () => {
     if (isProcessingVoice || isRecording || isSessionEnded || isGenerating) return
+    if (!hasAiKey) {
+      setVoiceError("Add your AI key to use voice mode.")
+      return
+    }
     setVoiceError(null)
 
     if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -799,6 +946,11 @@ export default function PrepPage() {
       setIsProcessingVoice(false)
       return
     }
+    if (!hasAiKey) {
+      setVoiceError("Add your AI key to send voice prompts.")
+      setIsProcessingVoice(false)
+      return
+    }
     if (audioBlob.size === 0) {
       setVoiceError("We couldn't capture any audio. Try again.")
       setIsProcessingVoice(false)
@@ -834,7 +986,11 @@ export default function PrepPage() {
         )
       }
 
-      const response = await fetch("/api/prep/voice", { method: "POST", body: formData })
+        const response = await fetch("/api/prep/voice", {
+          method: "POST",
+          headers: storedAiKey ? { "x-ai-key": storedAiKey } : undefined,
+          body: formData,
+        })
 
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => ({ error: "Unable to process voice input." }))
@@ -919,6 +1075,8 @@ export default function PrepPage() {
         setVoiceReplyUrl(null)
       }
 
+      void updateUsageFromResponse(response)
+
     } catch (error) {
       setVoiceError(error instanceof Error ? error.message : "Voice mode is unavailable right now.")
     } finally {
@@ -945,7 +1103,47 @@ export default function PrepPage() {
                   End
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  Messages left: {usageRemaining ?? "--"}
+                  {usageLimit !== null ? ` / ${usageLimit}` : ""}
+                </Badge>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      AI key
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold">AI key</p>
+                      <p className="text-xs text-muted-foreground">
+                        Stored locally with encryption. Add your key to enable prep responses.
+                      </p>
+                    </div>
+                    <Input
+                      value={aiKeyInput}
+                      onChange={(event) => setAiKeyInput(event.target.value)}
+                      placeholder="Paste your AI key"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button onClick={saveAiKey} disabled={!aiKeyInput.trim() || isSavingAiKey}>
+                        {isSavingAiKey ? "Saving..." : storedAiKey ? "Update key" : "Save key"}
+                      </Button>
+                      <Button variant="ghost" onClick={clearAiKey} disabled={!storedAiKey || isSavingAiKey}>
+                        Clear key
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {storedAiKey ? "Key saved for this browser." : "No key saved yet."}
+                    </p>
+                    {usageRemaining !== null && usageLimit !== null && (
+                      <p className="text-xs text-muted-foreground">Remaining messages today: {usageRemaining} / {usageLimit}</p>
+                    )}
+                    {usageError && <p className="text-xs text-destructive">{usageError}</p>}
+                  </PopoverContent>
+                </Popover>
                 <Button
                   variant={isFocusMode ? "default" : "outline"}
                   size="sm"
@@ -1070,12 +1268,12 @@ export default function PrepPage() {
                       </div>
                      
                       <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant={isRecording ? "destructive" : "default"}
-                          onClick={isRecording ? handleStopRecording : handleStartRecording}
-                          disabled={isProcessingVoice}
-                        >
+                          <Button
+                            type="button"
+                            variant={isRecording ? "destructive" : "default"}
+                            onClick={isRecording ? handleStopRecording : handleStartRecording}
+                            disabled={isProcessingVoice || !hasAiKey || isSessionEnded}
+                          >
                           {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
                           {isRecording ? "Stop recording" : "Start speaking"}
                         </Button>
@@ -1222,12 +1420,12 @@ export default function PrepPage() {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              type="button"
-                              variant={isRecording ? "destructive" : "default"}
-                              onClick={isRecording ? handleStopRecording : handleStartRecording}
-                              disabled={isProcessingVoice}
-                            >
+                              <Button
+                                type="button"
+                                variant={isRecording ? "destructive" : "default"}
+                                onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                disabled={isProcessingVoice || !hasAiKey || isSessionEnded}
+                              >
                               {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
                               {isRecording ? "Stop recording" : "Start speaking"}
                             </Button>
@@ -1298,10 +1496,13 @@ export default function PrepPage() {
                         className="h-9 min-h-[2.25rem] flex-1 resize-none"
                         disabled={isGenerating || isSessionEnded}
                       />
-                      <Button type="submit" disabled={!input.trim() || isGenerating || isSessionEnded}>
+                      <Button type="submit" disabled={!input.trim() || isGenerating || isSessionEnded || !hasAiKey}>
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
+                    {!hasAiKey && (
+                      <p className="text-xs text-muted-foreground">Add your AI key above to enable sending.</p>
+                    )}
                   </form>
                 </div>
               </div>

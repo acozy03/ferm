@@ -3,7 +3,10 @@ import OpenAI from "openai"
 import { z } from "zod"
 
 import { getAuthedClient } from "@/lib/api/auth"
+import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 import { buildPrepContext } from "./context"
+
+const DAILY_LIMIT = 20
 
 const BodySchema = z.object({
   applicationId: z.string().nullable().optional(),
@@ -18,14 +21,6 @@ const BodySchema = z.object({
     )
     .min(1),
 })
-
-function getOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not set")
-  }
-  return new OpenAI({ apiKey })
-}
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -45,6 +40,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const keyResolution = await resolveOpenAIApiKey({
+      request,
+      supabase: auth.supabase,
+      userId: auth.userId,
+    })
+
+    if ("error" in keyResolution) {
+      const response = keyResolution.error
+      response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+      return response
+    }
+
+    const openai = new OpenAI({ apiKey: keyResolution.apiKey })
+
     const { data: chat, error: chatError } = await auth.supabase
       .from("prep_chats")
       .select("id")
@@ -107,7 +116,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unable to track assistant message." }, { status: 500 })
     }
 
-    const openai = getOpenAIClient()
     const context = await buildPrepContext({
       supabase: auth.supabase,
       userId: auth.userId,
@@ -128,9 +136,11 @@ export async function POST(request: NextRequest) {
     })
 
     const encoder = new TextEncoder()
+    const projectedRemaining = Math.max(0, DAILY_LIMIT - (usedToday + 1))
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         let accumulated = ""
+        let completedSuccessfully = false
 
         try {
           for await (const chunk of completion) {
@@ -151,6 +161,7 @@ export async function POST(request: NextRequest) {
               }
             }
           }
+          completedSuccessfully = true
         } catch (error) {
           console.error("Prep streaming error", error)
           const fallback = "The assistant ran into an issue responding."
@@ -167,6 +178,12 @@ export async function POST(request: NextRequest) {
             }
           }
         } finally {
+          if (completedSuccessfully) {
+            const { error: incErr } = await auth.supabase.rpc("increment_llm_usage")
+            if (incErr) {
+              console.error("increment_llm_usage failed", incErr)
+            }
+          }
           controller.close()
         }
       },
@@ -177,6 +194,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
+        Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
       },
     })
   } catch (error) {

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getAuthedClient } from "@/lib/api/auth"
+import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 import { getLatestResumeText } from "@/lib/resume/server"
 
 export const runtime = "nodejs"
@@ -23,17 +24,23 @@ const UpdateDraftSchema = z.object({
   draft: z.string(),
 })
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY
-
 export async function POST(request: NextRequest) {
-  
+
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
   }
 
-  if (!OPENAI_API_KEY) {
-    return NextResponse.json({ error: "OpenAI API key is not configured" }, { status: 500 })
+  const keyResolution = await resolveOpenAIApiKey({
+    request,
+    supabase: auth.supabase,
+    userId: auth.userId,
+  })
+
+  if ("error" in keyResolution) {
+    const response = keyResolution.error
+    response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+    return response
   }
 
   const payload = DraftSchema.safeParse(await request.json())
@@ -81,13 +88,15 @@ export async function POST(request: NextRequest) {
   }
 
   if (existingDraft) {
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         error: "An AI follow-up draft has already been generated for this application.",
         data: existingDraft.draft_text ? { draft: existingDraft.draft_text } : undefined,
       },
       { status: 409 },
     )
+    response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+    return response
   }
   
   const { data: profile, error: profileError } = await supabase.auth.getUser()
@@ -116,7 +125,7 @@ export async function POST(request: NextRequest) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${keyResolution.apiKey}`,
     },
     body: JSON.stringify({
       model: "gpt-4o-mini",
@@ -153,16 +162,20 @@ export async function POST(request: NextRequest) {
 
   if (draftRecordError) {
     if (draftRecordError.code === "23505") {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: "An AI follow-up draft has already been generated for this application." },
         { status: 409 },
       )
+      response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+      return response
     }
 
     return NextResponse.json({ error: draftRecordError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ data: { draft } })
+  const successResponse = NextResponse.json({ data: { draft } })
+  successResponse.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+  return successResponse
 }
 
 export async function PATCH(request: NextRequest) {
@@ -208,5 +221,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ data: { draft: sanitizedDraft } })
+  const response = NextResponse.json({ data: { draft: sanitizedDraft } })
+  response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+  return response
 }

@@ -7,6 +7,7 @@ import { getLatestResumeText } from "@/lib/resume/server"
 import { toNullableString } from "@/lib/utils"
 import { expandStatusFilters, normalizeStatusValue, parseStatus } from "@/lib/status"
 import { getAuthedClient } from "@/lib/api/auth"
+import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -17,7 +18,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, content-type",
 }
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const RESUME_SCORING_TIMEOUT_MS = 15_000
 
 const ResumeScoreSchema = z.object({
@@ -35,13 +35,10 @@ interface ResumeScoringPayload {
     notes?: string | null
   }
   resumeText: string
+  apiKey: string
 }
 
-async function generateResumeMatchScore({ job, resumeText }: ResumeScoringPayload) {
-  if (!OPENAI_API_KEY) {
-    return null
-  }
-
+async function generateResumeMatchScore({ job, resumeText, apiKey }: ResumeScoringPayload) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => {
     controller.abort()
@@ -58,7 +55,7 @@ async function generateResumeMatchScore({ job, resumeText }: ResumeScoringPayloa
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
@@ -261,6 +258,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { supabase, userId } = auth
+    const keyResolution = await resolveOpenAIApiKey({ request, supabase, userId })
+
+    if ("error" in keyResolution) {
+      const response = keyResolution.error
+      Object.entries(corsHeaders).forEach(([header, value]) => response.headers.set(header, value))
+      response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+      return response
+    }
+
+    const openaiApiKey = keyResolution.apiKey
     const body: CreateJobApplicationData = await request.json()
     
     const insertData = {
@@ -302,9 +309,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!OPENAI_API_KEY) {
-      console.info("Resume match scoring: skipped, missing OPENAI_API_KEY")
-    } else if (!data?.id) {
+    if (!data?.id) {
       console.error("Resume match scoring: skipped, inserted record missing id")
     } else {
       const jobContext = {
@@ -326,7 +331,11 @@ export async function POST(request: NextRequest) {
           }
 
           console.info("Resume match scoring: found resume text for user, initiating scoring", { userId })
-          const scoringResult = await generateResumeMatchScore({ job: jobContext, resumeText: resume.text })
+          const scoringResult = await generateResumeMatchScore({
+            job: jobContext,
+            resumeText: resume.text,
+            apiKey: openaiApiKey,
+          })
 
           if (!scoringResult) {
             console.info("Resume match scoring: no score returned", {
@@ -360,7 +369,9 @@ export async function POST(request: NextRequest) {
       })()
     }
 
-    return NextResponse.json({ data }, { status: 201, headers: corsHeaders })
+    const response = NextResponse.json({ data }, { status: 201, headers: corsHeaders })
+    response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+    return response
   } catch (error) {
     console.error("Failed to create job application", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: corsHeaders })

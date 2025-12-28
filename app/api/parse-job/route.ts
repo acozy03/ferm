@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
+import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys";
 
 const DAILY_LIMIT = 20;
 const MAX_RAW_TEXT_LENGTH = 60_000;
@@ -69,6 +70,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+
+  const keyResolution = await resolveOpenAIApiKey({ request, supabase, userId: user.id });
+  if ("error" in keyResolution) {
+    const response = keyResolution.error;
+    response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
+    return response;
+  }
+
   // --- Parse input ---
   let bodyUnknown: unknown;
   try {
@@ -84,12 +98,6 @@ export async function POST(request: Request) {
     );
   }
   const { raw_text, job_url } = parsedBody.data;
-
-  // --- Env ---
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-  if (!OPENAI_API_KEY) {
-    return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 });
-  }
 
   // --- Call OpenAI ---
   const safeRawText =
@@ -158,7 +166,7 @@ URL: ${job_url}
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${keyResolution.apiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
@@ -197,16 +205,10 @@ URL: ${job_url}
         { status: 200 }
       );
       resMalformed.headers.set("Cache-Control", "no-store");
-      resMalformed.headers.set("Vary", "Authorization");
+      resMalformed.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
       return resMalformed;
     }
     // --- Supabase client bound to user token (for RPC/RLS) ---
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
-    );
-
     // ✅ Increment usage AFTER successful parse
     // Recommended SQL (in your function):
     // ... DO UPDATE SET count = least(llm_usage.count + 1, 20) RETURNING count;
@@ -241,7 +243,7 @@ URL: ${job_url}
       { status: 200 }
     );
     res.headers.set("Cache-Control", "no-store");
-    res.headers.set("Vary", "Authorization");
+    res.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
     res.headers.set("X-Usage-Limit", String(DAILY_LIMIT));
     if (remainingNow != null) {
       res.headers.set("X-Usage-Remaining", String(remainingNow));
