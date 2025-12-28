@@ -17,6 +17,7 @@ import {
   Square,
   StickyNote,
   StopCircle,
+  Trash2,
   Volume2,
 } from "lucide-react"
 
@@ -86,13 +87,13 @@ export default function PrepPage() {
   const [isMessagesLoading, setIsMessagesLoading] = useState(false)
   const [isCreatingChat, setIsCreatingChat] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
+  const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({})
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isSessionEnded, setIsSessionEnded] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [isProcessingVoice, setIsProcessingVoice] = useState(false)
-  const [voiceTranscript, setVoiceTranscript] = useState("")
   const [voiceReplyUrl, setVoiceReplyUrl] = useState<string | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [isVoiceReplyEnabled, setIsVoiceReplyEnabled] = useState(true)
@@ -113,6 +114,7 @@ export default function PrepPage() {
   const typewriterIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const voicePlaybackRef = useRef<HTMLAudioElement | null>(null)
   const isVoiceProcessingRef = useRef(false)
+  const titleStreamControllersRef = useRef<Record<string, AbortController>>({})
   const visualizerContainerRef = useRef<HTMLDivElement | null>(null)
   const visualizerInstanceRef = useRef<AudioVisualizer | null>(null)
   const micVisualizationStreamRef = useRef<MediaStream | null>(null)
@@ -281,7 +283,7 @@ export default function PrepPage() {
         const payload = (await response.json()) as { data?: PrepChat[] }
         const chatList = payload.data ?? []
 
-        setChats(chatList)
+        setChats(chatList.map((chat) => (titleDrafts[chat.id] ? { ...chat, title: titleDrafts[chat.id] } : chat)))
         setSelectedChatId((previous) => {
           if (previous && chatList.some((chat) => chat.id === previous)) return previous
           return chatList[0]?.id ?? null
@@ -294,7 +296,7 @@ export default function PrepPage() {
         setIsChatsLoading(false)
       }
     },
-    [],
+    [titleDrafts],
   )
 
   useEffect(() => {
@@ -473,96 +475,105 @@ export default function PrepPage() {
     render: (application: JobApplicationWithInterviews) => React.ReactNode
   }
 
-  const applicationCards = useMemo<ApplicationCardConfig[]>(() => {
-    if (!selectedApplication) return []
-
-    const cardConfigs: ApplicationCardConfig[] = [
-      {
-        key: "jobInformation",
-        title: "Job information",
-        icon: Briefcase,
-        render: (current) => (
-          <div className="space-y-3 text-xs text-muted-foreground">
-          
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <p className="text-[11px] font-semibold text-foreground">Location</p>
-                <p>{current.location ?? "Not specified"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[11px] font-semibold text-foreground">Employment</p>
-                <p>{current.employment_type ?? "N/A"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[11px] font-semibold text-foreground">Application date</p>
-                <p>{current.application_date ? new Date(current.application_date).toLocaleDateString() : "N/A"}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[11px] font-semibold text-foreground">Salary range</p>
-                <p>{current.salary_range ?? "Not provided"}</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {(current.contact_person || current.contact_email) && (
+  const applicationCards: ApplicationCardConfig[] = selectedApplication
+    ? [
+        {
+          key: "jobInformation",
+          title: "Job information",
+          icon: Briefcase,
+          render: (current) => (
+            <div className="space-y-3 text-xs text-muted-foreground">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <p className="text-[11px] font-semibold text-foreground">Recruiter / Contact</p>
-                  <p>
-                    {current.contact_person ?? "Unknown"}
-                    {current.contact_email ? ` • ${current.contact_email}` : ""}
-                  </p>
+                  <p className="text-[11px] font-semibold text-foreground">Location</p>
+                  <p>{current.location ?? "Not specified"}</p>
                 </div>
-              )}
-              
-            </div>
-          </div>
-        ),
-      },
-      {
-        key: "resumeHighlights",
-        title: "Resume highlights",
-        icon: FileText,
-        render: (current) => (
-          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
-            {current.resume_match_summary ?? "No resume highlights yet."}
-          </p>
-        ),
-      },
-      {
-        key: "responsibilities",
-        title: "Responsibilities",
-        icon: ListChecks,
-        render: (current) => (
-          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
-            {current.job_responsibilities ?? "No responsibilities captured."}
-          </p>
-        ),
-      },
-      {
-        key: "qualifications",
-        title: "Qualifications",
-        icon: GraduationCap,
-        render: (current) => (
-          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
-            {current.qualifications ?? "No qualifications noted yet."}
-          </p>
-        ),
-      },
-      {
-        key: "notes",
-        title: "Notes",
-        icon: StickyNote,
-        render: (current) => (
-          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
-            {current.notes ?? "No notes added."}
-          </p>
-        ),
-      },
-    ]
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold text-foreground">Employment</p>
+                  <p>{current.employment_type ?? "N/A"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold text-foreground">Application date</p>
+                  <p>{current.application_date ? new Date(current.application_date).toLocaleDateString() : "N/A"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold text-foreground">Salary range</p>
+                  <p>{current.salary_range ?? "Not provided"}</p>
+                </div>
+              </div>
 
-    return cardConfigs
-  }, [selectedApplication])
+              <div className="space-y-2">
+                {(current.contact_person || current.contact_email) && (
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold text-foreground">Recruiter / Contact</p>
+                    <p>
+                      {current.contact_person ?? "Unknown"}
+                      {current.contact_email ? ` • ${current.contact_email}` : ""}
+                    </p>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          ),
+        },
+        {
+          key: "resumeHighlights",
+          title: "Resume highlights",
+          icon: FileText,
+          render: (current) => (
+            <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <div className="flex items-center gap-2 rounded-md bg-muted/60 px-3 py-2 text-xs text-foreground">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span>Top resume matches for this role</span>
+              </div>
+              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                {current.resume_match_summary ?? "No resume highlights yet."}
+              </p>
+            </div>
+          ),
+        },
+        {
+          key: "responsibilities",
+          title: "Responsibilities",
+          icon: ListChecks,
+          render: (current) => (
+            <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+              {current.job_responsibilities ? (
+                current.job_responsibilities.split("\n").map((item, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/70" />
+                    <p className="leading-relaxed">{item || "Responsibility"}</p>
+                  </div>
+                ))
+              ) : (
+                <p>No responsibilities listed.</p>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: "qualifications",
+          title: "Qualifications",
+          icon: GraduationCap,
+          render: (current) => (
+            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+              {current.qualifications ?? "No qualifications noted yet."}
+            </p>
+          ),
+        },
+        {
+          key: "notes",
+          title: "Notes",
+          icon: StickyNote,
+          render: (current) => (
+            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+              {current.notes ?? "No notes added."}
+            </p>
+          ),
+        },
+      ]
+    : []
 
   const latestAssistantMessage = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -570,6 +581,12 @@ export default function PrepPage() {
     }
     return null
   }, [messages])
+
+  const activeChatTitle = useMemo(() => {
+    const activeChat = chats.find((chat) => chat.id === selectedChatId)
+    if (!activeChat) return null
+    return titleDrafts[activeChat.id] ?? activeChat.title
+  }, [chats, selectedChatId, titleDrafts])
 
   const startTypewriterStream = useCallback(
     (
@@ -627,6 +644,120 @@ export default function PrepPage() {
     [],
   )
 
+  const persistChatTitle = useCallback(async (chatId: string, title: string) => {
+    try {
+      const response = await fetch("/api/prep/chats", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: chatId, title }),
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to update chat title." }))
+        throw new Error(errorPayload.error || "Unable to update chat title.")
+      }
+
+      const payload = (await response.json()) as { data?: PrepChat }
+      if (payload.data) {
+        setChats((previous) =>
+          previous.map((chat) => (chat.id === payload.data?.id ? { ...chat, title: payload.data.title } : chat)),
+        )
+      }
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "Unable to update chat title.")
+    }
+  }, [])
+
+  const streamChatTitle = useCallback(
+    async (chatId: string, context: ChatMessage[] = []) => {
+      setChatError(null)
+      if (titleStreamControllersRef.current[chatId]) {
+        titleStreamControllersRef.current[chatId]?.abort()
+      }
+
+      const controller = new AbortController()
+      titleStreamControllersRef.current[chatId] = controller
+      setTitleDrafts((previous) => ({ ...previous, [chatId]: previous[chatId] ?? "Generating title..." }))
+
+      try {
+        const response = await fetch("/api/prep/chat-title", {
+          method: "POST",
+          signal: controller.signal,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId,
+            application: {
+              role: selectedApplication?.position_title ?? undefined,
+              company: selectedApplication?.company_name ?? undefined,
+            },
+            messages: context.slice(-6).map((message) => ({ role: message.role, content: message.content })),
+          }),
+        })
+
+        if (!response.ok || !response.body) {
+          const errorPayload = await response.json().catch(() => ({ error: "Unable to generate title." }))
+          throw new Error(errorPayload.error || "Unable to generate title.")
+        }
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let accumulated = ""
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          accumulated += decoder.decode(value, { stream: true })
+          setTitleDrafts((previous) => ({ ...previous, [chatId]: accumulated.trim() || "Generating title..." }))
+        }
+
+        const finalizedTitle = accumulated.trim() || "Prep chat"
+        setChats((previous) => previous.map((chat) => (chat.id === chatId ? { ...chat, title: finalizedTitle } : chat)))
+        setTitleDrafts((previous) => {
+          const next = { ...previous }
+          delete next[chatId]
+          return next
+        })
+        await persistChatTitle(chatId, finalizedTitle)
+        void fetchChats(selectedInterviewId)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        setChatError(error instanceof Error ? error.message : "Unable to generate title.")
+      } finally {
+        delete titleStreamControllersRef.current[chatId]
+      }
+    },
+    [fetchChats, persistChatTitle, selectedApplication?.company_name, selectedApplication?.position_title, selectedInterviewId],
+  )
+
+  const handleDeleteChat = useCallback(
+    async (chatId: string) => {
+      setChatError(null)
+      setIsChatsLoading(true)
+      titleStreamControllersRef.current[chatId]?.abort()
+
+      try {
+        const response = await fetch(`/api/prep/chats?chatId=${encodeURIComponent(chatId)}`, { method: "DELETE" })
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => ({ error: "Unable to delete chat." }))
+          throw new Error(errorPayload.error || "Unable to delete chat.")
+        }
+
+        setChats((previous) => previous.filter((chat) => chat.id !== chatId))
+        setSelectedChatId((previous) => (previous === chatId ? null : previous))
+        if (selectedChatId === chatId) {
+          setMessages([])
+        }
+        void fetchChats(selectedInterviewId)
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : "Unable to delete chat.")
+      } finally {
+        setIsChatsLoading(false)
+      }
+    },
+    [fetchChats, selectedChatId, selectedInterviewId],
+  )
+
   const handleCreateChat = useCallback(async () => {
     if (isCreatingChat) return
 
@@ -646,15 +777,18 @@ export default function PrepPage() {
       }
 
       const payload = (await response.json()) as { data: PrepChat }
-      setChats((previous) => [payload.data, ...previous])
+      const placeholderTitle = titleDrafts[payload.data.id] ?? "Generating title..."
+      setTitleDrafts((previous) => ({ ...previous, [payload.data.id]: placeholderTitle }))
+      setChats((previous) => [{ ...payload.data, title: placeholderTitle }, ...previous])
       setSelectedChatId(payload.data.id)
       setMessages([])
+      void streamChatTitle(payload.data.id)
     } catch (error) {
       setChatError(error instanceof Error ? error.message : "Unable to create chat.")
     } finally {
       setIsCreatingChat(false)
     }
-  }, [isCreatingChat, selectedInterviewId])
+  }, [isCreatingChat, selectedInterviewId, streamChatTitle, titleDrafts])
 
   const hasAiKey = Boolean(storedAiKey)
 
@@ -760,6 +894,7 @@ export default function PrepPage() {
         void fetchMessages(selectedChatId)
       }
       void updateUsageFromResponse(response)
+      void fetchChats(selectedInterviewId)
     } catch (error) {
       const fallbackMessage =
         error instanceof Error ? error.message : "We hit a snag fetching a response. Please try again."
@@ -1143,98 +1278,89 @@ export default function PrepPage() {
               </div>
             </div>
 
-            <div className="grid h-full min-h-0 overflow-hidden lg:grid-cols-[320px_1fr]">
-              <aside className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto border-border/60 bg-background/70 p-4 sm:p-6 lg:border-r">
-                <div className="space-y-2">
-           
-                  <Select
-                    value={selectedApplicationId}
-                    onValueChange={(value) => setSelectedApplicationId(value)}
-                    disabled={isLoading || jobOptions.length === 0}
+            <div className="grid h-full min-h-0 overflow-hidden lg:grid-cols-[280px_1fr_340px]">
+              <aside className="flex min-h-0 min-w-0 flex-col border-border/60 bg-background/70 lg:border-r">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Chats</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      {selectedApplication
+                        ? `${selectedApplication.position_title ?? "Role"} @ ${selectedApplication.company_name ?? "Company"}`
+                        : "Pick a role to tailor chat titles"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCreateChat}
+                    disabled={isCreatingChat || isChatsLoading}
                   >
-                    <SelectTrigger id="role-select" className="w-full bg-background/70 text-left">
-                      <SelectValue placeholder={isLoading ? "Loading roles..." : "Pick a role"} className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {jobOptions.map((job) => (
-                        <SelectItem key={job.id} value={job.id} title={job.label}>
-                          {job.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {isLoading && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Fetching applications...
-                    </div>
-                  )}
-                  {!isLoading && jobOptions.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No roles found yet. Add one from the dashboard to get started.</p>
-                  )}
+                    {isCreatingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    <span className="ml-2 hidden sm:inline">New</span>
+                  </Button>
                 </div>
-
-                {selectedApplication && (
-                  <>
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-foreground">Interview</p>
-                      {interviewOptions.length > 0 ? (
-                        <Select
-                          value={selectedInterviewId ?? ""}
-                          onValueChange={(value) => setSelectedInterviewId(value || null)}
-                          disabled={isChatsLoading}
-                        >
-                          <SelectTrigger className="bg-background/70 text-left">
-                            <SelectValue
-                              placeholder="Choose an interview"
-                              className="truncate"
-                              aria-label="Select interview"
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">General prep</SelectItem>
-                            {interviewOptions.map((interview) => (
-                              <SelectItem key={interview.id} value={interview.id} title={interview.label}>
-                                {interview.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No interviews yet. Chats will be unassigned.</p>
-                      )}
+                <ScrollArea className="flex-1 p-3">
+                  {isChatsLoading && (
+                    <div className="flex items-center gap-2 px-1 pb-3 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading chats...
                     </div>
+                  )}
+                  <div className="space-y-2">
+                    {chats.map((chat) => {
+                      const isActive = chat.id === selectedChatId
+                      const workingTitle = titleDrafts[chat.id] ?? chat.title
+                      const isStreamingTitle = Boolean(titleDrafts[chat.id])
 
-                    <Accordion
-                      type="multiple"
-                      collapsible
-                      defaultValue={["jobInformation"]}
-                      className="space-y-2"
-                    >
-                      {applicationCards.map((card) => {
-                        const Icon = card.icon
-
-                        return (
-                          <AccordionItem
-                            key={card.key}
-                            value={card.key}
-                            className="overflow-hidden rounded-lg border border-border/60 bg-background/80 shadow-sm"
+                      return (
+                        <div
+                          key={chat.id}
+                          className={cn(
+                            "group flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition",
+                            isActive
+                              ? "border-primary/60 bg-primary/5 shadow-sm"
+                              : "border-border/60 hover:border-primary/50 hover:bg-muted/40",
+                          )}
+                        >
+                          <button
+                            type="button"
+                            className="flex-1 text-left"
+                            onClick={() => setSelectedChatId(chat.id)}
                           >
-                            <AccordionTrigger className="px-3 py-3 min-h-[120px] items-center">
-                              <div className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
-                                {Icon && <Icon className="h-4 w-4 text-primary" />}
-                                <span>{card.title}</span>
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="px-3 pb-4">
-                              {card.render(selectedApplication)}
-                            </AccordionContent>
-                          </AccordionItem>
-                        )
-                      })}
-                    </Accordion>
-                  </>
-                )}
+                            <p className="text-sm font-semibold leading-tight text-foreground line-clamp-2">
+                              {workingTitle || "Untitled chat"}
+                            </p>
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                              {isStreamingTitle && <Loader2 className="h-3 w-3 animate-spin" />}
+                              <span>{new Date(chat.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-80 hover:opacity-100"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void handleDeleteChat(chat.id)
+                            }}
+                            disabled={isChatsLoading}
+                            aria-label="Delete chat"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {!isChatsLoading && chats.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+                      No chats yet. Start one to begin prepping.
+                    </div>
+                  )}
+                </ScrollArea>
               </aside>
 
               <div
@@ -1255,7 +1381,7 @@ export default function PrepPage() {
                           <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.25)]" />
                         </div>
                       </div>
-                     
+
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
                           type="button"
@@ -1290,46 +1416,36 @@ export default function PrepPage() {
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Select
-                      value={selectedChatId ?? ""}
-                      onValueChange={(value) => setSelectedChatId(value || null)}
-                      disabled={isChatsLoading || chats.length === 0}
-                    >
-                      <SelectTrigger className="w-full max-w-xs bg-background/70 text-left">
-                        <SelectValue
-                          placeholder={isChatsLoading ? "Loading chats..." : "Select a chat"}
-                          className="truncate"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {chats.map((chat) => (
-                          <SelectItem key={chat.id} value={chat.id} title={chat.title}>
-                            {chat.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCreateChat}
-                      disabled={isCreatingChat || isChatsLoading}
-                    >
-                      {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                      New chat
-                    </Button>
-                    {isChatsLoading && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading chats...
-                      </div>
-                    )}
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Conversation</p>
+                      <p className="text-base font-semibold leading-snug text-foreground line-clamp-2">
+                        {activeChatTitle ?? "Select or create a chat"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {isChatsLoading
+                          ? "Syncing chats..."
+                          : chats.length === 0
+                            ? "Create a chat to start prepping."
+                            : selectedChatId
+                              ? "Keep messaging to refine your prep."
+                              : "Choose a chat from the sidebar."}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCreateChat}
+                        disabled={isCreatingChat || isChatsLoading}
+                      >
+                        {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                        New chat
+                      </Button>
+                      {isChatsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    </div>
                   </div>
                   {chatError && <p className="text-xs text-destructive">{chatError}</p>}
-                  {!isChatsLoading && chats.length === 0 && (
-                    <p className="text-xs text-muted-foreground">Create a chat to start prepping.</p>
-                  )}
 
                   <ScrollArea className="flex-1 overflow-y-auto" ref={chatRef}>
                     <div className="space-y-4 pr-2 pb-4">
@@ -1497,6 +1613,91 @@ export default function PrepPage() {
                   </form>
                 </div>
               </div>
+              <aside className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto border-border/60 bg-background/70 p-4 sm:p-6 lg:border-l">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Job context</p>
+                  <Select
+                    value={selectedApplicationId}
+                    onValueChange={(value) => setSelectedApplicationId(value)}
+                    disabled={isLoading || jobOptions.length === 0}
+                  >
+                    <SelectTrigger id="role-select" className="w-full bg-background/70 text-left">
+                      <SelectValue placeholder={isLoading ? "Loading roles..." : "Pick a role"} className="truncate" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {jobOptions.map((job) => (
+                        <SelectItem key={job.id} value={job.id} title={job.label}>
+                          {job.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {isLoading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Fetching applications...
+                    </div>
+                  )}
+                  {!isLoading && jobOptions.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No roles found yet. Add one from the dashboard to get started.</p>
+                  )}
+                </div>
+
+                {selectedApplication && (
+                  <>
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-foreground">Interview</p>
+                      {interviewOptions.length > 0 ? (
+                        <Select
+                          value={selectedInterviewId ?? ""}
+                          onValueChange={(value) => setSelectedInterviewId(value || null)}
+                          disabled={isChatsLoading}
+                        >
+                          <SelectTrigger className="bg-background/70 text-left">
+                            <SelectValue
+                              placeholder="Choose an interview"
+                              className="truncate"
+                              aria-label="Select interview"
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">General prep</SelectItem>
+                            {interviewOptions.map((interview) => (
+                              <SelectItem key={interview.id} value={interview.id} title={interview.label}>
+                                {interview.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No interviews yet. Chats will be unassigned.</p>
+                      )}
+                    </div>
+
+                    <Accordion type="multiple" collapsible defaultValue={["jobInformation"]} className="space-y-2">
+                      {applicationCards.map((card) => {
+                        const Icon = card.icon
+
+                        return (
+                          <AccordionItem
+                            key={card.key}
+                            value={card.key}
+                            className="overflow-hidden rounded-lg border border-border/60 bg-background/80 shadow-sm"
+                          >
+                            <AccordionTrigger className="px-3 py-3 min-h-[120px] items-center">
+                              <div className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+                                {Icon && <Icon className="h-4 w-4 text-primary" />}
+                                <span>{card.title}</span>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-3 pb-4">{card.render(selectedApplication)}</AccordionContent>
+                          </AccordionItem>
+                        )
+                      })}
+                    </Accordion>
+                  </>
+                )}
+              </aside>
             </div>
           </div>
         </Card>

@@ -8,6 +8,11 @@ const CreateChatSchema = z.object({
   title: z.string().min(1).max(200).optional(),
 })
 
+const UpdateChatSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().min(1).max(200),
+})
+
 export const dynamic = "force-dynamic"
 
 function buildInterviewSeedTitle(interview: {
@@ -115,4 +120,63 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ data })
+}
+
+export async function PATCH(request: NextRequest) {
+  const auth = await getAuthedClient(request)
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
+  }
+
+  let payload: z.infer<typeof UpdateChatSchema>
+
+  try {
+    payload = UpdateChatSchema.parse(await request.json())
+  } catch {
+    return NextResponse.json({ error: "Invalid payload." }, { status: 400 })
+  }
+
+  const { data, error } = await auth.supabase
+    .from("prep_chats")
+    .update({ title: payload.title })
+    .eq("id", payload.id)
+    .eq("user_id", auth.userId)
+    .select("id, title, interview_id, created_at")
+    .maybeSingle()
+
+  if (error) {
+    return NextResponse.json({ error: "Unable to update chat." }, { status: 500 })
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Chat not found." }, { status: 404 })
+  }
+
+  return NextResponse.json({ data })
+}
+
+export async function DELETE(request: NextRequest) {
+  const auth = await getAuthedClient(request)
+  if ("error" in auth) {
+    return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
+  }
+
+  const searchParams = new URL(request.url).searchParams
+  const chatId = searchParams.get("chatId")
+
+  if (!chatId) {
+    return NextResponse.json({ error: "Chat id is required." }, { status: 400 })
+  }
+
+  const { error } = await auth.supabase
+    .from("prep_chats")
+    .delete()
+    .eq("id", chatId)
+    .eq("user_id", auth.userId)
+
+  if (error) {
+    return NextResponse.json({ error: "Unable to delete chat." }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
 }
