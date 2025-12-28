@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
   const history = formData.get("messages") as string | null
   const jobContext = formData.get("jobContext") as string | null
   const rawApplicationId = formData.get("applicationId") as string | null
+  const rawChatId = formData.get("chatId") as string | null
   const voiceReplies = (formData.get("voiceReplies") as string | null) !== "false"
 
   if (!audioFile) {
@@ -83,7 +84,12 @@ export async function POST(request: NextRequest) {
 
   const messageHistory = history ? (JSON.parse(history) as ChatHistory) : []
 
+  if (!rawChatId || rawChatId.trim().length === 0) {
+    return NextResponse.json({ error: "chatId is required" }, { status: 400 })
+  }
+
   const applicationId = rawApplicationId && rawApplicationId.trim().length > 0 ? rawApplicationId : null
+  const chatId = rawChatId.trim()
 
   const extraContext = jobContext
     ? (() => {
@@ -110,6 +116,21 @@ export async function POST(request: NextRequest) {
 
     if (!transcript) {
       return NextResponse.json({ transcript: "", reply: "", audioBase64: null })
+    }
+
+    const { data: chat, error: chatError } = await auth.supabase
+      .from("prep_chats")
+      .select("id")
+      .eq("id", chatId)
+      .eq("user_id", auth.userId)
+      .maybeSingle()
+
+    if (chatError) {
+      return NextResponse.json({ error: "Unable to verify chat." }, { status: 500 })
+    }
+
+    if (!chat) {
+      return NextResponse.json({ error: "Chat not found." }, { status: 404 })
     }
 
     const context = await buildPrepContext({
@@ -139,6 +160,20 @@ export async function POST(request: NextRequest) {
     const replyText = completion.choices[0]?.message?.content?.trim() ?? "I heard you. Let's keep practicing."
 
     const audioBase64 = voiceReplies ? await synthesizeCartesiaSpeech(replyText) : null
+
+    const { error: insertError } = await auth.supabase.from("prep_messages").insert([
+      { chat_id: chat.id, role: "user", content: transcript, metadata: { mode: "voice" } },
+      {
+        chat_id: chat.id,
+        role: "assistant",
+        content: replyText,
+        metadata: { mode: "voice", hasAudio: Boolean(audioBase64) },
+      },
+    ])
+
+    if (insertError) {
+      return NextResponse.json({ error: "Unable to save voice exchange." }, { status: 500 })
+    }
 
     return NextResponse.json({ transcript, reply: replyText, audioBase64 })
   } catch (error) {

@@ -198,3 +198,20 @@ export interface JobApplicationSort {
   direction: "asc" | "desc"
 }
 
+export interface PrepChat {
+  id: string
+  user_id: string
+  interview_id?: string | null
+  title: string
+  created_at: string
+}
+
+export interface PrepMessage {
+  id: string
+  chat_id: string
+  role: "user" | "assistant"
+  content: string
+  created_at: string
+  metadata?: Record<string, unknown> | null
+}
+

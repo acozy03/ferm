@@ -32,17 +32,26 @@ import { Switch } from "@/components/ui/switch"
 import { createAudioVisualizer, type AudioVisualizer } from "@/lib/audio-visualizer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
-import type { JobApplicationWithInterviews } from "@/lib/types/database"
+import type { JobApplicationWithInterviews, PrepChat, PrepMessage } from "@/lib/types/database"
 
 interface ChatMessage {
+  id?: string
   role: "assistant" | "user"
   content: string
   tone?: "behavioral" | "technical" | "coach"
+  metadata?: Record<string, unknown> | null
 }
 
 export default function PrepPage() {
   const { applications, isLoading } = useJobApplications({ limit: 50, include_interviews: true })
   const [selectedApplicationId, setSelectedApplicationId] = useState<string>("")
+  const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
+  const [chats, setChats] = useState<PrepChat[]>([])
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
+  const [isChatsLoading, setIsChatsLoading] = useState(false)
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false)
+  const [isCreatingChat, setIsCreatingChat] = useState(false)
+  const [chatError, setChatError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isSessionEnded, setIsSessionEnded] = useState(false)
@@ -82,6 +91,125 @@ export default function PrepPage() {
       setSelectedApplicationId(applications[0].id)
     }
   }, [applications, selectedApplicationId])
+
+  const selectedApplication = useMemo(
+    () => applications.find((application) => application.id === selectedApplicationId),
+    [applications, selectedApplicationId],
+  )
+
+  const interviewOptions = useMemo(
+    () =>
+      (selectedApplication?.interviews ?? []).map((interview) => {
+        const parts = [
+          interview.interview_type ?? "Interview",
+          interview.scheduled_date ? new Date(interview.scheduled_date).toLocaleDateString() : null,
+        ].filter(Boolean)
+
+        return { id: interview.id, label: parts.join(" · ") || "Interview" }
+      }),
+    [selectedApplication?.interviews],
+  )
+
+  useEffect(() => {
+    if (!selectedApplication) {
+      setSelectedInterviewId(null)
+      return
+    }
+
+    if (selectedApplication.interviews?.length) {
+      setSelectedInterviewId((previous) => {
+        if (previous && selectedApplication.interviews?.some((interview) => interview.id === previous)) {
+          return previous
+        }
+        return selectedApplication.interviews?.[0]?.id ?? null
+      })
+    } else {
+      setSelectedInterviewId(null)
+    }
+  }, [selectedApplication])
+
+  const mapPrepMessage = useCallback((record: PrepMessage): ChatMessage => {
+    const tone =
+      (record.metadata as { tone?: ChatMessage["tone"] } | null | undefined)?.tone ??
+      (record.role === "assistant" ? "technical" : undefined)
+    return {
+      id: record.id,
+      role: record.role,
+      content: record.content,
+      tone,
+      metadata: record.metadata ?? null,
+    }
+  }, [])
+
+  const fetchChats = useCallback(
+    async (interviewId: string | null) => {
+      setIsChatsLoading(true)
+      setChatError(null)
+
+      try {
+        const search = `?interviewId=${encodeURIComponent(interviewId ?? "")}`
+        const response = await fetch(`/api/prep/chats${search}`)
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => ({ error: "Unable to load chats." }))
+          throw new Error(errorPayload.error || "Unable to load chats.")
+        }
+
+        const payload = (await response.json()) as { data?: PrepChat[] }
+        const chatList = payload.data ?? []
+
+        setChats(chatList)
+        setSelectedChatId((previous) => {
+          if (previous && chatList.some((chat) => chat.id === previous)) return previous
+          return chatList[0]?.id ?? null
+        })
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : "Unable to load chats.")
+        setChats([])
+        setSelectedChatId(null)
+      } finally {
+        setIsChatsLoading(false)
+      }
+    },
+    [],
+  )
+
+  const fetchMessages = useCallback(
+    async (chatId: string) => {
+      setIsMessagesLoading(true)
+      setChatError(null)
+
+      try {
+        const response = await fetch(`/api/prep/messages?chatId=${chatId}`)
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => ({ error: "Unable to load messages." }))
+          throw new Error(errorPayload.error || "Unable to load messages.")
+        }
+
+        const payload = (await response.json()) as { data?: PrepMessage[] }
+        setMessages((payload.data ?? []).map(mapPrepMessage))
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : "Unable to load messages.")
+        setMessages([])
+      } finally {
+        setIsMessagesLoading(false)
+      }
+    },
+    [mapPrepMessage],
+  )
+
+  useEffect(() => {
+    if (!selectedApplicationId) return
+    void fetchChats(selectedInterviewId)
+  }, [fetchChats, selectedApplicationId, selectedInterviewId])
+
+  useEffect(() => {
+    if (selectedChatId) {
+      void fetchMessages(selectedChatId)
+    } else {
+      setMessages([])
+    }
+  }, [fetchMessages, selectedChatId])
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" })
@@ -199,13 +327,6 @@ export default function PrepPage() {
     }
   }, [isFocusMode, stopMicVisualizationStream, teardownVisualizer])
 
-  const selectedApplication = useMemo(
-    () => applications.find((application) => application.id === selectedApplicationId),
-    [applications, selectedApplicationId],
-  )
-
-  const interviewCount = selectedApplication?.interviews?.length ?? 0
-  const firstInterview = selectedApplication?.interviews?.[0]
 
   type ApplicationCardKey =
     | "jobInformation"
@@ -223,10 +344,6 @@ export default function PrepPage() {
 
   const applicationCards = useMemo<ApplicationCardConfig[]>(() => {
     if (!selectedApplication) return []
-
-    const nextInterviewDate = firstInterview?.scheduled_date
-      ? new Date(firstInterview.scheduled_date).toLocaleDateString()
-      : null
 
     const cardConfigs: ApplicationCardConfig[] = [
       {
@@ -314,7 +431,7 @@ export default function PrepPage() {
     ]
 
     return cardConfigs
-  }, [firstInterview?.scheduled_date, interviewCount, selectedApplication])
+  }, [selectedApplication])
 
   const latestAssistantMessage = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -324,7 +441,12 @@ export default function PrepPage() {
   }, [messages])
 
   const startTypewriterStream = useCallback(
-    (targetIndex: number, fullText: string, tone: ChatMessage["tone"] = "technical") => {
+    (
+      targetIndex: number,
+      fullText: string,
+      tone: ChatMessage["tone"] = "technical",
+      onComplete?: () => void,
+    ) => {
       if (typewriterIntervalRef.current) {
         clearInterval(typewriterIntervalRef.current)
       }
@@ -340,6 +462,7 @@ export default function PrepPage() {
           }
           return next
         })
+        onComplete?.()
         return
       }
 
@@ -366,14 +489,49 @@ export default function PrepPage() {
             typewriterIntervalRef.current = null
           }
           streamingMessageIndexRef.current = null
+          onComplete?.()
         }
       }, tickInterval)
     },
     [],
   )
 
+  const handleCreateChat = useCallback(async () => {
+    if (isCreatingChat) return
+
+    setIsCreatingChat(true)
+    setChatError(null)
+
+    try {
+      const response = await fetch("/api/prep/chats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interviewId: selectedInterviewId }),
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to create chat." }))
+        throw new Error(errorPayload.error || "Unable to create chat.")
+      }
+
+      const payload = (await response.json()) as { data: PrepChat }
+      setChats((previous) => [payload.data, ...previous])
+      setSelectedChatId(payload.data.id)
+      setMessages([])
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "Unable to create chat.")
+    } finally {
+      setIsCreatingChat(false)
+    }
+  }, [isCreatingChat, selectedInterviewId])
+
   const handleSend = async () => {
-    if (!input.trim() || isGenerating || isSessionEnded) return
+    if (!input.trim() || isGenerating || isSessionEnded || isMessagesLoading) return
+    if (!selectedChatId) {
+      setChatError("Create a chat to start messaging.")
+      return
+    }
+
     const trimmed = input.trim()
     const userMessage: ChatMessage = { role: "user", content: trimmed }
     const history = [...messages, userMessage]
@@ -382,25 +540,60 @@ export default function PrepPage() {
     setIsSessionEnded(false)
     setIsGenerating(true)
     streamingMessageIndexRef.current = null
+    setChatError(null)
 
-    setMessages((previous) => {
-      const nextMessages = [...previous, userMessage, { role: "assistant", tone: "technical", content: "" }]
-      streamingMessageIndexRef.current = nextMessages.length - 1
-      return nextMessages
-    })
+    let assistantMessageId: string | null = null
 
     try {
+      const appendResponse = await fetch("/api/prep/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId: selectedChatId,
+          userContent: trimmed,
+          assistantContent: "",
+          userMetadata: { mode: "text" },
+          assistantMetadata: { mode: "text" },
+        }),
+      })
+
+      if (!appendResponse.ok) {
+        const errorPayload = await appendResponse.json().catch(() => ({ error: "Unable to start chat." }))
+        throw new Error(errorPayload.error || "Unable to start chat.")
+      }
+
+      const appendPayload = (await appendResponse.json()) as { data?: PrepMessage[] }
+      const assistantRecord = appendPayload.data?.find((message) => message.role === "assistant")
+      assistantMessageId = assistantRecord?.id ?? null
+      const appendedMessages = (appendPayload.data ?? []).map(mapPrepMessage)
+
+      setMessages((previous) => {
+        const next = [...previous, ...appendedMessages]
+        const assistantIndex = assistantMessageId
+          ? next.findIndex((message) => message.id === assistantMessageId)
+          : next.length - 1
+        streamingMessageIndexRef.current = assistantIndex >= 0 ? assistantIndex : null
+        return next
+      })
+
+      if (!assistantMessageId) {
+        throw new Error("Unable to track the assistant reply.")
+      }
+
       const response = await fetch("/api/prep", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           applicationId: selectedApplication?.id ?? null,
+          chatId: selectedChatId,
+          assistantMessageId,
           messages: history.map((message) => ({ role: message.role, content: message.content })),
         }),
       })
 
       if (!response.ok || !response.body) {
-        throw new Error("The assistant couldn't respond right now.")
+        const errorPayload = await response.json().catch(() => ({ error: "The assistant couldn't respond right now." }))
+        throw new Error(errorPayload.error || "The assistant couldn't respond right now.")
       }
 
       const reader = response.body.getReader()
@@ -423,6 +616,10 @@ export default function PrepPage() {
           })
         }
       }
+
+      if (selectedChatId) {
+        void fetchMessages(selectedChatId)
+      }
     } catch (error) {
       const fallbackMessage =
         error instanceof Error ? error.message : "We hit a snag fetching a response. Please try again."
@@ -436,6 +633,7 @@ export default function PrepPage() {
           return next
         })
       }
+      setChatError(error instanceof Error ? error.message : "We hit a snag fetching a response.")
     } finally {
       setIsGenerating(false)
       streamingMessageIndexRef.current = null
@@ -596,6 +794,11 @@ export default function PrepPage() {
   const sendVoiceMessage = async (audioBlob: Blob) => {
     if (isSessionEnded) return
     if (isVoiceProcessingRef.current) return
+    if (!selectedChatId) {
+      setVoiceError("Create a chat to start voice prep.")
+      setIsProcessingVoice(false)
+      return
+    }
     if (audioBlob.size === 0) {
       setVoiceError("We couldn't capture any audio. Try again.")
       setIsProcessingVoice(false)
@@ -614,6 +817,7 @@ export default function PrepPage() {
       formData.append("audio", audioBlob, "voice-input.wav")
       formData.append("messages", JSON.stringify(recentMessages))
       formData.append("voiceReplies", isVoiceReplyEnabled ? "true" : "false")
+      formData.append("chatId", selectedChatId)
 
       if (selectedApplication?.id) {
         formData.append("applicationId", selectedApplication.id)
@@ -652,7 +856,15 @@ export default function PrepPage() {
           streamingMessageIndexRef.current = nextMessages.length - 1
           const messageIndex = streamingMessageIndexRef.current
           if (messageIndex !== null) {
-            setTimeout(() => startTypewriterStream(messageIndex, data.reply ?? "", "technical"), 0)
+            setTimeout(
+              () =>
+                startTypewriterStream(messageIndex, data.reply ?? "", "technical", () => {
+                  if (selectedChatId) {
+                    void fetchMessages(selectedChatId)
+                  }
+                }),
+              0,
+            )
           }
         }
 
@@ -706,6 +918,7 @@ export default function PrepPage() {
       } else {
         setVoiceReplyUrl(null)
       }
+
     } catch (error) {
       setVoiceError(error instanceof Error ? error.message : "Voice mode is unavailable right now.")
     } finally {
@@ -819,34 +1032,65 @@ export default function PrepPage() {
                 </div>
 
                 {selectedApplication && (
-                  <Accordion
-                    type="multiple"
-                    collapsible
-                    defaultValue={["jobInformation"]}
-                    className="space-y-2"
-                  >
-                    {applicationCards.map((card) => {
-                      const Icon = card.icon
-
-                      return (
-                        <AccordionItem
-                          key={card.key}
-                          value={card.key}
-                          className="overflow-hidden rounded-lg border border-border/60 bg-background/80 shadow-sm"
+                  <>
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-foreground">Interview</p>
+                      {interviewOptions.length > 0 ? (
+                        <Select
+                          value={selectedInterviewId ?? ""}
+                          onValueChange={(value) => setSelectedInterviewId(value || null)}
+                          disabled={isChatsLoading}
                         >
-                          <AccordionTrigger className="px-3 py-3 min-h-[120px] items-center">
-                            <div className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
-                              {Icon && <Icon className="h-4 w-4 text-primary" />}
-                              <span>{card.title}</span>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="px-3 pb-4">
-                            {card.render(selectedApplication)}
-                          </AccordionContent>
-                        </AccordionItem>
-                      )
-                    })}
-                  </Accordion>
+                          <SelectTrigger className="bg-background/70 text-left">
+                            <SelectValue
+                              placeholder="Choose an interview"
+                              className="truncate"
+                              aria-label="Select interview"
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">General prep</SelectItem>
+                            {interviewOptions.map((interview) => (
+                              <SelectItem key={interview.id} value={interview.id} title={interview.label}>
+                                {interview.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No interviews yet. Chats will be unassigned.</p>
+                      )}
+                    </div>
+
+                    <Accordion
+                      type="multiple"
+                      collapsible
+                      defaultValue={["jobInformation"]}
+                      className="space-y-2"
+                    >
+                      {applicationCards.map((card) => {
+                        const Icon = card.icon
+
+                        return (
+                          <AccordionItem
+                            key={card.key}
+                            value={card.key}
+                            className="overflow-hidden rounded-lg border border-border/60 bg-background/80 shadow-sm"
+                          >
+                            <AccordionTrigger className="px-3 py-3 min-h-[120px] items-center">
+                              <div className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
+                                {Icon && <Icon className="h-4 w-4 text-primary" />}
+                                <span>{card.title}</span>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-3 pb-4">
+                              {card.render(selectedApplication)}
+                            </AccordionContent>
+                          </AccordionItem>
+                        )
+                      })}
+                    </Accordion>
+                  </>
                 )}
               </aside>
 
@@ -903,10 +1147,56 @@ export default function PrepPage() {
                     </div>
                   )}
 
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Select
+                      value={selectedChatId ?? ""}
+                      onValueChange={(value) => setSelectedChatId(value || null)}
+                      disabled={isChatsLoading || chats.length === 0}
+                    >
+                      <SelectTrigger className="w-full max-w-xs bg-background/70 text-left">
+                        <SelectValue
+                          placeholder={isChatsLoading ? "Loading chats..." : "Select a chat"}
+                          className="truncate"
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chats.map((chat) => (
+                          <SelectItem key={chat.id} value={chat.id} title={chat.title}>
+                            {chat.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCreateChat}
+                      disabled={isCreatingChat || isChatsLoading}
+                    >
+                      {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                      New chat
+                    </Button>
+                    {isChatsLoading && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading chats...
+                      </div>
+                    )}
+                  </div>
+                  {chatError && <p className="text-xs text-destructive">{chatError}</p>}
+                  {!isChatsLoading && chats.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Create a chat to start prepping.</p>
+                  )}
+
                   <ScrollArea className="flex-1 overflow-y-auto" ref={chatRef}>
                     <div className="space-y-4 pr-2 pb-4">
+                      {isMessagesLoading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Loading messages...
+                        </div>
+                      )}
                       {messages.map((message, index) => (
-                        <div key={`${message.role}-${index}`} className="flex gap-3">
+                        <div key={message.id ?? `${message.role}-${index}`} className="flex gap-3">
                           <div
                             className={cn(
                               "h-10 w-10 rounded-full flex items-center justify-center border",
@@ -924,7 +1214,7 @@ export default function PrepPage() {
                           </div>
                         </div>
                       ))}
-                      {messages.length === 0 && (
+                      {messages.length === 0 && !isMessagesLoading && (
                         <div className="text-center text-muted-foreground text-sm">Start chatting to begin your interview</div>
                       )}
                     </div>
