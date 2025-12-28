@@ -99,7 +99,7 @@ export default function LandingPage() {
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
             <Link href="/landing" className="flex items-center gap-3 text-base font-semibold">
               <Image src={fermLogo} alt="Ferm logo" width={36} height={36} className="h-9 w-9" />
-              <span>ferm</span>
+             
             </Link>
             <div className="flex items-center gap-3">
               {hasSession ? (
@@ -120,15 +120,12 @@ export default function LandingPage() {
         </header>
 
         <main className="mx-auto flex max-w-5xl flex-col items-center px-6 pb-24 pt-20 text-center sm:pt-28">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-4 py-2 text-xs font-medium text-foreground/80">
-            <span className="flex h-2 w-2 rounded-full bg-primary" aria-hidden />
-            Job search command center
-          </div>
+          
           <h1 className="max-w-3xl text-4xl font-semibold leading-tight sm:text-5xl">
             Stop forgetting where every application stands.
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-            Ferm collects your highlights, interviews, and follow-ups into a single workspace so you can move every opportunity forward without another spreadsheet.
+            ferm collects your applications, interviews, and follow-ups into a single workspace so you can move every opportunity forward without another spreadsheet.
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:gap-3">
             <Button size="lg" onClick={hasSession ? () => router.replace(redirectedFrom || "/") : handleGoogle} className="gap-2 px-7 text-base">
