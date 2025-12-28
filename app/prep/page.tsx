@@ -929,50 +929,6 @@ export default function PrepPage() {
   }
 
 
-  const voiceStatus = (
-    <div className="flex flex-wrap items-center gap-4">
-      <div className="relative h-20 w-20 sm:h-24 sm:w-24">
-        <div
-          className={cn(
-            "absolute inset-0 rounded-full bg-primary/15 transition-all duration-500",
-            isRecording ? "animate-ping" : "opacity-50",
-          )}
-        />
-        <div
-          className={cn(
-            "absolute inset-2 rounded-full border transition-all duration-500",
-            isRecording ? "border-primary shadow-[0_0_0_8px_rgba(99,102,241,0.15)]" : "border-border",
-          )}
-        />
-        <div className="relative flex h-full w-full items-center justify-center rounded-full bg-background shadow-inner">
-          {isProcessingVoice ? (
-            <Loader2 className="h-7 w-7 animate-spin text-primary" />
-          ) : isRecording ? (
-            <Mic className="h-6 w-6 text-primary" />
-          ) : (
-            <Volume2 className="h-6 w-6 text-muted-foreground" />
-          )}
-        </div>
-      </div>
-
-      <div className="flex-1 min-w-[200px] space-y-1">
-        <p className="text-sm font-semibold text-foreground">Your mic</p>
-        <p className="text-xs text-muted-foreground">
-          {isRecording
-            ? `Listening • ${recordingSeconds}s`
-            : isProcessingVoice
-              ? "Processing your reply"
-              : "Tap start or wait for Prep to finish to respond automatically."}
-        </p>
-        {voiceTranscript && !isRecording && (
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Transcript:</span> {voiceTranscript}
-          </p>
-        )}
-      </div>
-    </div>
-  )
-
   return (
     <div className="min-h-screen overflow-hidden ">
       <Header />
@@ -1112,7 +1068,7 @@ export default function PrepPage() {
                           <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.25)]" />
                         </div>
                       </div>
-                      {voiceStatus}
+                     
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
                           type="button"
@@ -1253,7 +1209,7 @@ export default function PrepPage() {
                             />
                           </div>
 
-                          {voiceStatus}
+                          
 
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             {isRecording && <span className="text-destructive font-semibold">Recording</span>}
