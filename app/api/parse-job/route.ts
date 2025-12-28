@@ -82,6 +82,36 @@ export async function POST(request: Request) {
     response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
     return response;
   }
+  const { apiKey, isUserProvided } = keyResolution;
+
+  let usedToday = 0;
+  if (!isUserProvided) {
+    const today = new Date().toISOString().split("T")[0];
+    const { data: usageRow, error: usageError } = await supabase
+      .from("llm_usage")
+      .select("count")
+      .eq("user_id", user.id)
+      .eq("date", today)
+      .maybeSingle();
+
+    if (usageError && usageError.code !== "PGRST116") {
+      return NextResponse.json({ error: "Unable to check usage." }, { status: 500 });
+    }
+
+    usedToday = usageRow?.count ?? 0;
+
+    if (usedToday >= DAILY_LIMIT) {
+      const res = NextResponse.json(
+        { error: "Daily usage limit reached." },
+        { status: 429 },
+      );
+      res.headers.set("Cache-Control", "no-store");
+      res.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
+      res.headers.set("X-Usage-Limit", String(DAILY_LIMIT));
+      res.headers.set("X-Usage-Remaining", "0");
+      return res;
+    }
+  }
 
   // --- Parse input ---
   let bodyUnknown: unknown;
@@ -166,7 +196,7 @@ URL: ${job_url}
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${keyResolution.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
@@ -209,33 +239,36 @@ URL: ${job_url}
       return resMalformed;
     }
     // --- Supabase client bound to user token (for RPC/RLS) ---
-    // ✅ Increment usage AFTER successful parse
-    // Recommended SQL (in your function):
-    // ... DO UPDATE SET count = least(llm_usage.count + 1, 20) RETURNING count;
-    const { data: incCount, error: incErr } = await supabase.rpc("increment_llm_usage");
-    if (incErr) {
-      console.error("increment_llm_usage error:", incErr);
-      return NextResponse.json({ error: "Usage update failed" }, { status: 500 });
+    // ✅ Increment usage AFTER successful parse when using the hosted key
+    let remainingNow: number | null = null;
+    if (!isUserProvided) {
+      // Recommended SQL (in your function):
+      // ... DO UPDATE SET count = least(llm_usage.count + 1, 20) RETURNING count;
+      const { data: incCount, error: incErr } = await supabase.rpc("increment_llm_usage");
+      if (incErr) {
+        console.error("increment_llm_usage error:", incErr);
+        return NextResponse.json({ error: "Usage update failed" }, { status: 500 });
+      }
+
+      // Determine new count/remaining
+      let usedNow: number | null =
+        typeof incCount === "number" ? incCount : null;
+
+      if (usedNow === null) {
+        // fallback: read today's count if function didn't RETURNING count
+        const today = new Date().toISOString().split("T")[0];
+        const { data: afterRow } = await supabase
+          .from("llm_usage")
+          .select("count")
+          .eq("user_id", user.id)
+          .eq("date", today)
+          .maybeSingle();
+        usedNow = afterRow?.count ?? null;
+      }
+
+      remainingNow =
+        usedNow == null ? null : Math.max(0, DAILY_LIMIT - usedNow);
     }
-
-    // Determine new count/remaining
-    let usedNow: number | null =
-      typeof incCount === "number" ? incCount : null;
-
-    if (usedNow === null) {
-      // fallback: read today's count if function didn't RETURNING count
-      const today = new Date().toISOString().split("T")[0];
-      const { data: afterRow } = await supabase
-        .from("llm_usage")
-        .select("count")
-        .eq("user_id", user.id)
-        .eq("date", today)
-        .maybeSingle();
-      usedNow = afterRow?.count ?? null;
-    }
-
-    const remainingNow =
-      usedNow == null ? null : Math.max(0, DAILY_LIMIT - usedNow);
 
     // Respond with parsed data + usage headers for instant UI update
     const res = NextResponse.json(
@@ -244,8 +277,8 @@ URL: ${job_url}
     );
     res.headers.set("Cache-Control", "no-store");
     res.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
-    res.headers.set("X-Usage-Limit", String(DAILY_LIMIT));
     if (remainingNow != null) {
+      res.headers.set("X-Usage-Limit", String(DAILY_LIMIT));
       res.headers.set("X-Usage-Remaining", String(remainingNow));
     }
     return res;

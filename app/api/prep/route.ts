@@ -52,7 +52,42 @@ export async function POST(request: NextRequest) {
       return response
     }
 
-    const openai = new OpenAI({ apiKey: keyResolution.apiKey })
+    const { apiKey, isUserProvided } = keyResolution
+
+    let usedToday = 0
+    if (!isUserProvided) {
+      const today = new Date().toISOString().split("T")[0]
+      const { data: usageRow, error: usageError } = await auth.supabase
+        .from("llm_usage")
+        .select("count")
+        .eq("user_id", auth.userId)
+        .eq("date", today)
+        .maybeSingle()
+
+      if (usageError && usageError.code !== "PGRST116") {
+        return NextResponse.json({ error: "Unable to check usage." }, { status: 500 })
+      }
+
+      usedToday = usageRow?.count ?? 0
+
+      if (usedToday >= DAILY_LIMIT) {
+        return new NextResponse(
+          JSON.stringify({ error: "Daily prep limit reached." }),
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "no-store",
+              Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
+              "X-Usage-Limit": String(DAILY_LIMIT),
+              "X-Usage-Remaining": "0",
+            },
+          },
+        )
+      }
+    }
+
+    const openai = new OpenAI({ apiKey })
 
     const { data: chat, error: chatError } = await auth.supabase
       .from("prep_chats")
@@ -136,7 +171,7 @@ export async function POST(request: NextRequest) {
     })
 
     const encoder = new TextEncoder()
-    const projectedRemaining = Math.max(0, DAILY_LIMIT - (usedToday + 1))
+    const projectedRemaining = isUserProvided ? null : Math.max(0, DAILY_LIMIT - (usedToday + 1))
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         let accumulated = ""
@@ -178,7 +213,7 @@ export async function POST(request: NextRequest) {
             }
           }
         } finally {
-          if (completedSuccessfully) {
+          if (completedSuccessfully && !isUserProvided) {
             const { error: incErr } = await auth.supabase.rpc("increment_llm_usage")
             if (incErr) {
               console.error("increment_llm_usage failed", incErr)
@@ -189,13 +224,20 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    const responseHeaders: Record<string, string> = {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
+    }
+
+    if (projectedRemaining !== null) {
+      responseHeaders["X-Usage-Limit"] = String(DAILY_LIMIT)
+      responseHeaders["X-Usage-Remaining"] = String(projectedRemaining)
+    }
+
     return new NextResponse(stream, {
       status: 200,
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
-      },
+      headers: responseHeaders,
     })
   } catch (error) {
     console.error("Prep request failed", error)

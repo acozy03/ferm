@@ -34,6 +34,8 @@ async function fetchStoredKey(
   return stored
 }
 
+type ResolvedKey = { apiKey: string; isUserProvided: boolean }
+
 export async function resolveOpenAIApiKey({
   request,
   supabase,
@@ -42,26 +44,28 @@ export async function resolveOpenAIApiKey({
   request: Request
   supabase?: SupabaseClient<unknown, "public", unknown> | null
   userId?: string | null
-}): Promise<{ apiKey: string } | { error: NextResponse }> {
+}): Promise<ResolvedKey | { error: NextResponse }> {
   const headerKey = sanitizeKey(request.headers.get(USER_OPENAI_KEY_HEADER))
   if (headerKey) {
-    return { apiKey: headerKey }
+    return { apiKey: headerKey, isUserProvided: true }
   }
 
   const storedKey = await fetchStoredKey(supabase ?? null, userId ?? null)
   if (storedKey) {
-    return { apiKey: storedKey }
+    return { apiKey: storedKey, isUserProvided: true }
   }
 
   const envKey = sanitizeKey(process.env.OPENAI_API_KEY ?? null)
   if (envKey) {
-    return { apiKey: envKey }
+    return { apiKey: envKey, isUserProvided: false }
   }
 
   return {
     error: NextResponse.json(
-      { error: "An OpenAI API key is required for this action." },
-      { status: 402 },
+      { error: "The service is not configured with an OpenAI API key." },
+      { status: 500 },
     ),
   }
 }
+
+export type { ResolvedKey }
