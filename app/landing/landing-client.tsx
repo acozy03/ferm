@@ -2,29 +2,19 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { FormEvent, useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowUpRight, LogIn } from "lucide-react"
+import { ArrowUpRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { useSupabase } from "@/components/supabase-provider"
 import fermLogo from "@/public/logo.png"
-
-const PASSWORD_HELP = "Use at least 8 characters."
 
 export default function LandingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectedFrom = searchParams.get("redirectedFrom")
   const { supabase, session, isLoading } = useSupabase()
-
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [mode, setMode] = useState<"signin" | "signup">("signin")
-  const [message, setMessage] = useState<string | null>(null)
-  const [authError, setAuthError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -46,50 +36,6 @@ export default function LandingPage() {
     })
   }
 
-  const handleEmailSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setAuthError(null)
-    setMessage(null)
-    setIsSubmitting(true)
-
-    const sanitizedEmail = email.trim()
-    const origin = typeof window === "undefined" ? "" : window.location.origin
-    const next = redirectedFrom ? `?next=${encodeURIComponent(redirectedFrom)}` : ""
-
-    try {
-      if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: sanitizedEmail,
-          password,
-        })
-
-        if (error) {
-          setAuthError(error.message)
-          return
-        }
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email: sanitizedEmail,
-          password,
-          options: {
-            emailRedirectTo: `${origin}/auth/callback${next}`,
-          },
-        })
-
-        if (error) {
-          setAuthError(error.message)
-          return
-        }
-
-        setMessage("Check your email for a verification link to finish setting up your account.")
-        setMode("signin")
-        setPassword("")
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   const hasSession = Boolean(session)
 
   return (
@@ -107,7 +53,7 @@ export default function LandingPage() {
                   Go to dashboard
                 </Button>
               ) : (
-                <Button variant="ghost" onClick={() => setMode("signin")} className="text-foreground/80">
+                <Button variant="ghost" onClick={handleGoogle} className="text-foreground/80">
                   Log in
                 </Button>
               )}
@@ -133,85 +79,11 @@ export default function LandingPage() {
               <ArrowUpRight className="h-4 w-4" aria-hidden />
             </Button>
             {!hasSession && (
-              <Button size="lg" variant="outline" onClick={() => setMode("signup")} className="px-7 text-base">
+              <Button size="lg" variant="outline" onClick={handleGoogle} className="px-7 text-base">
                 Create an account
               </Button>
             )}
           </div>
-
-          {!hasSession && (
-            <section className="mt-16 w-full max-w-xl rounded-2xl border border-border bg-card p-6 text-left shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">{mode === "signin" ? "Log in" : "Create an account"}</p>
-                  <p className="text-sm text-muted-foreground">Use Google or email to get into ferm.</p>
-                </div>
-                <LogIn className="h-5 w-5 text-muted-foreground" aria-hidden />
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <Button onClick={handleGoogle} className="gap-2" variant="secondary" type="button">
-                  Continue with Google
-                  <ArrowUpRight className="h-4 w-4" aria-hidden />
-                </Button>
-              </div>
-
-              <div className="mt-6 h-px w-full bg-border" aria-hidden />
-
-              {message && <p className="mt-3 rounded-lg bg-muted/40 px-3 py-2 text-sm text-foreground">{message}</p>}
-              {authError && <p className="mt-3 rounded-lg bg-destructive/20 px-3 py-2 text-sm text-destructive-foreground">{authError}</p>}
-
-              <form className="mt-4 space-y-4" onSubmit={handleEmailSubmit}>
-                <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium">
-                    Email
-                  </label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="bg-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-medium">
-                    Password
-                  </label>
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                    required
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="bg-input"
-                  />
-                  <p className="text-xs text-muted-foreground">{PASSWORD_HELP}</p>
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <Button type="submit" disabled={isSubmitting} className="sm:min-w-[160px]">
-                    {isSubmitting ? "Working..." : mode === "signin" ? "Log in" : "Sign up"}
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode(mode === "signin" ? "signup" : "signin")
-                      setAuthError(null)
-                      setMessage(null)
-                    }}
-                    className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    {mode === "signin" ? "Create a new account" : "Use an existing account"}
-                  </button>
-                </div>
-              </form>
-            </section>
-          )}
         </main>
       </div>
     </div>
