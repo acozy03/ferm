@@ -235,25 +235,7 @@ export default function PrepPage() {
         icon: Briefcase,
         render: (current) => (
           <div className="space-y-3 text-xs text-muted-foreground">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">{current.position_title ?? "Role"}</p>
-              <p className="text-xs text-muted-foreground">
-                {current.company_name ?? "Company"}
-                {nextInterviewDate && <span className="ml-1">• Next: {nextInterviewDate}</span>}
-              </p>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <Badge variant="outline" className="border-border/60">
-                  {current.status ?? "Draft"}
-                </Badge>
-                {current.priority && (
-                  <Badge variant="secondary" className="gap-1">
-                    Priority
-                    <span className="font-semibold">{current.priority}</span>
-                  </Badge>
-                )}
-                <span>Interviews: {interviewCount}</span>
-              </div>
-            </div>
+          
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -284,19 +266,7 @@ export default function PrepPage() {
                   </p>
                 </div>
               )}
-              {current.job_url && (
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold text-foreground">Job posting</p>
-                  <a
-                    href={current.job_url}
-                    className="break-all text-primary hover:underline"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {current.job_url}
-                  </a>
-                </div>
-              )}
+              
             </div>
           </div>
         ),
@@ -313,7 +283,7 @@ export default function PrepPage() {
       },
       {
         key: "responsibilities",
-        title: "Key responsibilities",
+        title: "Responsibilities",
         icon: ListChecks,
         render: (current) => (
           <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
@@ -864,8 +834,8 @@ export default function PrepPage() {
                           value={card.key}
                           className="overflow-hidden rounded-lg border border-border/60 bg-background/80 shadow-sm"
                         >
-                          <AccordionTrigger className="px-3">
-                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <AccordionTrigger className="px-3 py-3 min-h-[120px] items-center">
+                            <div className="flex items-center gap-2 text-base font-semibold leading-6 text-foreground">
                               {Icon && <Icon className="h-4 w-4 text-primary" />}
                               <span>{card.title}</span>
                             </div>
