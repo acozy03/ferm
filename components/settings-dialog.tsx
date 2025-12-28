@@ -113,7 +113,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Workspace settings</DialogTitle>
+          <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <div className="space-y-6 py-2">
           <div className="space-y-3">
