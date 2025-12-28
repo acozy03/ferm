@@ -2,12 +2,28 @@
 
 import { MicVAD, utils } from "@ricky0123/vad-web"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Bot, Loader2, Mic, Plus, Send, Sparkles, Square, StopCircle, Volume2 } from "lucide-react"
+import {
+  Bot,
+  Briefcase,
+  FileText,
+  GraduationCap,
+  ListChecks,
+  Loader2,
+  Mic,
+  Plus,
+  Send,
+  Sparkles,
+  Square,
+  StickyNote,
+  StopCircle,
+  Volume2,
+} from "lucide-react"
 
 import { Header } from "@/components/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -16,6 +32,7 @@ import { Switch } from "@/components/ui/switch"
 import { createAudioVisualizer, type AudioVisualizer } from "@/lib/audio-visualizer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
+import type { JobApplicationWithInterviews } from "@/lib/types/database"
 
 interface ChatMessage {
   role: "assistant" | "user"
@@ -189,6 +206,145 @@ export default function PrepPage() {
 
   const interviewCount = selectedApplication?.interviews?.length ?? 0
   const firstInterview = selectedApplication?.interviews?.[0]
+
+  type ApplicationCardKey =
+    | "jobInformation"
+    | "resumeHighlights"
+    | "responsibilities"
+    | "qualifications"
+    | "notes"
+
+  interface ApplicationCardConfig {
+    key: ApplicationCardKey
+    title: string
+    icon?: React.ComponentType<{ className?: string }>
+    render: (application: JobApplicationWithInterviews) => React.ReactNode
+  }
+
+  const applicationCards = useMemo<ApplicationCardConfig[]>(() => {
+    if (!selectedApplication) return []
+
+    const nextInterviewDate = firstInterview?.scheduled_date
+      ? new Date(firstInterview.scheduled_date).toLocaleDateString()
+      : null
+
+    const cardConfigs: ApplicationCardConfig[] = [
+      {
+        key: "jobInformation",
+        title: "Job information",
+        icon: Briefcase,
+        render: (current) => (
+          <div className="space-y-3 text-xs text-muted-foreground">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">{current.position_title ?? "Role"}</p>
+              <p className="text-xs text-muted-foreground">
+                {current.company_name ?? "Company"}
+                {nextInterviewDate && <span className="ml-1">• Next: {nextInterviewDate}</span>}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline" className="border-border/60">
+                  {current.status ?? "Draft"}
+                </Badge>
+                {current.priority && (
+                  <Badge variant="secondary" className="gap-1">
+                    Priority
+                    <span className="font-semibold">{current.priority}</span>
+                  </Badge>
+                )}
+                <span>Interviews: {interviewCount}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground">Location</p>
+                <p>{current.location ?? "Not specified"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground">Employment</p>
+                <p>{current.employment_type ?? "N/A"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground">Application date</p>
+                <p>{current.application_date ? new Date(current.application_date).toLocaleDateString() : "N/A"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground">Salary range</p>
+                <p>{current.salary_range ?? "Not provided"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(current.contact_person || current.contact_email) && (
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold text-foreground">Recruiter / Contact</p>
+                  <p>
+                    {current.contact_person ?? "Unknown"}
+                    {current.contact_email ? ` • ${current.contact_email}` : ""}
+                  </p>
+                </div>
+              )}
+              {current.job_url && (
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold text-foreground">Job posting</p>
+                  <a
+                    href={current.job_url}
+                    className="break-all text-primary hover:underline"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {current.job_url}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "resumeHighlights",
+        title: "Resume highlights",
+        icon: FileText,
+        render: (current) => (
+          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+            {current.resume_match_summary ?? "No resume highlights yet."}
+          </p>
+        ),
+      },
+      {
+        key: "responsibilities",
+        title: "Key responsibilities",
+        icon: ListChecks,
+        render: (current) => (
+          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+            {current.job_responsibilities ?? "No responsibilities captured."}
+          </p>
+        ),
+      },
+      {
+        key: "qualifications",
+        title: "Qualifications",
+        icon: GraduationCap,
+        render: (current) => (
+          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+            {current.qualifications ?? "No qualifications noted yet."}
+          </p>
+        ),
+      },
+      {
+        key: "notes",
+        title: "Notes",
+        icon: StickyNote,
+        render: (current) => (
+          <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+            {current.notes ?? "No notes added."}
+          </p>
+        ),
+      },
+    ]
+
+    return cardConfigs
+  }, [firstInterview?.scheduled_date, interviewCount, selectedApplication])
 
   const latestAssistantMessage = useMemo(() => {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -693,109 +849,34 @@ export default function PrepPage() {
                 </div>
 
                 {selectedApplication && (
-                  <div className="rounded-lg border border-border/60 bg-background p-3 space-y-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-foreground">{selectedApplication.position_title ?? "Role"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {selectedApplication.company_name ?? "Company"}
-                        {firstInterview?.scheduled_date && (
-                          <span className="ml-1">• Next: {new Date(firstInterview.scheduled_date).toLocaleDateString()}</span>
-                        )}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="outline" className="border-border/60">
-                          {selectedApplication.status ?? "Draft"}
-                        </Badge>
-                        {selectedApplication.priority && (
-                          <Badge variant="secondary" className="gap-1">
-                            Priority
-                            <span className="font-semibold">{selectedApplication.priority}</span>
-                          </Badge>
-                        )}
-                        <span>Interviews: {interviewCount}</span>
-                      </div>
-                    </div>
+                  <Accordion
+                    type="multiple"
+                    collapsible
+                    defaultValue={["jobInformation"]}
+                    className="space-y-2"
+                  >
+                    {applicationCards.map((card) => {
+                      const Icon = card.icon
 
-                    <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
-                      <div className="space-y-1">
-                        <p className="font-semibold text-foreground text-[11px]">Location</p>
-                        <p>{selectedApplication.location ?? "Not specified"}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-foreground text-[11px]">Employment</p>
-                        <p>{selectedApplication.employment_type ?? "N/A"}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-foreground text-[11px]">Application date</p>
-                        <p>
-                          {selectedApplication.application_date
-                            ? new Date(selectedApplication.application_date).toLocaleDateString()
-                            : "N/A"}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-foreground text-[11px]">Salary range</p>
-                        <p>{selectedApplication.salary_range ?? "Not provided"}</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 text-xs text-muted-foreground">
-                      {(selectedApplication.contact_person || selectedApplication.contact_email) && (
-                        <div className="flex flex-col gap-1">
-                          <p className="font-semibold text-foreground text-[11px]">Recruiter / Contact</p>
-                          <p>
-                            {selectedApplication.contact_person ?? "Unknown"}
-                            {selectedApplication.contact_email ? ` • ${selectedApplication.contact_email}` : ""}
-                          </p>
-                        </div>
-                      )}
-                      {selectedApplication.job_url && (
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-foreground text-[11px]">Job posting</p>
-                          <a
-                            href={selectedApplication.job_url}
-                            className="text-primary hover:underline break-all"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {selectedApplication.job_url}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-
-                    {(selectedApplication.resume_match_summary ||
-                      selectedApplication.job_responsibilities ||
-                      selectedApplication.qualifications ||
-                      selectedApplication.notes) && (
-                      <div className="space-y-2 text-xs text-muted-foreground">
-                        {selectedApplication.resume_match_summary && (
-                          <div className="space-y-1">
-                            <p className="font-semibold text-foreground text-[11px]">Resume highlights</p>
-                            <p className="leading-relaxed whitespace-pre-wrap">{selectedApplication.resume_match_summary}</p>
-                          </div>
-                        )}
-                        {selectedApplication.job_responsibilities && (
-                          <div className="space-y-1">
-                            <p className="font-semibold text-foreground text-[11px]">Key responsibilities</p>
-                            <p className="leading-relaxed whitespace-pre-wrap">{selectedApplication.job_responsibilities}</p>
-                          </div>
-                        )}
-                        {selectedApplication.qualifications && (
-                          <div className="space-y-1">
-                            <p className="font-semibold text-foreground text-[11px]">Qualifications</p>
-                            <p className="leading-relaxed whitespace-pre-wrap">{selectedApplication.qualifications}</p>
-                          </div>
-                        )}
-                        {selectedApplication.notes && (
-                          <div className="space-y-1">
-                            <p className="font-semibold text-foreground text-[11px]">Notes</p>
-                            <p className="leading-relaxed whitespace-pre-wrap">{selectedApplication.notes}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                      return (
+                        <AccordionItem
+                          key={card.key}
+                          value={card.key}
+                          className="overflow-hidden rounded-lg border border-border/60 bg-background/80 shadow-sm"
+                        >
+                          <AccordionTrigger className="px-3">
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                              {Icon && <Icon className="h-4 w-4 text-primary" />}
+                              <span>{card.title}</span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-3 pb-4">
+                            {card.render(selectedApplication)}
+                          </AccordionContent>
+                        </AccordionItem>
+                      )
+                    })}
+                  </Accordion>
                 )}
               </aside>
 
