@@ -39,6 +39,7 @@ import { useSupabase } from "@/components/supabase-provider"
 
 const AI_KEY_STORAGE_KEY = "prep:ai-key"
 const AI_KEY_ENCRYPTION_SECRET = "prep-ai-key-secret-v1"
+const USER_OPENAI_KEY_HEADER = "x-user-openai-key"
 
 async function getEncryptionKey() {
   const encoder = new TextEncoder()
@@ -663,10 +664,6 @@ export default function PrepPage() {
       setChatError("Create a chat to start messaging.")
       return
     }
-    if (!hasAiKey) {
-      setChatError("Add your AI key to start messaging.")
-      return
-    }
 
     const trimmed = input.trim()
     const userMessage: ChatMessage = { role: "user", content: trimmed }
@@ -685,7 +682,7 @@ export default function PrepPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(storedAiKey ? { "x-ai-key": storedAiKey } : {}),
+          ...(storedAiKey ? { [USER_OPENAI_KEY_HEADER]: storedAiKey } : {}),
         },
         body: JSON.stringify({
           chatId: selectedChatId,
@@ -723,7 +720,7 @@ export default function PrepPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(storedAiKey ? { "x-ai-key": storedAiKey } : {}),
+          ...(storedAiKey ? { [USER_OPENAI_KEY_HEADER]: storedAiKey } : {}),
         },
         body: JSON.stringify({
           applicationId: selectedApplication?.id ?? null,
@@ -860,10 +857,6 @@ export default function PrepPage() {
 
   const handleStartRecording = async () => {
     if (isProcessingVoice || isRecording || isSessionEnded || isGenerating) return
-    if (!hasAiKey) {
-      setVoiceError("Add your AI key to use voice mode.")
-      return
-    }
     setVoiceError(null)
 
     if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -946,11 +939,6 @@ export default function PrepPage() {
       setIsProcessingVoice(false)
       return
     }
-    if (!hasAiKey) {
-      setVoiceError("Add your AI key to send voice prompts.")
-      setIsProcessingVoice(false)
-      return
-    }
     if (audioBlob.size === 0) {
       setVoiceError("We couldn't capture any audio. Try again.")
       setIsProcessingVoice(false)
@@ -986,11 +974,11 @@ export default function PrepPage() {
         )
       }
 
-        const response = await fetch("/api/prep/voice", {
-          method: "POST",
-          headers: storedAiKey ? { "x-ai-key": storedAiKey } : undefined,
-          body: formData,
-        })
+      const response = await fetch("/api/prep/voice", {
+        method: "POST",
+        headers: storedAiKey ? { [USER_OPENAI_KEY_HEADER]: storedAiKey } : undefined,
+        body: formData,
+      })
 
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => ({ error: "Unable to process voice input." }))
@@ -1119,7 +1107,8 @@ export default function PrepPage() {
                     <div className="space-y-1">
                       <p className="text-sm font-semibold">AI key</p>
                       <p className="text-xs text-muted-foreground">
-                        Stored locally with encryption. Add your key to enable prep responses.
+                        Stored locally with encryption. Add your key to use your own OpenAI credits; otherwise we’ll
+                        use the shared key with a daily limit.
                       </p>
                     </div>
                     <Input
@@ -1268,12 +1257,12 @@ export default function PrepPage() {
                       </div>
                      
                       <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            type="button"
-                            variant={isRecording ? "destructive" : "default"}
-                            onClick={isRecording ? handleStopRecording : handleStartRecording}
-                            disabled={isProcessingVoice || !hasAiKey || isSessionEnded}
-                          >
+                        <Button
+                          type="button"
+                          variant={isRecording ? "destructive" : "default"}
+                          onClick={isRecording ? handleStopRecording : handleStartRecording}
+                          disabled={isProcessingVoice || isSessionEnded}
+                        >
                           {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
                           {isRecording ? "Stop recording" : "Start speaking"}
                         </Button>
@@ -1420,12 +1409,12 @@ export default function PrepPage() {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
-                              <Button
-                                type="button"
-                                variant={isRecording ? "destructive" : "default"}
-                                onClick={isRecording ? handleStopRecording : handleStartRecording}
-                                disabled={isProcessingVoice || !hasAiKey || isSessionEnded}
-                              >
+                            <Button
+                              type="button"
+                              variant={isRecording ? "destructive" : "default"}
+                              onClick={isRecording ? handleStopRecording : handleStartRecording}
+                              disabled={isProcessingVoice || isSessionEnded}
+                            >
                               {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
                               {isRecording ? "Stop recording" : "Start speaking"}
                             </Button>
@@ -1496,12 +1485,14 @@ export default function PrepPage() {
                         className="h-9 min-h-[2.25rem] flex-1 resize-none"
                         disabled={isGenerating || isSessionEnded}
                       />
-                      <Button type="submit" disabled={!input.trim() || isGenerating || isSessionEnded || !hasAiKey}>
+                      <Button type="submit" disabled={!input.trim() || isGenerating || isSessionEnded}>
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
                     {!hasAiKey && (
-                      <p className="text-xs text-muted-foreground">Add your AI key above to enable sending.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Optional: add your AI key to use your own quota and skip the daily shared limit.
+                      </p>
                     )}
                   </form>
                 </div>
