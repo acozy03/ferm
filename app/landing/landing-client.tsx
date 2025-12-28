@@ -101,7 +101,7 @@ export default function LandingPage() {
                 </Button>
               ) : (
                 <Button onClick={() => setIsLoginOpen(true)} className="gap-2">
-                  Log in
+                  Sign in
                   <ArrowUpRight className="h-4 w-4" aria-hidden />
                 </Button>
               )}
@@ -166,7 +166,7 @@ function SignUpDialog({
   const handleSubmit = async (values: z.infer<typeof signUpSchema>) => {
     setSubmitError(null)
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: supabaseRedirectUrl
@@ -175,6 +175,11 @@ function SignUpDialog({
           }
         : undefined,
     })
+
+    if (data?.user?.identities?.length === 0) {
+      setSubmitError("An account with this email already exists. Please sign in instead.")
+      return
+    }
 
     if (error) {
       setSubmitError(error.message)
@@ -266,7 +271,10 @@ function SignUpDialog({
 
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
               <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
                 {isSubmitting ? "Creating account..." : "Create account"}
               </Button>
@@ -319,7 +327,7 @@ function LoginDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
-          <VisuallyHidden>Log in</VisuallyHidden>
+          <VisuallyHidden>Sign in</VisuallyHidden>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -366,9 +374,12 @@ function LoginDialog({
 
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
               <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-                {isSubmitting ? "Signing in..." : "Log in"}
+                {isSubmitting ? "Signing in..." : "Sign in"}
               </Button>
             </DialogFooter>
           </form>
