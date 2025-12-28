@@ -675,7 +675,7 @@ export default function PrepPage() {
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
                       {jobOptions.map((job) => (
-                        <SelectItem key={job.id} value={job.id}>
+                        <SelectItem key={job.id} value={job.id} title={job.label}>
                           {job.label}
                         </SelectItem>
                       ))}
