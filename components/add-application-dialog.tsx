@@ -487,7 +487,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
         </button>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs text-xs">
-        Some sites load job details after page load. If Autofill looks incomplete or returns something like 'closed job' or 'filled position', you should use the
+        Some sites load job details after page load. If Autofill looks incomplete or returns something like &apos;closed job&apos; or &apos;filled position&apos;, you should use the
         Chrome extension for the most reliable import :)
       </TooltipContent>
     </Tooltip>

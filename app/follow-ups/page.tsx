@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -381,7 +380,6 @@ export default function FollowUpsPage() {
                                   : format(row.nextReminder, "MMM d, yyyy")
                                 : "Not scheduled"
                               const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
-                              const isNotScheduled = row.status === "disabled"
 
                               return (
                                 <TableRow

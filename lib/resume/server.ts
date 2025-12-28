@@ -2,12 +2,17 @@ import "server-only"
 import mammoth from "mammoth"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
-let _pdfParse: any | null = null
-async function getPdfParse() {
+type PdfParseFn = (data: Buffer) => Promise<{ text?: string }>
+
+let _pdfParse: PdfParseFn | null = null
+async function getPdfParse(): Promise<PdfParseFn> {
   if (_pdfParse) return _pdfParse
   // Import our local CJS bridge; this guarantees the CJS build is used.
-  const mod: any = await import("./pdf-parse.cjs")
-  _pdfParse = mod?.default ?? mod
+  const mod = (await import("./pdf-parse.cjs")) as { default?: PdfParseFn } | PdfParseFn
+  _pdfParse = ("default" in mod ? mod.default : mod) ?? null
+  if (!_pdfParse) {
+    throw new Error("Failed to load pdf-parse")
+  }
   return _pdfParse
 }
 

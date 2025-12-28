@@ -57,9 +57,9 @@ export async function POST(request: Request) {
         matchedUser = {
           id: found.id,
           email: found.email ?? null,
-          created_at: (found as any).created_at,
-          confirmed_at: (found as any).confirmed_at ?? null,
-          last_sign_in_at: (found as any).last_sign_in_at ?? null,
+          created_at: found.created_at,
+          confirmed_at: found.confirmed_at ?? null,
+          last_sign_in_at: found.last_sign_in_at ?? null,
         }
         break
       }

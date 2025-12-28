@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useMemo } from "react"
 import { useSWRConfig } from "swr"
+import Image from "next/image"
 import {
   LayoutDashboard,
   Mail,
@@ -72,7 +73,14 @@ export function Header() {
                       className="text-primary"
                       aria-label="Open workspace menu"
                     >
-                      <img src="/logo_cropped.png" alt="ferm.dev logo" className="h-9 w-5 sm:h-6 sm:w-6" />
+                      <Image
+                        src="/logo_cropped.png"
+                        alt="ferm.dev logo"
+                        width={24}
+                        height={24}
+                        className="h-9 w-5 sm:h-6 sm:w-6"
+                        priority
+                      />
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-56">

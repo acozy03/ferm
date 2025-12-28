@@ -68,7 +68,7 @@ export async function GET() {
       .single()
 
     // PGRST116 = no rows
-    if (error && (error as any).code !== "PGRST116") {
+    if (error && error.code !== "PGRST116") {
       console.error("Database error fetching LLM usage:", error)
       return NextResponse.json({ error: "Database error" }, { status: 500, headers: corsHeaders })
     }
@@ -77,7 +77,7 @@ export async function GET() {
     const remaining = Math.max(0, DAILY_LIMIT - count)
 
     return NextResponse.json({ count, limit: DAILY_LIMIT, remaining }, { headers: corsHeaders })
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("llm-usage handler error:", e)
     return NextResponse.json({ error: "Server error" }, { status: 500, headers: corsHeaders })
   }

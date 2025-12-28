@@ -613,29 +613,6 @@ export default function InterviewsPage() {
     }
   }
 
-  const handleStatusChange = async (id: string, status: InterviewStatus) => {
-    setPendingId(id)
-    try {
-      const response = await fetch(`/api/interviews/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to update status")
-      }
-
-      toast({ title: "Interview updated", description: `Marked as ${status}.` })
-      await Promise.all([mutate(), mutateApplications()])
-    } catch (error) {
-      console.error(error)
-      toast({ title: "Unable to change status", variant: "destructive" })
-    } finally {
-      setPendingId(null)
-    }
-  }
-
   const selectedInterview = useMemo(
     () => filteredInterviews.find((interview) => interview.id === selectedInterviewId) ?? null,
     [filteredInterviews, selectedInterviewId],

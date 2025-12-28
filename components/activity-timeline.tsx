@@ -1,6 +1,5 @@
 "use client"
 
-import { useMemo } from "react"
 import { Calendar, CheckCircle, Clock, History, MessageSquare, Plus } from "lucide-react"
 import { useActivityLogInfinite } from "@/lib/hooks/use-activity-log-infinite"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -60,8 +59,6 @@ export function ActivityTimeline() {
     if (diffInHours < 48) return "Yesterday"
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   }
-
-  const filteredActivities = useMemo(() => activities, [activities])
 
   const renderActivityItem = (item: ActivityLogWithApplication) => {
     const Icon = activityIcons[item.action_type] || Clock

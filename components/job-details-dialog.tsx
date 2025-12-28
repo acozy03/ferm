@@ -24,7 +24,6 @@ import { getDateOrNull } from "@/lib/date"
 
 type JobDetailsDialogProps = {
   application: DbJobApplication
-  onUpdate: () => void
   trigger?: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -33,7 +32,6 @@ type JobDetailsDialogProps = {
 export function JobDetailsDialog({
   application,
   trigger,
-  onUpdate,
   open: controlledOpen,
   onOpenChange,
 }: JobDetailsDialogProps) {
@@ -61,19 +59,6 @@ export function JobDetailsDialog({
     ? responsibilities.split("\n").map((line) => line.trim()).filter(Boolean)
     : []
   const hasStructuredSections = Boolean(jobDescription || qualificationLines.length > 0 || responsibilityLines.length > 0)
-
-  const formatDate = (dateString: string) => {
-    const parsed = getDateOrNull(dateString)
-    if (!parsed) {
-      return "Date unavailable"
-    }
-    return parsed.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
 
  const computedDaysSinceApplied = (() => {
   const appliedDate = getDateOrNull(application.created_at)
