@@ -9,7 +9,7 @@ import { ArrowUpRight, Check, Instagram, Linkedin, Play, Twitter } from "lucide-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -132,32 +132,19 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-12 w-full max-w-4xl">
-            {isVideoOpen ? (
-              <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border shadow-xl">
-                <iframe
-                  src="https://www.youtube.com/embed/PLACEHOLDER"
-                  title="ferm overview video"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="h-full w-full"
-                />
-              </div>
-            ) : (
+            <div className="relative overflow-hidden rounded-2xl border border-border shadow-xl">
+              <Image src={heroPlaceholder} alt="ferm hero preview" className="h-full w-full object-cover" priority />
               <button
                 type="button"
                 onClick={() => setIsVideoOpen(true)}
-                className="group relative block w-full overflow-hidden rounded-2xl border border-border shadow-xl outline-none transition hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-400"
+                className="absolute inset-0 flex items-center justify-center rounded-2xl outline-none transition hover:scale-[1.01] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-400"
               >
-                <Image src={heroPlaceholder} alt="ferm hero preview" className="h-full w-full object-cover" priority />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50" aria-hidden />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-base font-semibold text-slate-900 shadow-lg ring-1 ring-black/10 transition group-hover:scale-105">
-                    <Play className="h-5 w-5 fill-current" aria-hidden />
-                    Watch video
-                  </span>
-                </div>
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg ring-1 ring-black/10">
+                  <Play className="h-7 w-7 fill-current" aria-hidden />
+                  <VisuallyHidden>Play ferm overview video</VisuallyHidden>
+                </span>
               </button>
-            )}
+            </div>
           </div>
         </main>
       </div>
@@ -168,6 +155,19 @@ export default function LandingPage() {
         supabaseRedirectUrl={baseRedirectUrl}
       />
       <LoginDialog open={isLoginOpen && !hasSession} onOpenChange={setIsLoginOpen} onGoogleSignIn={handleGoogle} />
+      <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
+        <DialogContent className="max-w-5xl border-border">
+          <div className="aspect-video w-full overflow-hidden rounded-lg">
+            <iframe
+              src="https://www.youtube.com/embed/PLACEHOLDER"
+              title="ferm overview video"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="h-full w-full"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
