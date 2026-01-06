@@ -156,15 +156,9 @@ export default function LandingPage() {
       />
       <LoginDialog open={isLoginOpen && !hasSession} onOpenChange={setIsLoginOpen} onGoogleSignIn={handleGoogle} />
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
-        <DialogContent className="max-w-5xl border-border">
+        <DialogContent className="max-w-5xl border-border"showCloseButton={false}>
           <div className="aspect-video w-full overflow-hidden rounded-lg">
-            <iframe
-              src="https://www.youtube.com/embed/PLACEHOLDER"
-              title="ferm overview video"
-              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="h-full w-full"
-            />
+          
           </div>
         </DialogContent>
       </Dialog>
