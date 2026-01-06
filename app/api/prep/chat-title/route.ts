@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
   const instructions = [
     "You are naming an interview prep chat.",
-    "Respond with a concise, engaging title (4-8 words).",
+    "Respond with a concise, efficient title (4-8 words). Should go something like : SWE I Interview - Ursa Major",
     "Avoid quotation marks and sentence punctuation; keep it title case.",
     jobDetails && `Context: ${jobDetails}`,
     condensedMessages.length > 0 && `Recent dialogue:\n${condensedMessages.join("\n")}`,
