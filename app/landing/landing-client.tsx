@@ -2,9 +2,9 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowUpRight, Check } from "lucide-react"
+import { ArrowUpRight, Check, Instagram, Linkedin, Play, Twitter } from "lucide-react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useSupabase } from "@/components/supabase-provider"
 import fermLogo from "@/public/logo.png"
+import heroPlaceholder from "@/public/hero.webp"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 const passwordSchema = z
@@ -48,6 +49,7 @@ export default function LandingPage() {
   const { supabase, session, isLoading } = useSupabase()
   const [isSignUpOpen, setIsSignUpOpen] = useState(false)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [isVideoOpen, setIsVideoOpen] = useState(false)
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -110,13 +112,53 @@ export default function LandingPage() {
         </header>
 
         <main className="mx-auto flex max-w-5xl flex-col items-center px-6 pb-24 pt-20 text-center sm:pt-28">
-          
+
           <h1 className="max-w-3xl text-4xl font-semibold leading-tight sm:text-5xl">
             Stop forgetting where every application stands.
           </h1>
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
             ferm collects your applications, interviews, and follow-ups into a single workspace so you can move every opportunity forward without another spreadsheet.
           </p>
+          <div className="mt-8 flex items-center gap-4 text-muted-foreground">
+            <SocialLink href="https://www.linkedin.com/company/placeholder" label="LinkedIn">
+              <Linkedin className="h-6 w-6" aria-hidden />
+            </SocialLink>
+            <SocialLink href="https://www.instagram.com/placeholder" label="Instagram">
+              <Instagram className="h-6 w-6" aria-hidden />
+            </SocialLink>
+            <SocialLink href="https://www.twitter.com/placeholder" label="Twitter">
+              <Twitter className="h-6 w-6" aria-hidden />
+            </SocialLink>
+          </div>
+
+          <div className="mt-12 w-full max-w-4xl">
+            {isVideoOpen ? (
+              <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border shadow-xl">
+                <iframe
+                  src="https://www.youtube.com/embed/PLACEHOLDER"
+                  title="ferm overview video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="h-full w-full"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsVideoOpen(true)}
+                className="group relative block w-full overflow-hidden rounded-2xl border border-border shadow-xl outline-none transition hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-400"
+              >
+                <Image src={heroPlaceholder} alt="ferm hero preview" className="h-full w-full object-cover" priority />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50" aria-hidden />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="flex items-center gap-3 rounded-full bg-white/90 px-5 py-3 text-base font-semibold text-slate-900 shadow-lg ring-1 ring-black/10 transition group-hover:scale-105">
+                    <Play className="h-5 w-5 fill-current" aria-hidden />
+                    Watch video
+                  </span>
+                </div>
+              </button>
+            )}
+          </div>
         </main>
       </div>
 
@@ -386,6 +428,21 @@ function LoginDialog({
         </Form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function SocialLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      prefetch={false}
+      target="_blank"
+      rel="noreferrer"
+      className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card/80 text-foreground transition hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+    >
+      {children}
+    </Link>
   )
 }
 
