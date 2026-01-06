@@ -41,6 +41,7 @@ import { useSupabase } from "@/components/supabase-provider"
 const AI_KEY_STORAGE_KEY = "prep:ai-key"
 const AI_KEY_ENCRYPTION_SECRET = "prep-ai-key-secret-v1"
 const USER_OPENAI_KEY_HEADER = "x-user-openai-key"
+const GENERAL_INTERVIEW_VALUE = "general-prep"
 
 async function getEncryptionKey() {
   const encoder = new TextEncoder()
@@ -1649,8 +1650,10 @@ export default function PrepPage() {
                       <p className="text-xs font-semibold text-foreground">Interview</p>
                       {interviewOptions.length > 0 ? (
                         <Select
-                          value={selectedInterviewId ?? ""}
-                          onValueChange={(value) => setSelectedInterviewId(value || null)}
+                          value={selectedInterviewId ?? GENERAL_INTERVIEW_VALUE}
+                          onValueChange={(value) =>
+                            setSelectedInterviewId(value === GENERAL_INTERVIEW_VALUE ? null : value)
+                          }
                           disabled={isChatsLoading}
                         >
                           <SelectTrigger className="bg-background/70 text-left">
@@ -1661,7 +1664,7 @@ export default function PrepPage() {
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">General prep</SelectItem>
+                            <SelectItem value={GENERAL_INTERVIEW_VALUE}>General prep</SelectItem>
                             {interviewOptions.map((interview) => (
                               <SelectItem key={interview.id} value={interview.id} title={interview.label}>
                                 {interview.label}
