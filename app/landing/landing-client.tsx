@@ -156,14 +156,18 @@ export default function LandingPage() {
       />
       <LoginDialog open={isLoginOpen && !hasSession} onOpenChange={setIsLoginOpen} onGoogleSignIn={handleGoogle} />
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
-        <DialogContent className="w-[200rem] h-[25rem] border-border"showCloseButton={false}>
-          <div className=" w-full overflow-hidden rounded-lg">
+        <DialogContent
+          className="w-[90vw] max-w-6xl overflow-hidden border-border p-0 sm:max-w-[1100px]"
+          showCloseButton={false}
+          style={{ maxHeight: "90vh" }}
+        >
+          <div className="relative aspect-video w-full">
             <iframe
-              src="https://www.youtube.com/embed/PLACEHOLDER"
+              src="https://www.youtube.com/embed/u7I-SKNEru0?si=QStMv39a6HddGXhM"
               title="ferm overview video"
               allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
-              className="h-full w-full"
+              className="absolute inset-0 h-full w-full"
             />
           </div>
         </DialogContent>
