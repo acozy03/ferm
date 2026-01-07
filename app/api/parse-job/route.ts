@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     const today = new Date().toISOString().split("T")[0];
     const { data: usageRow, error: usageError } = await supabase
       .from("llm_usage")
-      .select("count")
+      .select("job_scrapes_count")
       .eq("user_id", user.id)
       .eq("date", today)
       .maybeSingle();
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unable to check usage." }, { status: 500 });
     }
 
-    usedToday = usageRow?.count ?? 0;
+    usedToday = usageRow?.job_scrapes_count ?? 0;
 
     if (usedToday >= DAILY_LIMIT) {
       const res = NextResponse.json(
@@ -243,10 +243,10 @@ URL: ${job_url}
     let remainingNow: number | null = null;
     if (!isUserProvided) {
       // Recommended SQL (in your function):
-      // ... DO UPDATE SET count = least(llm_usage.count + 1, 20) RETURNING count;
-      const { data: incCount, error: incErr } = await supabase.rpc("increment_llm_usage");
+      // ... DO UPDATE SET job_scrapes_count = least(llm_usage.job_scrapes_count + 1, 20) RETURNING job_scrapes_count;
+      const { data: incCount, error: incErr } = await supabase.rpc("increment_job_scrapes_usage");
       if (incErr) {
-        console.error("increment_llm_usage error:", incErr);
+        console.error("increment_job_scrapes_usage error:", incErr);
         return NextResponse.json({ error: "Usage update failed" }, { status: 500 });
       }
 
@@ -259,11 +259,11 @@ URL: ${job_url}
         const today = new Date().toISOString().split("T")[0];
         const { data: afterRow } = await supabase
           .from("llm_usage")
-          .select("count")
+          .select("job_scrapes_count")
           .eq("user_id", user.id)
           .eq("date", today)
           .maybeSingle();
-        usedNow = afterRow?.count ?? null;
+        usedNow = afterRow?.job_scrapes_count ?? null;
       }
 
       remainingNow =

@@ -62,7 +62,7 @@ export async function GET() {
     const today = new Date().toISOString().split("T")[0]
     const { data, error } = await supabase
       .from("llm_usage")
-      .select("count")
+      .select("job_scrapes_count")
       .eq("user_id", user.id)
       .eq("date", today)
       .single()
@@ -73,10 +73,13 @@ export async function GET() {
       return NextResponse.json({ error: "Database error" }, { status: 500, headers: corsHeaders })
     }
 
-    const count = data?.count ?? 0
-    const remaining = Math.max(0, DAILY_LIMIT - count)
+    const jobScrapesCount = data?.job_scrapes_count ?? 0
+    const remaining = Math.max(0, DAILY_LIMIT - jobScrapesCount)
 
-    return NextResponse.json({ count, limit: DAILY_LIMIT, remaining }, { headers: corsHeaders })
+    return NextResponse.json(
+      { job_scrapes_count: jobScrapesCount, limit: DAILY_LIMIT, remaining },
+      { headers: corsHeaders },
+    )
   } catch (e: unknown) {
     console.error("llm-usage handler error:", e)
     return NextResponse.json({ error: "Server error" }, { status: 500, headers: corsHeaders })

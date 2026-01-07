@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       const today = new Date().toISOString().split("T")[0]
       const { data: usageRow, error: usageError } = await auth.supabase
         .from("llm_usage")
-        .select("count")
+        .select("prep_messages_count")
         .eq("user_id", auth.userId)
         .eq("date", today)
         .maybeSingle()
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Unable to check usage." }, { status: 500 })
       }
 
-      usedToday = usageRow?.count ?? 0
+      usedToday = usageRow?.prep_messages_count ?? 0
 
       if (usedToday >= DAILY_LIMIT) {
         return new NextResponse(
@@ -214,9 +214,9 @@ export async function POST(request: NextRequest) {
           }
         } finally {
           if (completedSuccessfully && !isUserProvided) {
-            const { error: incErr } = await auth.supabase.rpc("increment_llm_usage")
+            const { error: incErr } = await auth.supabase.rpc("increment_prep_messages_usage")
             if (incErr) {
-              console.error("increment_llm_usage failed", incErr)
+              console.error("increment_prep_messages_usage failed", incErr)
             }
           }
           controller.close()

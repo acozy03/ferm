@@ -234,7 +234,7 @@ export default function PrepPage() {
     setUsageError(null)
 
     try {
-      const response = await fetch("/api/llm-usage", {
+      const response = await fetch("/api/prep-usage", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
 
