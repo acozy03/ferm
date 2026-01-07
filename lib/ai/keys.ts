@@ -1,15 +1,63 @@
 import { NextResponse } from "next/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto"
 
 export const USER_OPENAI_KEY_HEADER = "x-user-openai-key"
 const PROVIDER = "openai"
+const ENCRYPTION_ALGORITHM = "aes-256-gcm"
+const AUTH_TAG_LENGTH = 16
 
-function sanitizeKey(raw: string | null): string | null {
+export function normalizeApiKey(raw: string | null): string | null {
   if (!raw) return null
   const value = raw.trim()
   if (value.length < 20) return null
   if (!/^[A-Za-z0-9._:-]+$/.test(value)) return null
   return value
+}
+
+function getEncryptionKey(): Buffer | null {
+  const secret = process.env.AI_KEY_ENCRYPTION_SECRET
+  if (!secret) return null
+  return createHash("sha256").update(secret).digest()
+}
+
+export function encryptApiKey(apiKey: string): { encryptedApiKey: string; encryptionIv: string } {
+  const key = getEncryptionKey()
+  if (!key) {
+    throw new Error("AI_KEY_ENCRYPTION_SECRET is not configured.")
+  }
+
+  const iv = randomBytes(12)
+  const cipher = createCipheriv(ENCRYPTION_ALGORITHM, key, iv)
+  const encrypted = Buffer.concat([cipher.update(apiKey, "utf8"), cipher.final()])
+  const authTag = cipher.getAuthTag()
+  const payload = Buffer.concat([encrypted, authTag])
+
+  return {
+    encryptedApiKey: payload.toString("base64"),
+    encryptionIv: iv.toString("base64"),
+  }
+}
+
+export function decryptApiKey(encryptedApiKey: string, encryptionIv: string): string | null {
+  const key = getEncryptionKey()
+  if (!key) return null
+
+  try {
+    const iv = Buffer.from(encryptionIv, "base64")
+    const payload = Buffer.from(encryptedApiKey, "base64")
+    if (payload.length <= AUTH_TAG_LENGTH) return null
+
+    const authTag = payload.subarray(payload.length - AUTH_TAG_LENGTH)
+    const ciphertext = payload.subarray(0, payload.length - AUTH_TAG_LENGTH)
+    const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, key, iv)
+    decipher.setAuthTag(authTag)
+    const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+    return decrypted.toString("utf8")
+  } catch (error) {
+    console.error("Failed to decrypt stored AI key", error)
+    return null
+  }
 }
 
 async function fetchStoredKey(
@@ -20,7 +68,7 @@ async function fetchStoredKey(
 
   const { data, error } = await supabase
     .from("user_ai_keys")
-    .select("encrypted_api_key")
+    .select("encrypted_api_key, encryption_iv")
     .eq("user_id", userId)
     .eq("provider", PROVIDER)
     .maybeSingle()
@@ -30,8 +78,10 @@ async function fetchStoredKey(
     return null
   }
 
-  const stored = sanitizeKey(data?.encrypted_api_key ?? null)
-  return stored
+  if (!data?.encrypted_api_key || !data?.encryption_iv) return null
+
+  const decrypted = decryptApiKey(data.encrypted_api_key, data.encryption_iv)
+  return normalizeApiKey(decrypted)
 }
 
 type ResolvedKey = { apiKey: string; isUserProvided: boolean }
@@ -45,7 +95,7 @@ export async function resolveOpenAIApiKey({
   supabase?: SupabaseClient<unknown, "public", unknown> | null
   userId?: string | null
 }): Promise<ResolvedKey | { error: NextResponse }> {
-  const headerKey = sanitizeKey(request.headers.get(USER_OPENAI_KEY_HEADER))
+  const headerKey = normalizeApiKey(request.headers.get(USER_OPENAI_KEY_HEADER))
   if (headerKey) {
     return { apiKey: headerKey, isUserProvided: true }
   }
@@ -55,7 +105,7 @@ export async function resolveOpenAIApiKey({
     return { apiKey: storedKey, isUserProvided: true }
   }
 
-  const envKey = sanitizeKey(process.env.OPENAI_API_KEY ?? null)
+  const envKey = normalizeApiKey(process.env.OPENAI_API_KEY ?? null)
   if (envKey) {
     return { apiKey: envKey, isUserProvided: false }
   }

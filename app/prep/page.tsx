@@ -32,42 +32,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useToast } from "@/components/ui/use-toast"
 import { createAudioVisualizer, type AudioVisualizer } from "@/lib/audio-visualizer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 import type { JobApplicationWithInterviews, PrepChat, PrepMessage } from "@/lib/types/database"
 import { useSupabase } from "@/components/supabase-provider"
 
-const AI_KEY_STORAGE_KEY = "prep:ai-key"
-const AI_KEY_ENCRYPTION_SECRET = "prep-ai-key-secret-v1"
 const USER_OPENAI_KEY_HEADER = "x-user-openai-key"
 const GENERAL_INTERVIEW_VALUE = "general-prep"
-
-async function getEncryptionKey() {
-  const encoder = new TextEncoder()
-  const hash = await crypto.subtle.digest("SHA-256", encoder.encode(AI_KEY_ENCRYPTION_SECRET))
-
-  return crypto.subtle.importKey("raw", hash, "AES-GCM", false, ["encrypt", "decrypt"])
-}
-
-async function encryptKey(value: string) {
-  const cryptoKey = await getEncryptionKey()
-  const iv = crypto.getRandomValues(new Uint8Array(12))
-  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, new TextEncoder().encode(value))
-  const encryptedBytes = new Uint8Array(encrypted)
-  const encryptedString = btoa(String.fromCharCode(...encryptedBytes))
-
-  return { iv: Array.from(iv), data: encryptedString }
-}
-
-async function decryptKey(payload: { iv: number[]; data: string }) {
-  const cryptoKey = await getEncryptionKey()
-  const iv = new Uint8Array(payload.iv)
-  const data = Uint8Array.from(atob(payload.data), (char) => char.charCodeAt(0))
-  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, data)
-
-  return new TextDecoder().decode(decrypted)
-}
 
 interface ChatMessage {
   id?: string
@@ -80,6 +54,7 @@ interface ChatMessage {
 export default function PrepPage() {
   const { applications, isLoading } = useJobApplications({ limit: 50, include_interviews: true })
   const { session } = useSupabase()
+  const { toast } = useToast()
   const [selectedApplicationId, setSelectedApplicationId] = useState<string>("")
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
   const [chats, setChats] = useState<PrepChat[]>([])
@@ -104,6 +79,7 @@ export default function PrepPage() {
   const [aiKeyInput, setAiKeyInput] = useState("")
   const [storedAiKey, setStoredAiKey] = useState<string | null>(null)
   const [isSavingAiKey, setIsSavingAiKey] = useState(false)
+  const [aiKeyModalError, setAiKeyModalError] = useState<string | null>(null)
   const [usageRemaining, setUsageRemaining] = useState<number | null>(null)
   const [usageLimit, setUsageLimit] = useState<number | null>(null)
   const [usageError, setUsageError] = useState<string | null>(null)
@@ -185,49 +161,103 @@ export default function PrepPage() {
   }, [])
 
   const loadStoredAiKey = useCallback(async () => {
-    if (typeof window === "undefined") return
-
-    const saved = window.localStorage.getItem(AI_KEY_STORAGE_KEY)
-    if (!saved) {
-      setStoredAiKey(null)
-      setAiKeyInput("")
-      return
-    }
+    setAiKeyModalError(null)
 
     try {
-      const parsed = JSON.parse(saved) as { iv: number[]; data: string }
-      const decrypted = await decryptKey(parsed)
-      setStoredAiKey(decrypted)
-      setAiKeyInput(decrypted)
-    } catch {
-      window.localStorage.removeItem(AI_KEY_STORAGE_KEY)
+      const response = await fetch("/api/ai-keys", {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to load your AI key." }))
+        throw new Error(errorPayload.error || "Unable to load your AI key.")
+      }
+
+      const data = (await response.json()) as { apiKey?: string | null }
+      if (data.apiKey) {
+        setStoredAiKey(data.apiKey)
+        setAiKeyInput(data.apiKey)
+      } else {
+        setStoredAiKey(null)
+        setAiKeyInput("")
+      }
+    } catch (error) {
+      setAiKeyModalError(error instanceof Error ? error.message : "Unable to load your AI key.")
       setStoredAiKey(null)
-      setAiKeyInput("")
     }
-  }, [])
+  }, [session?.access_token])
 
   const saveAiKey = useCallback(async () => {
-    if (!aiKeyInput.trim()) return
+    const trimmed = aiKeyInput.trim()
+    if (!trimmed) return
     setIsSavingAiKey(true)
+    setAiKeyModalError(null)
 
     try {
-      const encrypted = await encryptKey(aiKeyInput.trim())
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(AI_KEY_STORAGE_KEY, JSON.stringify(encrypted))
+      if (trimmed.length < 20 || !/^[A-Za-z0-9._:-]+$/.test(trimmed)) {
+        const message = "Please enter a valid OpenAI API key."
+        setAiKeyModalError(message)
+        toast({ title: "Invalid key", description: message, variant: "destructive" })
+        return
       }
-      setStoredAiKey(aiKeyInput.trim())
+
+      const response = await fetch("/api/ai-keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ apiKey: trimmed }),
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to save your AI key." }))
+        const message = errorPayload.error || "Unable to save your AI key."
+        setAiKeyModalError(message)
+        toast({ title: "Failed to save key", description: message, variant: "destructive" })
+        return
+      }
+
+      setStoredAiKey(trimmed)
+      setAiKeyInput(trimmed)
+      toast({ title: "Key saved", description: "Your OpenAI key is ready to use." })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save your AI key."
+      setAiKeyModalError(message)
+      toast({ title: "Failed to save key", description: message, variant: "destructive" })
     } finally {
       setIsSavingAiKey(false)
     }
-  }, [aiKeyInput])
+  }, [aiKeyInput, session?.access_token, toast])
 
   const clearAiKey = useCallback(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(AI_KEY_STORAGE_KEY)
-    }
-    setStoredAiKey(null)
-    setAiKeyInput("")
-  }, [])
+    setIsSavingAiKey(true)
+    setAiKeyModalError(null)
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/ai-keys", {
+          method: "DELETE",
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        })
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => ({ error: "Unable to clear your AI key." }))
+          throw new Error(errorPayload.error || "Unable to clear your AI key.")
+        }
+
+        setStoredAiKey(null)
+        setAiKeyInput("")
+        toast({ title: "Key removed", description: "Your OpenAI key was removed from your account." })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to clear your AI key."
+        setAiKeyModalError(message)
+        toast({ title: "Failed to clear key", description: message, variant: "destructive" })
+      } finally {
+        setIsSavingAiKey(false)
+      }
+    })()
+  }, [session?.access_token, toast])
 
   const refreshUsage = useCallback(async () => {
     if (!session?.access_token) return
@@ -1243,15 +1273,25 @@ export default function PrepPage() {
                     <div className="space-y-1">
                       <p className="text-sm font-semibold">AI key</p>
                       <p className="text-xs text-muted-foreground">
-                        Stored locally with encryption. Add your key to use your own OpenAI credits; otherwise we’ll
+                        Stored securely to your account. Add your key to use your own OpenAI credits; otherwise we’ll
                         use the shared key with a daily limit.
                       </p>
                     </div>
                     <Input
                       value={aiKeyInput}
-                      onChange={(event) => setAiKeyInput(event.target.value)}
+                      onChange={(event) => {
+                        setAiKeyInput(event.target.value)
+                        if (aiKeyModalError) {
+                          setAiKeyModalError(null)
+                        }
+                      }}
                       placeholder="Paste your AI key"
                     />
+                    {aiKeyModalError && (
+                      <Alert className="border-destructive/50 text-destructive">
+                        <AlertDescription>{aiKeyModalError}</AlertDescription>
+                      </Alert>
+                    )}
                     <div className="flex items-center gap-2">
                       <Button onClick={saveAiKey} disabled={!aiKeyInput.trim() || isSavingAiKey}>
                         {isSavingAiKey ? "Saving..." : storedAiKey ? "Update key" : "Save key"}
@@ -1261,7 +1301,7 @@ export default function PrepPage() {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {storedAiKey ? "Key saved for this browser." : "No key saved yet."}
+                      {storedAiKey ? "Key saved to your account." : "No key saved yet."}
                     </p>
                     {usageRemaining !== null && usageLimit !== null && (
                       <p className="text-xs text-muted-foreground">Remaining messages today: {usageRemaining} / {usageLimit}</p>
