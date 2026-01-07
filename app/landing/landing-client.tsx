@@ -79,85 +79,101 @@ export default function LandingPage() {
 
   return (
     <div className="dark">
-      <div className="min-h-screen bg-background text-foreground">
-        <header className="border-b border-border bg-card/80 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
-            <Link href="/landing" className="flex items-center gap-3 text-base font-semibold">
-              <Image src={fermLogo} alt="Ferm logo" width={36} height={36} className="h-9 w-9" />
-
-            </Link>
-            <div className="flex items-center gap-3">
-              {hasSession ? (
-                <Button variant="ghost" onClick={() => router.replace(redirectedFrom || "/")} className="text-foreground/80">
-                  Go to dashboard
-                </Button>
-              ) : (
-                <Button variant="ghost" onClick={() => setIsSignUpOpen(true)} className="text-foreground/80">
-                  Create an account
-                </Button>
-              )}
-              {hasSession ? (
-                <Button onClick={() => router.replace(redirectedFrom || "/")} className="gap-2">
-                  Open ferm
-                  <ArrowUpRight className="h-4 w-4" aria-hidden />
-                </Button>
-              ) : (
-                <Button onClick={() => setIsLoginOpen(true)} className="gap-2">
-                  Sign in
-                  <ArrowUpRight className="h-4 w-4" aria-hidden />
-                </Button>
-              )}
-            </div>
-          </div>
-        </header>
-
-        <main className="mx-auto flex max-w-5xl flex-col items-center px-6 pb-24 pt-20 text-center sm:pt-28">
-
-          <h1 className="max-w-3xl text-4xl font-semibold leading-tight sm:text-5xl">
-            Stop forgetting where every application stands.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-            ferm collects your applications, interviews, and follow-ups into a single workspace so you can move every opportunity forward without another spreadsheet.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button variant="secondary" asChild>
-              <Link href="https://ko-fi.com/placeholder" target="_blank" rel="noreferrer">
-                Support Me
+      <div className="min-h-screen text-foreground">
+        <Section className="bg-background">
+          <header className="border-b border-border bg-card/80 backdrop-blur">
+            <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+              <Link href="/landing" className="flex items-center gap-3 text-base font-semibold">
+                <Image src={fermLogo} alt="Ferm logo" width={36} height={36} className="h-9 w-9" />
               </Link>
-            </Button>
-            <Button onClick={() => setIsLoginOpen(true)} className="gap-2">
-              Get Started
-              <ArrowUpRight className="h-4 w-4" aria-hidden />
-            </Button>
-          </div>
-          <div className="mt-4 flex items-center gap-4 text-muted-foreground">
-            <SocialLink href="https://www.linkedin.com/company/placeholder" label="LinkedIn">
-              <Linkedin className="h-6 w-6" aria-hidden />
-            </SocialLink>
-            <SocialLink href="https://www.instagram.com/placeholder" label="Instagram">
-              <Instagram className="h-6 w-6" aria-hidden />
-            </SocialLink>
-            <SocialLink href="https://www.twitter.com/placeholder" label="Twitter">
-              <Twitter className="h-6 w-6" aria-hidden />
-            </SocialLink>
-          </div>
-
-          <div className="mt-12 w-full max-w-4xl">
-            <div className="relative overflow-hidden rounded-2xl border border-border shadow-xl">
-              <Image src={heroPlaceholder} alt="ferm hero preview" className="h-full w-full object-cover" priority />
-              <button
-                type="button"
-                onClick={() => setIsVideoOpen(true)}
-                className="absolute inset-0 flex items-center justify-center rounded-2xl outline-none transition hover:scale-[1.01] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-400"
-              >
-                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg ring-1 ring-black/10">
-                  <Play className="h-7 w-7 fill-current" aria-hidden />
-                  <VisuallyHidden>Play ferm overview video</VisuallyHidden>
-                </span>
-              </button>
+              <div className="flex items-center gap-3">
+                {hasSession ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.replace(redirectedFrom || "/")}
+                    className="text-foreground/80"
+                  >
+                    Go to dashboard
+                  </Button>
+                ) : (
+                  <Button variant="ghost" onClick={() => setIsSignUpOpen(true)} className="text-foreground/80">
+                    Create an account
+                  </Button>
+                )}
+                {hasSession ? (
+                  <Button onClick={() => router.replace(redirectedFrom || "/")} className="gap-2">
+                    Open ferm
+                    <ArrowUpRight className="h-4 w-4" aria-hidden />
+                  </Button>
+                ) : (
+                  <Button onClick={() => setIsLoginOpen(true)} className="gap-2">
+                    Sign in
+                    <ArrowUpRight className="h-4 w-4" aria-hidden />
+                  </Button>
+                )}
+              </div>
             </div>
+          </header>
+
+          <main className="mx-auto flex max-w-5xl flex-col items-center px-6 pb-24 pt-20 text-center sm:pt-28">
+            <h1 className="max-w-3xl text-4xl font-semibold leading-tight sm:text-5xl">
+              Stop forgetting where every application stands.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
+              ferm collects your applications, interviews, and follow-ups into a single workspace so you can move every
+              opportunity forward without another spreadsheet.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Button variant="secondary" asChild>
+                <Link href="https://ko-fi.com/placeholder" target="_blank" rel="noreferrer">
+                  Support Me
+                </Link>
+              </Button>
+              <Button onClick={() => setIsLoginOpen(true)} className="gap-2">
+                Get Started
+                <ArrowUpRight className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+            <div className="mt-4 flex items-center gap-4 text-muted-foreground">
+              <SocialLink href="https://www.linkedin.com/company/placeholder" label="LinkedIn">
+                <Linkedin className="h-6 w-6" aria-hidden />
+              </SocialLink>
+              <SocialLink href="https://www.instagram.com/placeholder" label="Instagram">
+                <Instagram className="h-6 w-6" aria-hidden />
+              </SocialLink>
+              <SocialLink href="https://www.twitter.com/placeholder" label="Twitter">
+                <Twitter className="h-6 w-6" aria-hidden />
+              </SocialLink>
+            </div>
+
+            <div className="mt-12 w-full max-w-4xl">
+              <div className="relative overflow-hidden rounded-2xl border border-border shadow-xl">
+                <Image src={heroPlaceholder} alt="ferm hero preview" className="h-full w-full object-cover" priority />
+                <button
+                  type="button"
+                  onClick={() => setIsVideoOpen(true)}
+                  className="absolute inset-0 flex items-center justify-center rounded-2xl outline-none transition hover:scale-[1.01] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-400"
+                >
+                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg ring-1 ring-black/10">
+                    <Play className="h-7 w-7 fill-current" aria-hidden />
+                    <VisuallyHidden>Play ferm overview video</VisuallyHidden>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </main>
+        </Section>
+
+        <div className="h-8 bg-black" />
+
+        <Section className="bg-white text-slate-900">
+          <div className="mx-auto flex max-w-4xl flex-col items-center px-6 py-16 text-center">
+            <h2 className="text-2xl font-semibold">More sections are on the way.</h2>
+            <p className="mt-4 max-w-xl text-base text-slate-600">
+              This placeholder section shows how future landing page content can be added with a fresh background.
+            </p>
           </div>
-        </main>
+        </Section>
       </div>
 
       <SignUpDialog
@@ -185,6 +201,10 @@ export default function LandingPage() {
       </Dialog>
     </div>
   )
+}
+
+function Section({ className, children }: { className?: string; children: ReactNode }) {
+  return <section className={["w-full", className].filter(Boolean).join(" ")}>{children}</section>
 }
 
 function SignUpDialog({
