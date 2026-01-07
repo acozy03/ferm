@@ -119,7 +119,18 @@ export default function LandingPage() {
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
             ferm collects your applications, interviews, and follow-ups into a single workspace so you can move every opportunity forward without another spreadsheet.
           </p>
-          <div className="mt-8 flex items-center gap-4 text-muted-foreground">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Button variant="secondary" asChild>
+              <Link href="https://ko-fi.com/placeholder" target="_blank" rel="noreferrer">
+                Support Me
+              </Link>
+            </Button>
+            <Button onClick={() => setIsLoginOpen(true)} className="gap-2">
+              Get Started
+              <ArrowUpRight className="h-4 w-4" aria-hidden />
+            </Button>
+          </div>
+          <div className="mt-4 flex items-center gap-4 text-muted-foreground">
             <SocialLink href="https://www.linkedin.com/company/placeholder" label="LinkedIn">
               <Linkedin className="h-6 w-6" aria-hidden />
             </SocialLink>
@@ -443,7 +454,7 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
       prefetch={false}
       target="_blank"
       rel="noreferrer"
-      className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card/80 text-foreground transition hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+      className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/70 transition hover:bg-accent/50 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
     >
       {children}
     </Link>
