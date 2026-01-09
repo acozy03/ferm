@@ -126,7 +126,7 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <IconButton
                     size="icon"
-                    className="rounded-full hover:bg-transparent hover:shadow-[0_0_0_3px_rgba(0,0,0,0.18)] transition-shadow dark:hover:shadow-[0_0_0_3px_rgba(255,255,255,0.35)]"
+                    className="rounded-full hover:bg-muted transition-shadow "
                     disabled={isAuthLoading}
                   >
                     <Avatar className="h-7 w-7">
