@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,8 @@ import { useSupabase } from "@/components/supabase-provider"
 
 interface SettingsDialogProps {
   trigger?: ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 type SettingsTabId = "login-security" | "chrome-extension" | "donations" | "api-key"
@@ -88,14 +90,25 @@ const SettingsPanel = ({ title, children }: { title: string; children: ReactNode
   )
 }
 
-export function SettingsDialog({ trigger }: SettingsDialogProps) {
+export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogProps) {
   const { settings, hasHydrated, updateSettings: saveSettings } = useSettings()
   const { supabase } = useSupabase()
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<SettingsTabId>("login-security")
   const [isDeleting, setIsDeleting] = useState(false)
   const [draft, setDraft] = useState<SettingsState>(settings)
+  const isControlled = open !== undefined
+  const dialogOpen = isControlled ? open : uncontrolledOpen
+  const setDialogOpen = useCallback(
+    (nextOpen: boolean) => {
+      if (!isControlled) {
+        setUncontrolledOpen(nextOpen)
+      }
+      onOpenChange?.(nextOpen)
+    },
+    [isControlled, onOpenChange],
+  )
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -106,11 +119,11 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   }, [settings, hasHydrated])
 
   useEffect(() => {
-    if (open) {
+    if (dialogOpen) {
       setDraft(settings)
       setActiveTab("login-security")
     }
-  }, [open, settings])
+  }, [dialogOpen, settings])
 
   const hasChanges = useMemo(() => {
     return JSON.stringify(settings) !== JSON.stringify(draft)
@@ -122,7 +135,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
       title: "Settings saved",
       description: "Your workspace preferences have been updated.",
     })
-    setOpen(false)
+    setDialogOpen(false)
   }
 
   const handleDeleteAccount = async () => {
@@ -155,15 +168,15 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
 
   if (!hasHydrated) {
     return (
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       </Dialog>
     )
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
@@ -258,7 +271,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
 
         <DialogFooter className="border-t border-border/60 pt-4">
           <div className="flex w-full justify-end gap-2">
-            <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+            <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
             <Button type="button" onClick={handleSave} disabled={!hasChanges}>

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useSWRConfig } from "swr"
 import Image from "next/image"
 import {
@@ -56,6 +56,7 @@ export function Header() {
   const { mutate } = useSWRConfig()
   const { supabase, user, isLoading: isAuthLoading } = useSupabase()
   const { settings, updateSetting } = useSettings()
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const userAvatar = useMemo(() => {
     const metadata = user?.user_metadata as { picture?: string; avatar_url?: string } | undefined
     return metadata?.picture ?? metadata?.avatar_url ?? null
@@ -162,19 +163,15 @@ export function Header() {
                     })}
                   </div>
                   <DropdownMenuSeparator />
-                  <SettingsDialog
-                    trigger={(
-                      <DropdownMenuItem
-                        onSelect={(event) => {
-                          event.preventDefault()
-                        }}
-                        className="gap-2"
-                      >
-                        <Settings className="h-4 w-4" />
-                        Settings
-                      </DropdownMenuItem>
-                    )}
-                  />
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setIsSettingsOpen(true)
+                    }}
+                    className="gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onSelect={(event) => {
@@ -188,6 +185,7 @@ export function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
             </div>
           </div>
         </div>
