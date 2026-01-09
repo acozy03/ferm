@@ -27,10 +27,74 @@ interface SettingsDialogProps {
   trigger?: ReactNode
 }
 
+type SettingsTabId = "login-security" | "chrome-extension" | "donations" | "api-key"
+
 const themeIconMap: Record<ThemePreference, typeof SunMedium> = {
   system: Laptop,
   light: SunMedium,
   dark: Moon,
+}
+
+const settingsTabs: Array<{ id: SettingsTabId; label: string; description: string }> = [
+  {
+    id: "login-security",
+    label: "Login & Security",
+    description: "Manage your account, sign-in, and deletion settings.",
+  },
+  {
+    id: "chrome-extension",
+    label: "Chrome Extension",
+    description: "Configure the browser extension connection.",
+  },
+  {
+    id: "donations",
+    label: "Donations",
+    description: "Support Ferm and manage donation preferences.",
+  },
+  {
+    id: "api-key",
+    label: "API Key",
+    description: "Create and manage your API credentials.",
+  },
+]
+
+const SidebarTabButton = ({
+  label,
+  description,
+  isActive,
+  onClick,
+}: {
+  label: string
+  description: string
+  isActive: boolean
+  onClick: () => void
+}) => {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "w-full rounded-lg border px-3 py-2 text-left transition",
+        isActive
+          ? "border-primary/30 bg-primary/10 text-foreground shadow-sm"
+          : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-muted/50",
+      ].join(" ")}
+    >
+      <div className="text-sm font-medium text-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{description}</div>
+    </button>
+  )
+}
+
+const SettingsPanel = ({ title, children }: { title: string; children: ReactNode }) => {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      </div>
+      {children}
+    </div>
+  )
 }
 
 export function SettingsDialog({ trigger }: SettingsDialogProps) {
@@ -38,6 +102,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   const { supabase } = useSupabase()
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<SettingsTabId>("login-security")
   const [isDeleting, setIsDeleting] = useState(false)
   const [draft, setDraft] = useState<SettingsState>(settings)
 
@@ -52,6 +117,7 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   useEffect(() => {
     if (open) {
       setDraft(settings)
+      setActiveTab("login-security")
     }
   }, [open, settings])
 
@@ -111,68 +177,129 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
-        <div className="space-y-6 py-2">
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Theme</Label>
-            </div>
-            <Select value={draft.theme} onValueChange={(value) => updateDraft("theme", value as ThemePreference)}>
-              <SelectTrigger className="sm:w-30">
-                <SelectValue placeholder="Select a theme" />
-              </SelectTrigger>
-              <SelectContent align="start">
-                {themeOptions.map((option) => {
-                  const Icon = themeIconMap[option.value]
-                  return (
-                    <SelectItem key={option.value} value={option.value} className="flex items-center gap-2">
-                      <Icon className="h-4 w-4" />
-                      <span>{option.label}</span>
-                    </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col gap-6 py-2 sm:flex-row">
+          <aside className="flex w-full flex-col gap-2 sm:w-56">
+            {settingsTabs.map((tab) => (
+              <SidebarTabButton
+                key={tab.id}
+                label={tab.label}
+                description={tab.description}
+                isActive={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+              />
+            ))}
+          </aside>
+          <div className="flex-1 space-y-6 rounded-lg border border-border/70 bg-muted/20 p-4">
+            {activeTab === "login-security" && (
+              <SettingsPanel title="Login & Security">
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Theme
+                    </Label>
+                  </div>
+                  <Select value={draft.theme} onValueChange={(value) => updateDraft("theme", value as ThemePreference)}>
+                    <SelectTrigger className="sm:w-30">
+                      <SelectValue placeholder="Select a theme" />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      {themeOptions.map((option) => {
+                        const Icon = themeIconMap[option.value]
+                        return (
+                          <SelectItem key={option.value} value={option.value} className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" />
+                            <span>{option.label}</span>
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground">Delete your account</p>
+                    <p className="text-sm text-muted-foreground">
+                      This permanently removes your account and all associated data.
+                    </p>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="w-full sm:w-auto">
+                          Delete account
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => void handleDeleteAccount()}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={isDeleting}
+                            aria-busy={isDeleting}
+                          >
+                            {isDeleting ? "Deleting..." : "Delete"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              </SettingsPanel>
+            )}
+            {activeTab === "chrome-extension" && (
+              <SettingsPanel title="Chrome Extension">
+                <div className="space-y-2 rounded-lg border border-border/70 bg-background p-4">
+                  <p className="text-sm font-medium text-foreground">Extension status</p>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your Ferm workspace with the Chrome extension to capture browsing context.
+                  </p>
+                  <Button variant="outline" type="button">
+                    View extension instructions
+                  </Button>
+                </div>
+              </SettingsPanel>
+            )}
+            {activeTab === "donations" && (
+              <SettingsPanel title="Donations">
+                <div className="space-y-2 rounded-lg border border-border/70 bg-background p-4">
+                  <p className="text-sm font-medium text-foreground">Support Ferm</p>
+                  <p className="text-sm text-muted-foreground">
+                    Contributions help us keep Ferm running and fund new features.
+                  </p>
+                  <Button type="button">Manage donations</Button>
+                </div>
+              </SettingsPanel>
+            )}
+            {activeTab === "api-key" && (
+              <SettingsPanel title="API Key">
+                <div className="space-y-2 rounded-lg border border-border/70 bg-background p-4">
+                  <p className="text-sm font-medium text-foreground">API credentials</p>
+                  <p className="text-sm text-muted-foreground">
+                    Generate and revoke keys for programmatic access to your Ferm workspace.
+                  </p>
+                  <Button variant="outline" type="button">
+                    Manage API keys
+                  </Button>
+                </div>
+              </SettingsPanel>
+            )}
           </div>
         </div>
 
         <DialogFooter className="border-t border-border/60 pt-4">
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full sm:w-auto">
-                  Delete account
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => void handleDeleteAccount()}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    disabled={isDeleting}
-                    aria-busy={isDeleting}
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <div className="flex w-full justify-end gap-2 sm:w-auto">
-              <Button variant="outline" type="button" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={!hasChanges}>
-                Save changes
-              </Button>
-            </div>
+          <div className="flex w-full justify-end gap-2">
+            <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSave} disabled={!hasChanges}>
+              Save changes
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
