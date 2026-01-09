@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!data) {
-    return NextResponse.json({ apiKey: null })
+    return NextResponse.json({ hasKey: false })
   }
 
   if (!data.encrypted_api_key || !data.encryption_iv) {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Stored key is invalid." }, { status: 500 })
   }
 
-  return NextResponse.json({ apiKey: normalized })
+  return NextResponse.json({ hasKey: true })
 }
 
 export async function POST(request: NextRequest) {

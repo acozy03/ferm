@@ -40,7 +40,6 @@ import { cn } from "@/lib/utils"
 import type { JobApplicationWithInterviews, PrepChat, PrepMessage } from "@/lib/types/database"
 import { useSupabase } from "@/components/supabase-provider"
 
-const USER_OPENAI_KEY_HEADER = "x-user-openai-key"
 const GENERAL_INTERVIEW_VALUE = "general-prep"
 
 interface ChatMessage {
@@ -77,7 +76,7 @@ export default function PrepPage() {
   const [visualizerNotice, setVisualizerNotice] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [aiKeyInput, setAiKeyInput] = useState("")
-  const [storedAiKey, setStoredAiKey] = useState<string | null>(null)
+  const [hasStoredAiKey, setHasStoredAiKey] = useState(false)
   const [isSavingAiKey, setIsSavingAiKey] = useState(false)
   const [aiKeyModalError, setAiKeyModalError] = useState<string | null>(null)
   const [usageRemaining, setUsageRemaining] = useState<number | null>(null)
@@ -173,17 +172,12 @@ export default function PrepPage() {
         throw new Error(errorPayload.error || "Unable to load your AI key.")
       }
 
-      const data = (await response.json()) as { apiKey?: string | null }
-      if (data.apiKey) {
-        setStoredAiKey(data.apiKey)
-        setAiKeyInput(data.apiKey)
-      } else {
-        setStoredAiKey(null)
-        setAiKeyInput("")
-      }
+      const data = (await response.json()) as { hasKey?: boolean }
+      setHasStoredAiKey(Boolean(data.hasKey))
+      setAiKeyInput("")
     } catch (error) {
       setAiKeyModalError(error instanceof Error ? error.message : "Unable to load your AI key.")
-      setStoredAiKey(null)
+      setHasStoredAiKey(false)
     }
   }, [session?.access_token])
 
@@ -218,8 +212,8 @@ export default function PrepPage() {
         return
       }
 
-      setStoredAiKey(trimmed)
-      setAiKeyInput(trimmed)
+      setHasStoredAiKey(true)
+      setAiKeyInput("")
       toast({ title: "Key saved", description: "Your OpenAI key is ready to use." })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to save your AI key."
@@ -246,7 +240,7 @@ export default function PrepPage() {
           throw new Error(errorPayload.error || "Unable to clear your AI key.")
         }
 
-        setStoredAiKey(null)
+        setHasStoredAiKey(false)
         setAiKeyInput("")
         toast({ title: "Key removed", description: "Your OpenAI key was removed from your account." })
       } catch (error) {
@@ -821,7 +815,7 @@ export default function PrepPage() {
     }
   }, [isCreatingChat, selectedInterviewId, streamChatTitle, titleDrafts])
 
-  const hasAiKey = Boolean(storedAiKey)
+  const hasAiKey = hasStoredAiKey
 
   const handleSend = async () => {
     if (!input.trim() || isGenerating || isSessionEnded || isMessagesLoading) return
@@ -847,7 +841,6 @@ export default function PrepPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(storedAiKey ? { [USER_OPENAI_KEY_HEADER]: storedAiKey } : {}),
         },
         body: JSON.stringify({
           chatId: selectedChatId,
@@ -885,7 +878,6 @@ export default function PrepPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(storedAiKey ? { [USER_OPENAI_KEY_HEADER]: storedAiKey } : {}),
         },
         body: JSON.stringify({
           applicationId: selectedApplication?.id ?? null,
@@ -1142,7 +1134,7 @@ export default function PrepPage() {
 
       const response = await fetch("/api/prep/voice", {
         method: "POST",
-        headers: storedAiKey ? { [USER_OPENAI_KEY_HEADER]: storedAiKey } : undefined,
+        headers: undefined,
         body: formData,
       })
 
@@ -1294,14 +1286,14 @@ export default function PrepPage() {
                     )}
                     <div className="flex items-center gap-2">
                       <Button onClick={saveAiKey} disabled={!aiKeyInput.trim() || isSavingAiKey}>
-                        {isSavingAiKey ? "Saving..." : storedAiKey ? "Update key" : "Save key"}
+                        {isSavingAiKey ? "Saving..." : hasStoredAiKey ? "Update key" : "Save key"}
                       </Button>
-                      <Button variant="ghost" onClick={clearAiKey} disabled={!storedAiKey || isSavingAiKey}>
+                      <Button variant="ghost" onClick={clearAiKey} disabled={!hasStoredAiKey || isSavingAiKey}>
                         Clear key
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {storedAiKey ? "Key saved to your account." : "No key saved yet."}
+                      {hasStoredAiKey ? "Key saved to your account." : "No key saved yet."}
                     </p>
                     {usageRemaining !== null && usageLimit !== null && (
                       <p className="text-xs text-muted-foreground">Remaining messages today: {usageRemaining} / {usageLimit}</p>
