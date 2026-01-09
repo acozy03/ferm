@@ -77,43 +77,24 @@ export function Header() {
           <div className="grid h-12 sm:h-14 grid-cols-[auto_1fr_auto] items-center px-3 sm:px-6">
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-2 sm:gap-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      variant="subtle"
-                      size="icon"
-                      className="text-primary"
-                      aria-label="Open workspace menu"
-                    >
-                      <Image
-                        src="/logo_cropped.png"
-                        alt="ferm.dev logo"
-                        width={24}
-                        height={24}
-                        className="h-9 w-5 sm:h-6 sm:w-6"
-                        priority
-                      />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
-                    {/* <DropdownMenuLabel>ferm.dev</DropdownMenuLabel> */}
-                    {/* <DropdownMenuSeparator /> */}
-                    {NAV_ITEMS.map((item) => {
-                      const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
-
-                      return (
-                        <DropdownMenuItem
-                          key={item.href}
-                          onSelect={() => router.push(item.href)}
-                          className={cn(isActive ? "font-semibold text-foreground" : "")}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.label}</span>
-                        </DropdownMenuItem>
-                      )
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <IconButton
+                  asChild
+                  variant="subtle"
+                  size="icon"
+                  className="text-primary group"
+                  aria-label="Back to dashboard"
+                >
+                  <Link href="/">
+                    <Image
+                      src="/logo_cropped.png"
+                      alt="ferm.dev logo"
+                      width={24}
+                      height={24}
+                      className="h-9 w-5 sm:h-6 sm:w-6 transition-transform duration-700 ease-out group-hover:rotate-[360deg]"
+                      priority
+                    />
+                  </Link>
+                </IconButton>
                 {/* <Link
                   href="/"
                   className="text-xl font-semibold text-balance hover:text-primary transition-colors"
