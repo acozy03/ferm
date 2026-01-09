@@ -81,7 +81,7 @@ export function Header() {
                   asChild
                   variant="subtle"
                   size="icon"
-                  className="text-primary group"
+                  className="text-primary group hover:bg-transparent"
                   aria-label="Back to dashboard"
                 >
                   <Link href="/">
@@ -124,7 +124,11 @@ export function Header() {
             <div className="flex items-center justify-end gap-2 sm:gap-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <IconButton size="sm" className="gap-2 px-2 sm:px-3" disabled={isAuthLoading}>
+                  <IconButton
+                    size="icon"
+                    className="rounded-full hover:bg-transparent hover:shadow-[0_0_0_3px_rgba(0,0,0,0.18)] transition-shadow dark:hover:shadow-[0_0_0_3px_rgba(255,255,255,0.35)]"
+                    disabled={isAuthLoading}
+                  >
                     <Avatar className="h-7 w-7">
                       {userAvatar ? (
                         <AvatarImage src={userAvatar} alt={user?.email ?? "Account avatar"} />
