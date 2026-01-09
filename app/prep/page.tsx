@@ -1648,7 +1648,7 @@ export default function PrepPage() {
                     </div>
                     {!hasAiKey && (
                       <p className="text-xs text-muted-foreground">
-                        Optional: add your AI key to use your own quota and skip the daily shared limit.
+                        Optional: add your AI key to use your own OpenAI credits after the free daily messages are used.
                       </p>
                     )}
                   </form>

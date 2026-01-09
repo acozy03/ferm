@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
-import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys";
+import { resolveOpenAIKeys, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys";
 
 const DAILY_LIMIT = 20;
 const MAX_RAW_TEXT_LENGTH = 60_000;
@@ -76,31 +76,41 @@ export async function POST(request: Request) {
     { global: { headers: { Authorization: `Bearer ${token}` } } }
   );
 
-  const keyResolution = await resolveOpenAIApiKey({ request, supabase, userId: user.id });
-  if ("error" in keyResolution) {
-    const response = keyResolution.error;
+  const { userKey, sharedKey } = await resolveOpenAIKeys({ request, supabase, userId: user.id });
+  if (!userKey && !sharedKey) {
+    const response = NextResponse.json(
+      { error: "The service is not configured with an OpenAI API key." },
+      { status: 500 },
+    );
     response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
     return response;
   }
-  const { apiKey, isUserProvided } = keyResolution;
 
-  let usedToday = 0;
-  if (!isUserProvided) {
-    const today = new Date().toISOString().split("T")[0];
-    const { data: usageRow, error: usageError } = await supabase
-      .from("llm_usage")
-      .select("job_scrapes_count")
-      .eq("user_id", user.id)
-      .eq("date", today)
-      .maybeSingle();
+  const today = new Date().toISOString().split("T")[0];
+  const { data: usageRow, error: usageError } = await supabase
+    .from("llm_usage")
+    .select("job_scrapes_count")
+    .eq("user_id", user.id)
+    .eq("date", today)
+    .maybeSingle();
 
-    if (usageError && usageError.code !== "PGRST116") {
-      return NextResponse.json({ error: "Unable to check usage." }, { status: 500 });
-    }
+  if (usageError && usageError.code !== "PGRST116") {
+    return NextResponse.json({ error: "Unable to check usage." }, { status: 500 });
+  }
 
-    usedToday = usageRow?.job_scrapes_count ?? 0;
+  const usedToday = usageRow?.job_scrapes_count ?? 0;
+  let apiKey = userKey ?? sharedKey ?? "";
+  let isUserProvided = false;
+  let isSharedKey = false;
 
-    if (usedToday >= DAILY_LIMIT) {
+  if (sharedKey) {
+    if (usedToday < DAILY_LIMIT) {
+      apiKey = sharedKey;
+      isSharedKey = true;
+    } else if (userKey) {
+      apiKey = userKey;
+      isUserProvided = true;
+    } else {
       const res = NextResponse.json(
         { error: "Daily usage limit reached." },
         { status: 429 },
@@ -111,6 +121,9 @@ export async function POST(request: Request) {
       res.headers.set("X-Usage-Remaining", "0");
       return res;
     }
+  } else if (userKey) {
+    apiKey = userKey;
+    isUserProvided = true;
   }
 
   // --- Parse input ---
@@ -241,7 +254,7 @@ URL: ${job_url}
     // --- Supabase client bound to user token (for RPC/RLS) ---
     // ✅ Increment usage AFTER successful parse when using the hosted key
     let remainingNow: number | null = null;
-    if (!isUserProvided) {
+    if (isSharedKey) {
       // Recommended SQL (in your function):
       // ... DO UPDATE SET job_scrapes_count = least(llm_usage.job_scrapes_count + 1, 20) RETURNING job_scrapes_count;
       const { data: incCount, error: incErr } = await supabase.rpc("increment_job_scrapes_usage");
@@ -280,6 +293,9 @@ URL: ${job_url}
     if (remainingNow != null) {
       res.headers.set("X-Usage-Limit", String(DAILY_LIMIT));
       res.headers.set("X-Usage-Remaining", String(remainingNow));
+    } else if (isUserProvided) {
+      res.headers.set("X-Usage-Limit", "personal");
+      res.headers.set("X-Usage-Remaining", "unlimited");
     }
     return res;
   } catch (error) {

@@ -3,7 +3,7 @@ import OpenAI from "openai"
 import { z } from "zod"
 
 import { getAuthedClient } from "@/lib/api/auth"
-import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
+import { resolveOpenAIKeys, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 import { buildPrepContext } from "./context"
 
 const DAILY_LIMIT = 20
@@ -40,37 +40,46 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const keyResolution = await resolveOpenAIApiKey({
+    const { userKey, sharedKey } = await resolveOpenAIKeys({
       request,
       supabase: auth.supabase,
       userId: auth.userId,
     })
 
-    if ("error" in keyResolution) {
-      const response = keyResolution.error
+    if (!userKey && !sharedKey) {
+      const response = NextResponse.json(
+        { error: "The service is not configured with an OpenAI API key." },
+        { status: 500 },
+      )
       response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
       return response
     }
 
-    const { apiKey, isUserProvided } = keyResolution
+    const today = new Date().toISOString().split("T")[0]
+    const { data: usageRow, error: usageError } = await auth.supabase
+      .from("llm_usage")
+      .select("prep_messages_count")
+      .eq("user_id", auth.userId)
+      .eq("date", today)
+      .maybeSingle()
 
-    let usedToday = 0
-    if (!isUserProvided) {
-      const today = new Date().toISOString().split("T")[0]
-      const { data: usageRow, error: usageError } = await auth.supabase
-        .from("llm_usage")
-        .select("prep_messages_count")
-        .eq("user_id", auth.userId)
-        .eq("date", today)
-        .maybeSingle()
+    if (usageError && usageError.code !== "PGRST116") {
+      return NextResponse.json({ error: "Unable to check usage." }, { status: 500 })
+    }
 
-      if (usageError && usageError.code !== "PGRST116") {
-        return NextResponse.json({ error: "Unable to check usage." }, { status: 500 })
-      }
+    const usedToday = usageRow?.prep_messages_count ?? 0
+    let apiKey = userKey ?? sharedKey ?? ""
+    let isUserProvided = false
+    let isSharedKey = false
 
-      usedToday = usageRow?.prep_messages_count ?? 0
-
-      if (usedToday >= DAILY_LIMIT) {
+    if (sharedKey) {
+      if (usedToday < DAILY_LIMIT) {
+        apiKey = sharedKey
+        isSharedKey = true
+      } else if (userKey) {
+        apiKey = userKey
+        isUserProvided = true
+      } else {
         return new NextResponse(
           JSON.stringify({ error: "Daily prep limit reached." }),
           {
@@ -85,6 +94,9 @@ export async function POST(request: NextRequest) {
           },
         )
       }
+    } else if (userKey) {
+      apiKey = userKey
+      isUserProvided = true
     }
 
     const openai = new OpenAI({ apiKey })
@@ -171,7 +183,7 @@ export async function POST(request: NextRequest) {
     })
 
     const encoder = new TextEncoder()
-    const projectedRemaining = isUserProvided ? null : Math.max(0, DAILY_LIMIT - (usedToday + 1))
+    const projectedRemaining = isSharedKey ? Math.max(0, DAILY_LIMIT - (usedToday + 1)) : null
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         let accumulated = ""
@@ -213,7 +225,7 @@ export async function POST(request: NextRequest) {
             }
           }
         } finally {
-          if (completedSuccessfully && !isUserProvided) {
+          if (completedSuccessfully && isSharedKey) {
             const { error: incErr } = await auth.supabase.rpc("increment_prep_messages_usage")
             if (incErr) {
               console.error("increment_prep_messages_usage failed", incErr)
@@ -233,6 +245,9 @@ export async function POST(request: NextRequest) {
     if (projectedRemaining !== null) {
       responseHeaders["X-Usage-Limit"] = String(DAILY_LIMIT)
       responseHeaders["X-Usage-Remaining"] = String(projectedRemaining)
+    } else if (isUserProvided) {
+      responseHeaders["X-Usage-Limit"] = "personal"
+      responseHeaders["X-Usage-Remaining"] = "unlimited"
     }
 
     return new NextResponse(stream, {

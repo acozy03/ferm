@@ -85,6 +85,29 @@ async function fetchStoredKey(
 }
 
 type ResolvedKey = { apiKey: string; isUserProvided: boolean }
+type ResolvedKeys = { userKey: string | null; sharedKey: string | null }
+
+export async function resolveOpenAIKeys({
+  request,
+  supabase,
+  userId,
+}: {
+  request: Request
+  supabase?: SupabaseClient<unknown, "public", unknown> | null
+  userId?: string | null
+}): Promise<ResolvedKeys> {
+  const headerKey = normalizeApiKey(request.headers.get(USER_OPENAI_KEY_HEADER))
+  if (headerKey) {
+    return { userKey: headerKey, sharedKey: normalizeApiKey(process.env.OPENAI_API_KEY ?? null) }
+  }
+
+  const storedKey = await fetchStoredKey(supabase ?? null, userId ?? null)
+  if (storedKey) {
+    return { userKey: storedKey, sharedKey: normalizeApiKey(process.env.OPENAI_API_KEY ?? null) }
+  }
+
+  return { userKey: null, sharedKey: normalizeApiKey(process.env.OPENAI_API_KEY ?? null) }
+}
 
 export async function resolveOpenAIApiKey({
   request,
@@ -95,19 +118,18 @@ export async function resolveOpenAIApiKey({
   supabase?: SupabaseClient<unknown, "public", unknown> | null
   userId?: string | null
 }): Promise<ResolvedKey | { error: NextResponse }> {
-  const headerKey = normalizeApiKey(request.headers.get(USER_OPENAI_KEY_HEADER))
-  if (headerKey) {
-    return { apiKey: headerKey, isUserProvided: true }
+  const { userKey, sharedKey } = await resolveOpenAIKeys({
+    request,
+    supabase,
+    userId,
+  })
+
+  if (userKey) {
+    return { apiKey: userKey, isUserProvided: true }
   }
 
-  const storedKey = await fetchStoredKey(supabase ?? null, userId ?? null)
-  if (storedKey) {
-    return { apiKey: storedKey, isUserProvided: true }
-  }
-
-  const envKey = normalizeApiKey(process.env.OPENAI_API_KEY ?? null)
-  if (envKey) {
-    return { apiKey: envKey, isUserProvided: false }
+  if (sharedKey) {
+    return { apiKey: sharedKey, isUserProvided: false }
   }
 
   return {
@@ -118,4 +140,4 @@ export async function resolveOpenAIApiKey({
   }
 }
 
-export type { ResolvedKey }
+export type { ResolvedKey, ResolvedKeys }
