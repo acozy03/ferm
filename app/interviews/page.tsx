@@ -738,7 +738,11 @@ export default function InterviewsPage() {
                                 </SelectItem>
                               ) : (
                                 applicationOptions.map((application) => (
-                                  <SelectItem key={application.id} value={application.id}>
+                                  <SelectItem
+                                    key={application.id}
+                                    value={application.id}
+                                    maxWidthClassName="max-w-[25rem]"
+                                  > 
                                     {application.company_name} — {application.position_title}
                                   </SelectItem>
                                 ))
