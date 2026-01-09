@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import { format } from "date-fns"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { TruncatedText } from "@/components/ui/truncate"
 import type { ActivityLogWithApplication } from "@/lib/types/database"
 
 const activityLabels: Record<ActivityLogWithApplication["action_type"], string> = {
@@ -38,16 +39,28 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
       <DialogContent className="sm:max-w-lg">
         <DialogHeader className="space-y-0. text-left">
           <DialogTitle className="text-lg">{activityLabels[activity.action_type]}</DialogTitle>
-          <p className="text-sm font-medium text-pretty line-clamp-2 max-w-[25rem]">
-            {hasJobInfo ? (
-              <>
-                {jobTitle ?? "Job title unavailable"}
-                {companyName ? <span className="text-muted-foreground"> - {companyName}</span> : null}
-              </>
-            ) : (
-              "No job details available."
-            )}
-          </p>
+          {hasJobInfo ? (
+            <div className="space-y-0.5 text-sm font-medium text-pretty">
+              <TruncatedText
+                text={jobTitle ?? "Job title unavailable"}
+                as="span"
+                className="block"
+                maxWidthClass="max-w-[25rem]"
+                
+              />
+              {companyName ? (
+                <TruncatedText
+                  text={companyName}
+                  as="span"
+                  className="block text-muted-foreground"
+                  maxWidthClass="max-w-[25rem]"
+                
+                />
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-pretty text-muted-foreground">No job details available.</p>
+          )}
           
           <DialogDescription>Logged {format(timestamp, "PPpp")}</DialogDescription>
         </DialogHeader>

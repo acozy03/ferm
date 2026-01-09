@@ -21,6 +21,7 @@ import {
 import type { JobApplication as DbJobApplication } from "@/lib/types/database"
 import { formatStatusLabel } from "@/lib/status"
 import { getDateOrNull } from "@/lib/date"
+import { TruncatedText } from "@/components/ui/truncate"
 
 type JobDetailsDialogProps = {
   application: DbJobApplication
@@ -74,8 +75,22 @@ export function JobDetailsDialog({
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl truncate max-w-[35rem]"title={application.position_title}>{application.position_title}</DialogTitle>
-            <h3 className="text-lg font-medium truncate max-w-[35rem]" title={application.company_name}>{application.company_name}</h3>
+          <DialogTitle className="text-xl max-w-[35rem]">
+            <TruncatedText
+              text={application.position_title}
+              as="span"
+              className="block"
+              maxWidthClass="max-w-[35rem]"
+            />
+          </DialogTitle>
+          <h3 className="text-lg font-medium max-w-[35rem]">
+            <TruncatedText
+              text={application.company_name}
+              as="span"
+              className="block"
+              maxWidthClass="max-w-[35rem]"
+            />
+          </h3>
         </DialogHeader>
 
         <div className="space-y-6">
