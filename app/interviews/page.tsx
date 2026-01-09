@@ -39,6 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { TruncatedText } from "@/components/ui/truncate"
 import { cn } from "@/lib/utils"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -1007,10 +1008,16 @@ export default function InterviewsPage() {
                                 className="flex w-full items-start justify-between gap-3 rounded-lg p-3 text-left"
                               >
                                 <div className="space-y-1">
-                                  <p className="text-xs uppercase tracking-wide text-muted-foreground truncate max-w-[17rem]"title={group.company}>
-                                    {group.company}
-                                  </p>
-                                  <p className="text-sm font-semibold leading-tight truncate max-w-[17rem]"title={group.position}>{group.position}</p>
+                                  <TruncatedText
+                                    text={group.company}
+                                    className="text-xs uppercase tracking-wide text-muted-foreground"
+                                    maxWidthClass="max-w-[17rem]"
+                                  />
+                                  <TruncatedText
+                                    text={group.position}
+                                    className="text-sm font-semibold leading-tight"
+                                    maxWidthClass="max-w-[17rem]"
+                                  />
                                   <p className="text-xs text-muted-foreground">
                                     {group.interviews.length} interview{group.interviews.length === 1 ? "" : "s"}
                                   </p>

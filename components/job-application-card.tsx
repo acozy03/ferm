@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal, MapPin, DollarSign, Calendar } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { TruncatedText } from "@/components/ui/truncate"
 import { StatusUpdateDialog } from "@/components/status-update-dialog"
 import { JobDetailsDialog } from "@/components/job-details-dialog"
 import { EditApplicationDialog } from "@/components/edit-application-dialog"
@@ -124,12 +125,16 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
       <CardHeader className="pb-4">
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
           <div className="min-w-0 space-y-1">
-            <h3 className="text-lg font-semibold leading-tight truncate max-w-[30rem]" title={application.position_title}>
-              {application.position_title}
-            </h3>
-            <p className="font-medium text-muted-foreground truncate max-w-[25rem]" title={application.company_name}>
-              {application.company_name}
-            </p>
+            <TruncatedText
+              text={application.position_title}
+              className="text-lg font-semibold leading-tight"
+              maxWidthClass="max-w-[30rem]"
+            />
+            <TruncatedText
+              text={application.company_name}
+              className="font-medium text-muted-foreground"
+              maxWidthClass="max-w-[25rem]"
+            />
           </div>
 
           <div className="flex items-center justify-end gap-2">
@@ -181,17 +186,13 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
           {application.location && (
             <div className="inline-flex min-w-[140px] items-center gap-2">
               <MapPin className="h-4 w-4" />
-              <span className="max-w-[12rem] truncate" title={application.location}>
-                {application.location}
-              </span>
+              <TruncatedText text={application.location} maxWidthClass="max-w-[12rem]" />
             </div>
           )}
           {application.salary_range && (
             <div className="inline-flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              <span className="max-w-[10rem] truncate" title={application.salary_range}>
-                {application.salary_range}
-              </span>
+              <TruncatedText text={application.salary_range} maxWidthClass="max-w-[10rem]" />
             </div>
           )}
         </div>
@@ -243,4 +244,3 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
     </Card>
   )
 }
-

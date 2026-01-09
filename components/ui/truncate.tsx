@@ -4,28 +4,29 @@ import { cn } from "@/lib/utils"
 
 type TruncatedTextProps = {
   text: string
+  as?: "p" | "span"
   className?: string
-  maxWidthClass?: string 
+  maxWidthClass?: string
+  clampClassName?: string
+  lineClamp?: number
 }
 
 export function TruncatedText({
   text,
+  as = "p",
   className,
   maxWidthClass = "max-w-[25rem]",
+  clampClassName,
+  lineClamp,
 }: TruncatedTextProps) {
-  const { ref, isTruncated } = useIsTruncated<HTMLParagraphElement>()
+  const { ref, isTruncated } = useIsTruncated<HTMLElement>()
+  const Component = as
 
+  const clampClass = clampClassName ?? (lineClamp ? `line-clamp-${lineClamp}` : "truncate")
   const content = (
-    <p
-      ref={ref}
-      className={cn(
-        "truncate",
-        maxWidthClass,
-        className
-      )}
-    >
+    <Component ref={ref} className={cn(clampClass, maxWidthClass, className)}>
       {text}
-    </p>
+    </Component>
   )
 
   return isTruncated ? (

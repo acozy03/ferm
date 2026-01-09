@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 import { getDateOrNull } from "@/lib/date"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { TruncatedText } from "@/components/ui/truncate"
 
 const ActivityTimeline = dynamic(() => import("@/components/activity-timeline").then((mod) => mod.ActivityTimeline), {
   ssr: false,
@@ -634,18 +635,16 @@ export default function Dashboard() {
                                       >
                                         <TableCell className="w-[50%] max-w-[40rem]">
                                           <div className="min-w-0 space-y-1">
-                                            <p
-                                              className="text-sm font-medium leading-tight truncate"
-                                              title={application.position_title}
-                                            >
-                                              {application.position_title}
-                                            </p>
-                                            <p
-                                              className="text-xs text-muted-foreground truncate"
-                                              title={application.company_name}
-                                            >
-                                              {application.company_name}
-                                            </p>
+                                            <TruncatedText
+                                              text={application.position_title}
+                                              className="text-sm font-medium leading-tight"
+                                              maxWidthClass="max-w-full"
+                                            />
+                                            <TruncatedText
+                                              text={application.company_name}
+                                              className="text-xs text-muted-foreground"
+                                              maxWidthClass="max-w-full"
+                                            />
                                           </div>
                                         </TableCell>
                                         <TableCell className="w-[190px] align-middle">
@@ -677,9 +676,12 @@ export default function Dashboard() {
                                         </TableCell>
                                         <TableCell className="hidden w-[190px] max-w-[14rem] lg:table-cell">
                                           {application.location ? (
-                                            <span className="block truncate text-sm" title={application.location}>
-                                              {application.location}
-                                            </span>
+                                            <TruncatedText
+                                              as="span"
+                                              text={application.location}
+                                              className="block text-sm"
+                                              maxWidthClass="max-w-full"
+                                            />
                                           ) : (
                                             <span className="text-xs text-muted-foreground">—</span>
                                           )}
@@ -756,15 +758,16 @@ export default function Dashboard() {
                                       >
                                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                                           <div className="min-w-0">
-                                            <p className="truncate max-w-[40rem] font-medium leading-tight" title={application.position_title}>
-                                              {application.position_title}
-                                            </p>
-                                            <p
-                                              className="truncate max-w-[40rem] text-sm text-muted-foreground"
-                                              title={application.company_name}
-                                            >
-                                              {application.company_name}
-                                            </p>
+                                            <TruncatedText
+                                              text={application.position_title}
+                                              className="font-medium leading-tight"
+                                              maxWidthClass="max-w-[40rem]"
+                                            />
+                                            <TruncatedText
+                                              text={application.company_name}
+                                              className="text-sm text-muted-foreground"
+                                              maxWidthClass="max-w-[40rem]"
+                                            />
                                           </div>
 
                                           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -784,9 +787,12 @@ export default function Dashboard() {
                                           </div>
                                         </div>
                                         {application.notes && (
-                                          <p className="line-clamp-2 break-words max-w-[35rem] text-sm text-muted-foreground"title={application.notes}>
-                                            {application.notes}
-                                          </p>
+                                          <TruncatedText
+                                            text={application.notes}
+                                            className="break-words max-w-[35rem] text-sm text-muted-foreground"
+                                            clampClassName="line-clamp-2"
+                                            maxWidthClass="max-w-full"
+                                          />
                                         )}
                                         <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
                                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -796,12 +802,12 @@ export default function Dashboard() {
                                             {application.location && (
                                               <>
                                                 <span>•</span>
-                                                <span
-                                                  className="inline-block max-w-[14rem] truncate"
-                                                  title={application.location}
-                                                >
-                                                  {application.location}
-                                                </span>
+                                                <TruncatedText
+                                                  as="span"
+                                                  text={application.location}
+                                                  className="inline-block"
+                                                  maxWidthClass="max-w-[14rem]"
+                                                />
                                               </>
                                             )}
                                           </div>

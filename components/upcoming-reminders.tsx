@@ -6,6 +6,7 @@ import { BellRing } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { TruncatedText } from "@/components/ui/truncate"
 
 import { useApplicationFollowUps } from "@/lib/hooks/use-application-follow-ups"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -168,12 +169,16 @@ export function UpcomingReminders() {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-card-foreground truncate max-w-[14rem]"title={reminder.application.company_name}>
-                            {reminder.application.company_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[14rem]"title={reminder.application.position_title}>
-                            {reminder.application.position_title}
-                          </p>
+                          <TruncatedText
+                            text={reminder.application.company_name}
+                            className="text-sm font-medium text-card-foreground"
+                            maxWidthClass="max-w-[14rem]"
+                          />
+                          <TruncatedText
+                            text={reminder.application.position_title}
+                            className="text-xs text-muted-foreground"
+                            maxWidthClass="max-w-[14rem]"
+                          />
                         </div>
                     
                       </div>

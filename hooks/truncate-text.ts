@@ -9,7 +9,7 @@ export function useIsTruncated<T extends HTMLElement>() {
     if (!el) return
 
     const check = () => {
-      setIsTruncated(el.scrollWidth > el.clientWidth)
+      setIsTruncated(el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight)
     }
 
     check()

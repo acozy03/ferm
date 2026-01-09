@@ -5,6 +5,7 @@ import { useActivityLogInfinite } from "@/lib/hooks/use-activity-log-infinite"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ActivityDetailsDialog } from "@/components/activity-details-dialog"
+import { TruncatedText } from "@/components/ui/truncate"
 import type { ActivityLogWithApplication } from "@/lib/types/database"
 
 const activityIcons = {
@@ -84,22 +85,29 @@ export function ActivityTimeline() {
               <p className="text-pretty text-sm text-muted-foreground">{item.description}</p>
               {hasJobInfo ? (
                 <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-foreground truncate max-w-[10rem]" title={jobTitle}>
-                    {jobTitle ?? "Job title unavailable"}
-                  </p>
-                  <p className="text-xs font-medium text-foreground truncate max-w-[10rem]">
-                    {companyName ? <p className="text-muted-foreground break-words"title={companyName}>{companyName}</p> : null}
-                  </p> 
+                  <TruncatedText
+                    text={jobTitle ?? "Job title unavailable"}
+                    className="text-xs font-medium text-foreground"
+                    maxWidthClass="max-w-[10rem]"
+                  />
+                  {companyName ? (
+                    <TruncatedText
+                      text={companyName}
+                      className="text-xs font-medium text-muted-foreground"
+                      maxWidthClass="max-w-[10rem]"
+                    />
+                  ) : null}
                   {jobRemoved ? <p className="text-[11px] italic text-muted-foreground">Application removed</p> : null}
                 </div>
               ) : (
                 <p className="text-xs italic text-muted-foreground">Application removed</p>
               )}
               {item.new_value && item.old_value ? (
-                <div className="text-xs text-muted-foreground truncate max-w-[10rem]"title={item.old_value + " -> " + item.new_value}>
-                  <span className="line-through">{item.old_value}</span> {" -> "}
-                  <span className="font-medium">{item.new_value}</span>
-                </div>
+                <TruncatedText
+                  text={`${item.old_value} -> ${item.new_value}`}
+                  className="text-xs text-muted-foreground"
+                  maxWidthClass="max-w-[10rem]"
+                />
               ) : null}
               <p className="text-xs text-muted-foreground">{formatTimestamp(item.created_at)}</p>
             </div>
