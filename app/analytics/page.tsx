@@ -12,7 +12,7 @@ import { getStatusChartColor, parseStatus } from "@/lib/status"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, ArrowRight } from "lucide-react"
-
+import  {TruncatedText} from "@/components/ui/truncate"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 
@@ -600,7 +600,6 @@ export default function AnalyticsPage() {
         <DialogContent className="max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Applications on {selectedDayLabel}</DialogTitle>
-            <DialogDescription>Review the roles you added to your tracker on this date.</DialogDescription>
           </DialogHeader>
           {selectedDay ? (
             selectedDay.applications.length ? (
@@ -610,8 +609,11 @@ export default function AnalyticsPage() {
                     const status = parseStatus(application.status)
                     return (
                       <div key={application.id} className="rounded-md border bg-muted/30 p-3">
-                        <p className="text-sm font-medium text-foreground">{application.position_title}</p>
-                        <p className="text-sm text-muted-foreground">{application.company_name}</p>
+                        <TruncatedText
+  text={application.position_title}
+  className="text-sm font-medium text-foreground"
+/>
+                        <TruncatedText text={application.company_name} className="text-sm text-muted-foreground"/>
                         <p className="mt-1 text-xs text-muted-foreground">Status: {status.label}</p>
                       </div>
                     )
