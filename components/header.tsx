@@ -155,8 +155,8 @@ export function Header() {
                     </Avatar>
                   </IconButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <div className=" gap-1 p-1">
+                <DropdownMenuContent align="end" className="w-fit min-w-[7rem]">
+                  <div className="flex items-center gap-1 p-1 w-fit">
                     {themeOptions.map((option) => {
                       const Icon = themeIconMap[option.value]
                       const isActive = settings.theme === option.value
