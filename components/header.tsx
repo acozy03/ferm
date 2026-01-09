@@ -133,11 +133,10 @@ export function Header() {
                     <Avatar className="h-7 w-7">
                       {userAvatar ? (
                         <AvatarImage src={userAvatar} alt={user?.email ?? "Account avatar"} />
-                      ) : (
-                        <AvatarFallback>
-                          <UserRound className="h-4 w-4" />
-                        </AvatarFallback>
-                      )}
+                      ) : null}
+                      <AvatarFallback>
+                        <UserRound className="h-4 w-4" />
+                      </AvatarFallback>
                     </Avatar>
                   </IconButton>
                 </DropdownMenuTrigger>
