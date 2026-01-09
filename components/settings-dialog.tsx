@@ -5,9 +5,8 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
-import { themeOptions, type SettingsState, type ThemePreference } from "@/lib/settings"
+import { type SettingsState } from "@/lib/settings"
 import { useSettings } from "@/components/settings-provider"
 import {
   AlertDialog,
@@ -19,21 +18,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSupabase } from "@/components/supabase-provider"
-import { Laptop, Moon, SunMedium } from "lucide-react"
 
 interface SettingsDialogProps {
   trigger?: ReactNode
 }
 
 type SettingsTabId = "login-security" | "chrome-extension" | "donations" | "api-key"
-
-const themeIconMap: Record<ThemePreference, typeof SunMedium> = {
-  system: Laptop,
-  light: SunMedium,
-  dark: Moon,
-}
 
 const settingsTabs: Array<{ id: SettingsTabId; label: string; description: string }> = [
   {
@@ -125,10 +116,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
     return JSON.stringify(settings) !== JSON.stringify(draft)
   }, [settings, draft])
 
-  const updateDraft = <Key extends keyof SettingsState>(key: Key, value: SettingsState[Key]) => {
-    setDraft((prev) => ({ ...prev, [key]: value }))
-  }
-
   const handleSave = () => {
     saveSettings(draft)
     toast({
@@ -196,29 +183,6 @@ export function SettingsDialog({ trigger }: SettingsDialogProps) {
           <div className="flex-1 space-y-6 rounded-lg border border-border/70 bg-muted/20 p-4">
             {activeTab === "login-security" && (
               <SettingsPanel title="Login & Security">
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Theme
-                    </Label>
-                  </div>
-                  <Select value={draft.theme} onValueChange={(value) => updateDraft("theme", value as ThemePreference)}>
-                    <SelectTrigger className="sm:w-30">
-                      <SelectValue placeholder="Select a theme" />
-                    </SelectTrigger>
-                    <SelectContent align="start">
-                      {themeOptions.map((option) => {
-                        const Icon = themeIconMap[option.value]
-                        return (
-                          <SelectItem key={option.value} value={option.value} className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            <span>{option.label}</span>
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-foreground">Delete your account</p>

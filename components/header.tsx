@@ -15,13 +15,16 @@ import {
   Settings,
   CalendarClock,
   MessageCircle,
+  Laptop,
+  Moon,
+  SunMedium,
 } from "lucide-react"
 import { IconButton } from "@/components/ui/icon-button"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -29,6 +32,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useSupabase } from "@/components/supabase-provider"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { useSettings } from "@/components/settings-provider"
+import { themeOptions, type ThemePreference } from "@/lib/settings"
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -39,11 +44,18 @@ const NAV_ITEMS = [
   { label: "Resume", href: "/resume", icon: FileText },
 ] as const
 
+const themeIconMap: Record<ThemePreference, typeof SunMedium> = {
+  system: Laptop,
+  light: SunMedium,
+  dark: Moon,
+}
+
 export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const { mutate } = useSWRConfig()
   const { supabase, user, isLoading: isAuthLoading } = useSupabase()
+  const { settings, updateSetting } = useSettings()
   const userAvatar = useMemo(() => {
     const metadata = user?.user_metadata as { picture?: string; avatar_url?: string } | undefined
     return metadata?.picture ?? metadata?.avatar_url ?? null
@@ -141,13 +153,29 @@ export function Header() {
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <span className="truncate max-w-[8rem] text-left text-sm sm:text-base">
-                      {user?.email ?? "Account"}
-                    </span>
                   </IconButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="truncate">{user?.email ?? "Signed in"}</DropdownMenuLabel>
+                  <div className=" gap-1 p-1">
+                    {themeOptions.map((option) => {
+                      const Icon = themeIconMap[option.value]
+                      const isActive = settings.theme === option.value
+                      return (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          variant={isActive ? "secondary" : "ghost"}
+                          size="icon"
+                          className={cn("h-8 w-8", isActive && "text-foreground")}
+                          onClick={() => updateSetting("theme", option.value)}
+                          aria-pressed={isActive}
+                          aria-label={`Use ${option.label.toLowerCase()} theme`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </Button>
+                      )
+                    })}
+                  </div>
                   <DropdownMenuSeparator />
                   <SettingsDialog
                     trigger={(
@@ -162,7 +190,6 @@ export function Header() {
                       </DropdownMenuItem>
                     )}
                   />
-                 
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onSelect={(event) => {
