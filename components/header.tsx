@@ -189,7 +189,7 @@ export function Header() {
                       event.preventDefault()
                       void handleSignOut()
                     }}
-                    className="gap-2"
+                    className="gap-2 data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:!text-destructive"
                   >
                     <LogOut className="h-4 w-4" />
                     Sign out
