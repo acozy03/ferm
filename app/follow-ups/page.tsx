@@ -480,7 +480,7 @@ export default function FollowUpsPage() {
             />
             
           </div>
- <DialogFooter className="mx-auto flex w-full max-w-[360px] items-center gap-2">
+          <DialogFooter className="mx-auto flex w-full max-w-[360px] flex-col gap-2">
             {!reminderDialog?.isEnabling && (
               <Button
                 variant="outline"
@@ -494,9 +494,10 @@ export default function FollowUpsPage() {
               </Button>
             )}
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex w-full items-center gap-2">
               <Button
                 variant="outline"
+                className="flex-1"
                 onClick={() => setReminderDialog(null)}
                 disabled={reminderDialog ? pending[reminderDialog.application.id] : false}
               >
@@ -504,6 +505,7 @@ export default function FollowUpsPage() {
               </Button>
 
               <Button
+                className="flex-1"
                 onClick={() => {
                   if (!reminderDialog) return
                   const selectedDate = reminderDialog.date

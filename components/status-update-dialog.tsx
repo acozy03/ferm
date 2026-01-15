@@ -145,11 +145,11 @@ export function StatusUpdateDialog({
 
           
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
+          <div className="flex w-full gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdate} disabled={selectedStatus === currentMetadata.value}>
+            <Button className="flex-1" onClick={handleUpdate} disabled={selectedStatus === currentMetadata.value}>
               Update Status
             </Button>
           </div>
