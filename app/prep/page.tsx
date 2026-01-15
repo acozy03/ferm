@@ -31,14 +31,13 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Input } from "@/components/ui/input"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/components/ui/use-toast"
 import { createAudioVisualizer, type AudioVisualizer } from "@/lib/audio-visualizer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 import type { JobApplicationWithInterviews, PrepChat, PrepMessage } from "@/lib/types/database"
 import { useSupabase } from "@/components/supabase-provider"
+import { AiKeyPanel } from "@/components/settings/ai-key-panel"
 
 const GENERAL_INTERVIEW_VALUE = "general-prep"
 
@@ -1262,43 +1261,19 @@ export default function PrepPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80 space-y-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold">AI key</p>
-                      <p className="text-xs text-muted-foreground">
-                        Stored securely to your account. Add your key to use your own OpenAI credits; otherwise we’ll
-                        use the shared key with a daily limit.
-                      </p>
-                    </div>
-                    <Input
-                      value={aiKeyInput}
-                      onChange={(event) => {
-                        setAiKeyInput(event.target.value)
-                        if (aiKeyModalError) {
-                          setAiKeyModalError(null)
-                        }
-                      }}
-                      placeholder="Paste your AI key"
+                    <AiKeyPanel
+                      aiKeyInput={aiKeyInput}
+                      onAiKeyInputChange={setAiKeyInput}
+                      aiKeyError={aiKeyModalError}
+                      onClearError={() => setAiKeyModalError(null)}
+                      hasStoredAiKey={hasStoredAiKey}
+                      isSavingAiKey={isSavingAiKey}
+                      onSave={saveAiKey}
+                      onClear={clearAiKey}
+                      usageRemaining={usageRemaining}
+                      usageLimit={usageLimit}
+                      usageError={usageError}
                     />
-                    {aiKeyModalError && (
-                      <Alert className="border-destructive/50 text-destructive">
-                        <AlertDescription>{aiKeyModalError}</AlertDescription>
-                      </Alert>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <Button onClick={saveAiKey} disabled={!aiKeyInput.trim() || isSavingAiKey}>
-                        {isSavingAiKey ? "Saving..." : hasStoredAiKey ? "Update key" : "Save key"}
-                      </Button>
-                      <Button variant="ghost" onClick={clearAiKey} disabled={!hasStoredAiKey || isSavingAiKey}>
-                        Clear key
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {hasStoredAiKey ? "Key saved to your account." : "No key saved yet."}
-                    </p>
-                    {usageRemaining !== null && usageLimit !== null && (
-                      <p className="text-xs text-muted-foreground">Remaining messages today: {usageRemaining} / {usageLimit}</p>
-                    )}
-                    {usageError && <p className="text-xs text-destructive">{usageError}</p>}
                   </PopoverContent>
                 </Popover>
                 <Button

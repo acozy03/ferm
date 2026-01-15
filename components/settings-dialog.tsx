@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
 import { type SettingsState } from "@/lib/settings"
 import { useSettings } from "@/components/settings-provider"
+import { AiKeyPanel } from "@/components/settings/ai-key-panel"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,12 +93,16 @@ const SettingsPanel = ({ title, children }: { title: string; children: ReactNode
 
 export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogProps) {
   const { settings, hasHydrated, updateSettings: saveSettings } = useSettings()
-  const { supabase } = useSupabase()
+  const { supabase, session } = useSupabase()
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<SettingsTabId>("login-security")
   const [isDeleting, setIsDeleting] = useState(false)
   const [draft, setDraft] = useState<SettingsState>(settings)
+  const [aiKeyInput, setAiKeyInput] = useState("")
+  const [hasStoredAiKey, setHasStoredAiKey] = useState(false)
+  const [isSavingAiKey, setIsSavingAiKey] = useState(false)
+  const [aiKeyError, setAiKeyError] = useState<string | null>(null)
   const isControlled = open !== undefined
   const dialogOpen = isControlled ? open : uncontrolledOpen
   const setDialogOpen = useCallback(
@@ -137,6 +142,106 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
     })
     setDialogOpen(false)
   }
+
+  const loadStoredAiKey = useCallback(async () => {
+    setAiKeyError(null)
+
+    try {
+      const response = await fetch("/api/ai-keys", {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to load your AI key." }))
+        throw new Error(errorPayload.error || "Unable to load your AI key.")
+      }
+
+      const data = (await response.json()) as { hasKey?: boolean }
+      setHasStoredAiKey(Boolean(data.hasKey))
+      setAiKeyInput("")
+    } catch (error) {
+      setAiKeyError(error instanceof Error ? error.message : "Unable to load your AI key.")
+      setHasStoredAiKey(false)
+    }
+  }, [session?.access_token])
+
+  const saveAiKey = useCallback(async () => {
+    const trimmed = aiKeyInput.trim()
+    if (!trimmed) return
+    setIsSavingAiKey(true)
+    setAiKeyError(null)
+
+    try {
+      if (trimmed.length < 20 || !/^[A-Za-z0-9._:-]+$/.test(trimmed)) {
+        const message = "Please enter a valid OpenAI API key."
+        setAiKeyError(message)
+        toast({ title: "Invalid key", description: message, variant: "destructive" })
+        return
+      }
+
+      const response = await fetch("/api/ai-keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ apiKey: trimmed }),
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to save your AI key." }))
+        const message = errorPayload.error || "Unable to save your AI key."
+        setAiKeyError(message)
+        toast({ title: "Failed to save key", description: message, variant: "destructive" })
+        return
+      }
+
+      setHasStoredAiKey(true)
+      setAiKeyInput("")
+      toast({ title: "Key saved", description: "Your OpenAI key is ready to use." })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save your AI key."
+      setAiKeyError(message)
+      toast({ title: "Failed to save key", description: message, variant: "destructive" })
+    } finally {
+      setIsSavingAiKey(false)
+    }
+  }, [aiKeyInput, session?.access_token, toast])
+
+  const clearAiKey = useCallback(() => {
+    setIsSavingAiKey(true)
+    setAiKeyError(null)
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/ai-keys", {
+          method: "DELETE",
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        })
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => ({ error: "Unable to clear your AI key." }))
+          throw new Error(errorPayload.error || "Unable to clear your AI key.")
+        }
+
+        setHasStoredAiKey(false)
+        setAiKeyInput("")
+        toast({ title: "Key removed", description: "Your OpenAI key was removed from your account." })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to clear your AI key."
+        setAiKeyError(message)
+        toast({ title: "Failed to clear key", description: message, variant: "destructive" })
+      } finally {
+        setIsSavingAiKey(false)
+      }
+    })()
+  }, [session?.access_token, toast])
+
+  useEffect(() => {
+    if (dialogOpen && activeTab === "api-key") {
+      void loadStoredAiKey()
+    }
+  }, [activeTab, dialogOpen, loadStoredAiKey])
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
@@ -256,13 +361,16 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             {activeTab === "api-key" && (
               <SettingsPanel title="API Key">
                 <div className="space-y-2 rounded-lg border border-border/70 bg-background p-4">
-                  <p className="text-sm font-medium text-foreground">API credentials</p>
-                  <p className="text-sm text-muted-foreground">
-                    Generate and revoke keys for programmatic access to your Ferm workspace.
-                  </p>
-                  <Button variant="outline" type="button">
-                    Manage API keys
-                  </Button>
+                  <AiKeyPanel
+                    aiKeyInput={aiKeyInput}
+                    onAiKeyInputChange={setAiKeyInput}
+                    aiKeyError={aiKeyError}
+                    onClearError={() => setAiKeyError(null)}
+                    hasStoredAiKey={hasStoredAiKey}
+                    isSavingAiKey={isSavingAiKey}
+                    onSave={saveAiKey}
+                    onClear={clearAiKey}
+                  />
                 </div>
               </SettingsPanel>
             )}
