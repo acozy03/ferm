@@ -32,6 +32,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useSupabase } from "@/components/supabase-provider"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { ContactDialog } from "@/components/contact-dialog"
 import { useSettings } from "@/components/settings-provider"
 import { themeOptions, type ThemePreference } from "@/lib/settings"
 
@@ -57,6 +58,7 @@ export function Header() {
   const { supabase, user, isLoading: isAuthLoading } = useSupabase()
   const { settings, updateSetting } = useSettings()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isContactOpen, setIsContactOpen] = useState(false)
   const userAvatar = useMemo(() => {
     const metadata = user?.user_metadata as { picture?: string; avatar_url?: string } | undefined
     return metadata?.picture ?? metadata?.avatar_url ?? null
@@ -164,6 +166,16 @@ export function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onSelect={() => {
+                      setIsContactOpen(true)
+                    }}
+                    className="gap-2"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Contact
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => {
                       setIsSettingsOpen(true)
                     }}
                     className="gap-2"
@@ -184,6 +196,7 @@ export function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <ContactDialog open={isContactOpen} onOpenChange={setIsContactOpen} userEmail={user?.email ?? null} />
               <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
             </div>
           </div>

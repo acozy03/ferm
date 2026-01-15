@@ -282,7 +282,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-3xl"showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
