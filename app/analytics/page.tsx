@@ -221,11 +221,80 @@ export default function AnalyticsPage() {
   const handleExportSankey = async () => {
     if (!sankeyContainerRef.current) return
 
+    const appliedFontElements = new Map<Element, string>()
+
     try {
+      const fallbackFontFamily = "var(--font-sans), system-ui, sans-serif"
+      const resolvedFontFamily = (() => {
+        const container = sankeyContainerRef.current
+        if (!container) return fallbackFontFamily
+
+        const computedFontFamily = getComputedStyle(container).fontFamily
+        console.debug("[sankey export] computed font family", computedFontFamily)
+        if (computedFontFamily) {
+          return computedFontFamily
+        }
+
+        for (const sheet of Array.from(document.styleSheets)) {
+          let rules: CSSRuleList | undefined
+
+          try {
+            rules = sheet.cssRules
+          } catch {
+            continue
+          }
+
+          if (!rules) continue
+
+          for (const rule of Array.from(rules)) {
+            if (!("style" in rule) || !("selectorText" in rule)) continue
+
+            const fontValue = rule.style.getPropertyValue("font-family")
+            if (!fontValue) continue
+
+            const selectors = String(rule.selectorText)
+              .split(",")
+              .map((selector) => selector.trim())
+              .filter(Boolean)
+
+            if (selectors.some((selector) => container.matches(selector))) {
+              const trimmedFontValue = fontValue.trim()
+              if (trimmedFontValue) {
+                console.debug("[sankey export] matched font family rule", {
+                  selectorText: rule.selectorText,
+                  fontFamily: trimmedFontValue,
+                })
+                return trimmedFontValue
+              }
+            }
+          }
+        }
+
+        return fallbackFontFamily
+      })()
+      console.debug("[sankey export] resolved font family", resolvedFontFamily)
+
+      const exportRoot = sankeyContainerRef.current
+      const exportElements = [exportRoot, ...Array.from(exportRoot.querySelectorAll("*"))]
+      exportElements.forEach((element) => {
+        if (element instanceof HTMLElement || element instanceof SVGElement) {
+          appliedFontElements.set(element, element.style.fontFamily)
+          element.style.fontFamily = resolvedFontFamily
+        } else {
+          appliedFontElements.set(element, "")
+        }
+      })
+      console.debug("[sankey export] applied font family to elements", exportElements.length)
+
       const backgroundColor = getComputedStyle(document.body).backgroundColor || "#0f1729"
+      console.debug("[sankey export] background color", backgroundColor)
       const dataUrl = await toPng(sankeyContainerRef.current, {
         cacheBust: true,
         backgroundColor,
+        skipFonts: true,
+        style: {
+          fontFamily: resolvedFontFamily,
+        },
       })
 
       const link = document.createElement("a")
@@ -234,6 +303,12 @@ export default function AnalyticsPage() {
       link.click()
     } catch (error) {
       console.error("Failed to export Sankey chart", error)
+    } finally {
+      appliedFontElements.forEach((previousFontFamily, element) => {
+        if (element instanceof HTMLElement || element instanceof SVGElement) {
+          element.style.fontFamily = previousFontFamily
+        }
+      })
     }
   }
 
