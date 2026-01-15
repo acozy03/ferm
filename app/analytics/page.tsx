@@ -222,6 +222,8 @@ export default function AnalyticsPage() {
     if (!sankeyContainerRef.current) return
 
     const appliedFontElements = new Map<Element, string>()
+    let exportWrapper: HTMLDivElement | null = null
+    let clonedRoot: HTMLElement | null = null
 
     try {
       const fallbackFontFamily = "var(--font-sans), system-ui, sans-serif"
@@ -275,7 +277,32 @@ export default function AnalyticsPage() {
       console.debug("[sankey export] resolved font family", resolvedFontFamily)
 
       const exportRoot = sankeyContainerRef.current
-      const exportElements = [exportRoot, ...Array.from(exportRoot.querySelectorAll("*"))]
+      exportWrapper = document.createElement("div")
+      exportWrapper.style.position = "fixed"
+      exportWrapper.style.left = "-9999px"
+      exportWrapper.style.top = "0"
+      exportWrapper.style.pointerEvents = "none"
+      exportWrapper.style.opacity = "0"
+      exportWrapper.style.zIndex = "-1"
+
+      const localClonedRoot = exportRoot.cloneNode(true) as HTMLElement
+      clonedRoot = localClonedRoot
+      exportWrapper.appendChild(localClonedRoot)
+      document.body.appendChild(exportWrapper)
+
+      const clonedLegend = localClonedRoot.querySelector("[data-sankey-legend]")
+      if (clonedLegend instanceof HTMLElement) {
+        clonedLegend.classList.remove("overflow-x-auto")
+        clonedLegend.style.overflowX = "visible"
+        clonedLegend.style.width = `${clonedLegend.scrollWidth}px`
+      }
+
+      const exportWidth = localClonedRoot.scrollWidth
+      const exportHeight = localClonedRoot.scrollHeight
+      localClonedRoot.style.width = `${exportWidth}px`
+      localClonedRoot.style.height = `${exportHeight}px`
+
+      const exportElements = [localClonedRoot, ...Array.from(localClonedRoot.querySelectorAll("*"))]
       exportElements.forEach((element) => {
         if (element instanceof HTMLElement || element instanceof SVGElement) {
           appliedFontElements.set(element, element.style.fontFamily)
@@ -288,10 +315,12 @@ export default function AnalyticsPage() {
 
       const backgroundColor = getComputedStyle(document.body).backgroundColor || "#0f1729"
       console.debug("[sankey export] background color", backgroundColor)
-      const dataUrl = await toPng(sankeyContainerRef.current, {
+      const dataUrl = await toPng(localClonedRoot, {
         cacheBust: true,
         backgroundColor,
         skipFonts: true,
+        width: exportWidth,
+        height: exportHeight,
         style: {
           fontFamily: resolvedFontFamily,
         },
@@ -309,6 +338,9 @@ export default function AnalyticsPage() {
           element.style.fontFamily = previousFontFamily
         }
       })
+      if (exportWrapper) {
+        exportWrapper.remove()
+      }
     }
   }
 
@@ -523,6 +555,7 @@ export default function AnalyticsPage() {
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <div
                           ref={sankeyLegendRef}
+                          data-sankey-legend
                           className="flex items-center gap-3 overflow-x-auto whitespace-nowrap"
                         >
                       {sankeyData.nodes
