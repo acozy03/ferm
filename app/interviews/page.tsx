@@ -694,7 +694,7 @@ export default function InterviewsPage() {
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-                  <Button onClick={handleOpenCreateDialog} className="gap-2">
+                  <Button onClick={handleOpenCreateDialog} className="gap-2" disabled={isLoadingApplications}>
                     <Plus className="h-4 w-4" />
                     Log interview
                   </Button>
@@ -733,7 +733,7 @@ export default function InterviewsPage() {
                             </SelectTrigger>
                             <SelectContent className="w-[--radix-select-trigger-width]">
                               {applicationOptions.length === 0 ? (
-                                <SelectItem value="" disabled>
+                                <SelectItem value="no-available-applications" disabled>
                                   No jobs ready for interviews yet
                                 </SelectItem>
                               ) : (
