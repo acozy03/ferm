@@ -1657,7 +1657,7 @@ export default function PrepPage() {
                     <SelectTrigger id="role-select" className="w-full bg-background/70 text-left">
                       <SelectValue placeholder={isLoading ? "Loading roles..." : "Pick a role"} className="truncate" />
                     </SelectTrigger>
-                    <SelectContent className="max-h-72">
+                    <SelectContent className="max-h-72 truncate max-w-[18.5rem]">
                       {jobOptions.map((job) => (
                         <SelectItem key={job.id} value={job.id} title={job.label}>
                           {job.label}
