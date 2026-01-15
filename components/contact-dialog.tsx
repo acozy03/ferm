@@ -99,7 +99,7 @@ export function ContactDialog({ open, onOpenChange, userEmail }: ContactDialogPr
           <div className="space-y-3">
             <Label className="flex items-center gap-1">
               <span className="text-destructive">*</span>
-              What would you like to tell us?
+              What brings you in today?
             </Label>
             <RadioGroup value={topic} onValueChange={setTopic} className="gap-2">
               {CONTACT_TOPICS.map((option) => (
@@ -120,13 +120,13 @@ export function ContactDialog({ open, onOpenChange, userEmail }: ContactDialogPr
           <div className="space-y-3">
             <Label htmlFor="contact-details" className="flex items-center gap-1">
               <span className="text-destructive">*</span>
-              Can you give us more details?
+              Can you provide more details?
             </Label>
             <Textarea
               id="contact-details"
               value={details}
               onChange={(event) => setDetails(event.target.value)}
-              placeholder="Please describe your experience or share your ideas. The more specific you are, the better we can address your feedback."
+              placeholder={`Please describe your experience or share your ideas`}
               className="min-h-[140px]"
               required
             />
