@@ -105,7 +105,7 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
-  maxWidthClassName = 'max-w-[20rem]',
+  maxWidthClassName = 'max-w-full',
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Item> & {
   maxWidthClassName?: string
