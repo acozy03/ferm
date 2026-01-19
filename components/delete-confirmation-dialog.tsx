@@ -52,19 +52,19 @@ export function DeleteConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isConfirming}>
+        <div className="gap-2 flex w-full">
+          <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isConfirming}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleConfirm} disabled={isConfirming}>
+          <Button variant="destructive" className="flex-1" onClick={handleConfirm} disabled={isConfirming}>
             {isConfirming ? "Deleting..." : confirmLabel}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )

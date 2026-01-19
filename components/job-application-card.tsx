@@ -231,7 +231,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete application"
-        description={`Are you sure you want to delete the application for ${application.position_title} at ${application.company_name}? This action cannot be undone.`}
+        description={`Are you sure you want to delete this application? This action cannot be undone.`}
         confirmLabel="Delete"
         onConfirm={deleteApplication}
       />
