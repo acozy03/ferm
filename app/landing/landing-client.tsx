@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowUpRight, Check, Instagram, Linkedin, Play, Twitter } from "lucide-react"
+import { ArrowUpRight, Check, Youtube, Linkedin, Play, Twitter } from "lucide-react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -135,13 +135,13 @@ export default function LandingPage() {
               </Button>
             </div>
             <div className="mt-4 flex items-center gap-4 text-muted-foreground">
-              <SocialLink href="https://www.linkedin.com/company/placeholder" label="LinkedIn">
+              <SocialLink href="https://www.linkedin.com/company/111001355" label="LinkedIn">
                 <Linkedin className="h-6 w-6" aria-hidden />
               </SocialLink>
-              <SocialLink href="https://www.instagram.com/placeholder" label="Instagram">
-                <Instagram className="h-6 w-6" aria-hidden />
+              <SocialLink href="https://www.youtube.com/@ferm-dot-dev" label="Youtube">
+                <Youtube className="h-6 w-6" aria-hidden />
               </SocialLink>
-              <SocialLink href="https://www.twitter.com/placeholder" label="Twitter">
+              <SocialLink href="https://x.com/fermdotdev" label="Twitter">
                 <Twitter className="h-6 w-6" aria-hidden />
               </SocialLink>
             </div>
