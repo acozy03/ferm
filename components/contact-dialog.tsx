@@ -131,14 +131,14 @@ export function ContactDialog({ open, onOpenChange, userEmail }: ContactDialogPr
               required
             />
           </div>
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
+          <div className="gap-2 flex w-full">
+            <Button type="button" className="flex-1" variant="outline" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" className="min-w-[120px]" disabled={!canSubmit}>
+            <Button type="submit" className="min-w-[120px] flex-1" disabled={!canSubmit}>
               {isSubmitting ? "Sending..." : "Submit"}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
