@@ -165,9 +165,7 @@ export default function LandingPage() {
           </main>
         </Section>
 
-        <div className="h-8 bg-black" />
-
-        <Section className="bg-background">
+        <Section className="bg-card/60">
           <div className="mx-auto grid max-w-6xl gap-10 px-6 py-20 lg:grid-cols-[1fr_1.4fr] lg:items-center">
             <div className="flex flex-col gap-6">
               <h2 className="text-2xl font-semibold">Chrome extension demo</h2>
@@ -199,7 +197,7 @@ export default function LandingPage() {
           </div>
         </Section>
 
-        <Section className="bg-card/60">
+        <Section className="bg-background">
           <div className="mx-auto max-w-6xl px-6 py-20">
             <div className="rounded-[32px] border border-border bg-background/70 p-8 shadow-2xl">
               <div className="flex flex-col gap-8">
@@ -235,8 +233,8 @@ export default function LandingPage() {
           </div>
         </Section>
 
-        <Section className="bg-background">
-          <div className="mx-auto max-w-4xl px-6 py-20">
+        <Section className="bg-card/60">
+          <div className="mx-auto max-w-6xl px-6 py-20">
             <h2 className="text-2xl font-semibold">FAQ</h2>
             <div className="mt-8 rounded-2xl border border-border bg-card/60 p-6">
               <Accordion type="single" collapsible className="space-y-2">
@@ -281,7 +279,7 @@ export default function LandingPage() {
           </div>
         </Section>
 
-        <Section className="bg-card/70">
+        <Section className="bg-background">
           <footer className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-16">
             <div className="flex flex-col gap-6 border-b border-border pb-8 md:flex-row md:items-center md:justify-between">
               <Link href="/landing" className="flex items-center gap-3 text-base font-semibold">
