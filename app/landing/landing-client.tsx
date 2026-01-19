@@ -9,6 +9,7 @@ import { ArrowUpRight, Check, Youtube, Linkedin, Play, Twitter } from "lucide-re
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Button } from "@/components/ui/button"
@@ -166,13 +167,148 @@ export default function LandingPage() {
 
         <div className="h-8 bg-black" />
 
-        <Section className="bg-white text-slate-900">
-          <div className="mx-auto flex max-w-4xl flex-col items-center px-6 py-16 text-center">
-            <h2 className="text-2xl font-semibold">More sections are on the way.</h2>
-            <p className="mt-4 max-w-xl text-base text-slate-600">
-              This placeholder section shows how future landing page content can be added with a fresh background.
-            </p>
+        <Section className="bg-background">
+          <div className="mx-auto grid max-w-6xl gap-10 px-6 py-20 lg:grid-cols-[1fr_1.4fr] lg:items-center">
+            <div className="flex flex-col gap-6">
+              <h2 className="text-2xl font-semibold">Chrome extension demo</h2>
+              <div className="rounded-2xl border border-border bg-card/60 p-6">
+                <div
+                  aria-label="Chrome extension demo detail slot 1"
+                  className="h-24 rounded-xl border border-dashed border-border/70 bg-background/40"
+                />
+              </div>
+              <div className="rounded-2xl border border-border bg-card/60 p-6">
+                <div
+                  aria-label="Chrome extension demo detail slot 2"
+                  className="h-24 rounded-xl border border-dashed border-border/70 bg-background/40"
+                />
+              </div>
+              <div className="rounded-2xl border border-border bg-card/60 p-6">
+                <div
+                  aria-label="Chrome extension demo detail slot 3"
+                  className="h-24 rounded-xl border border-dashed border-border/70 bg-background/40"
+                />
+              </div>
+            </div>
+            <div className="rounded-3xl border border-border bg-card/70 p-4 shadow-xl">
+              <div
+                aria-label="Chrome extension GIF container"
+                className="aspect-[16/10] w-full rounded-2xl border border-dashed border-border/70 bg-background/40"
+              />
+            </div>
           </div>
+        </Section>
+
+        <Section className="bg-card/60">
+          <div className="mx-auto max-w-6xl px-6 py-20">
+            <div className="rounded-[32px] border border-border bg-background/70 p-8 shadow-2xl">
+              <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-4">
+                  <h2 className="text-2xl font-semibold">AI overview</h2>
+                  <div aria-label="AI overview lead space" className="h-6 max-w-md rounded-full bg-muted/40" />
+                </div>
+                <div className="grid gap-6 lg:grid-cols-3">
+                  <div className="rounded-2xl border border-border bg-card/70 p-6">
+                    <h3 className="text-lg font-semibold">AI interviews</h3>
+                    <div
+                      aria-label="AI interviews module container"
+                      className="mt-4 h-32 rounded-xl border border-dashed border-border/70 bg-background/40"
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-border bg-card/70 p-6 lg:translate-y-6">
+                    <h3 className="text-lg font-semibold">AI follow-up emails</h3>
+                    <div
+                      aria-label="AI follow-up emails module container"
+                      className="mt-4 h-32 rounded-xl border border-dashed border-border/70 bg-background/40"
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-border bg-card/70 p-6 lg:-translate-y-4">
+                    <h3 className="text-lg font-semibold">AI job scoring</h3>
+                    <div
+                      aria-label="AI job scoring module container"
+                      className="mt-4 h-32 rounded-xl border border-dashed border-border/70 bg-background/40"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        <Section className="bg-background">
+          <div className="mx-auto max-w-4xl px-6 py-20">
+            <h2 className="text-2xl font-semibold">FAQ</h2>
+            <div className="mt-8 rounded-2xl border border-border bg-card/60 p-6">
+              <Accordion type="single" collapsible className="space-y-2">
+                <AccordionItem value="faq-item-1">
+                  <AccordionTrigger>
+                    <span aria-hidden className="block h-4 w-40 rounded-full bg-muted/50" />
+                    <span className="sr-only">FAQ question placeholder</span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div
+                      aria-label="FAQ answer placeholder"
+                      className="h-16 rounded-xl border border-dashed border-border/70 bg-background/40"
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="faq-item-2">
+                  <AccordionTrigger>
+                    <span aria-hidden className="block h-4 w-48 rounded-full bg-muted/50" />
+                    <span className="sr-only">FAQ question placeholder</span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div
+                      aria-label="FAQ answer placeholder"
+                      className="h-16 rounded-xl border border-dashed border-border/70 bg-background/40"
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="faq-item-3">
+                  <AccordionTrigger>
+                    <span aria-hidden className="block h-4 w-36 rounded-full bg-muted/50" />
+                    <span className="sr-only">FAQ question placeholder</span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div
+                      aria-label="FAQ answer placeholder"
+                      className="h-16 rounded-xl border border-dashed border-border/70 bg-background/40"
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+          </div>
+        </Section>
+
+        <Section className="bg-card/70">
+          <footer className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-16">
+            <div className="flex flex-col gap-6 border-b border-border pb-8 md:flex-row md:items-center md:justify-between">
+              <Link href="/landing" className="flex items-center gap-3 text-base font-semibold">
+                <Image src={fermLogo} alt="Ferm logo" width={32} height={32} className="h-8 w-8" />
+                <span>ferm</span>
+              </Link>
+              <div className="flex flex-wrap gap-3">
+                <span aria-label="Footer primary link placeholder" className="h-3 w-20 rounded-full bg-muted/40" />
+                <span aria-label="Footer primary link placeholder" className="h-3 w-16 rounded-full bg-muted/40" />
+                <span aria-label="Footer primary link placeholder" className="h-3 w-24 rounded-full bg-muted/40" />
+                <span aria-label="Footer primary link placeholder" className="h-3 w-16 rounded-full bg-muted/40" />
+              </div>
+            </div>
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-3">
+                <span aria-label="Footer meta placeholder" className="h-3 w-40 rounded-full bg-muted/40" />
+                <span aria-label="Footer meta placeholder" className="h-3 w-56 rounded-full bg-muted/40" />
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <span aria-label="Footer secondary link placeholder" className="h-3 w-16 rounded-full bg-muted/40" />
+                <span aria-label="Footer secondary link placeholder" className="h-3 w-20 rounded-full bg-muted/40" />
+                <span aria-label="Footer secondary link placeholder" className="h-3 w-24 rounded-full bg-muted/40" />
+                <span aria-label="Footer secondary link placeholder" className="h-3 w-16 rounded-full bg-muted/40" />
+                <span aria-label="Footer secondary link placeholder" className="h-3 w-24 rounded-full bg-muted/40" />
+              </div>
+            </div>
+          </footer>
         </Section>
       </div>
 
