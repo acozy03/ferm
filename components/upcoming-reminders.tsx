@@ -135,7 +135,7 @@ export function UpcomingReminders() {
 
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full pr-3">
+        <ScrollArea className="h-full">
           <div className="space-y-4">
             {isLoading ? (
               <div className="space-y-3">

@@ -125,7 +125,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button variant="secondary" asChild>
-                <Link href="https://ko-fi.com/placeholder" target="_blank" rel="noreferrer">
+                <Link href="https://ko-fi.com/adriancosentino" target="_blank" rel="noreferrer">
                   Support Me
                 </Link>
               </Button>

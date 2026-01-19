@@ -129,7 +129,7 @@ export function ActivityTimeline() {
       </CardHeader>
 
       <CardContent className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full pr-3">
+        <ScrollArea className="h-full">
           {isLoading ? (
             /* your skeleton */
             <div>Loading...</div>
