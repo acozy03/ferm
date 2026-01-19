@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -1206,32 +1207,14 @@ export default function InterviewsPage() {
               )}
             </CardContent>
           </Card>
-          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete interview</DialogTitle>
-              </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                This action cannot be undone. Are you sure you want to delete this interview?
-              </p>
-              <DialogFooter className="gap-2 sm:justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDeleteDialogOpen(false)}
-                  disabled={deletingId === selectedInterview?.id}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteInterview}
-                  disabled={deletingId === selectedInterview?.id || !selectedInterview}
-                >
-                  Delete
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <DeleteConfirmationDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            title="Delete interview"
+            description="This action cannot be undone. Are you sure you want to delete this interview?"
+            confirmLabel="Delete"
+            onConfirm={handleDeleteInterview}
+          />
         </div>
       </main>
     </div>
