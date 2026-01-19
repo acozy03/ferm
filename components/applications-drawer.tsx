@@ -386,6 +386,11 @@ export function ApplicationsDrawer({
                 </div>
               </div>
             </ScrollArea>
+            <div className="border-t">
+              <Button type="button" variant='secondary' className="w-full" onClick={() => onOpenChange(false)}>
+                Close filters
+              </Button>
+            </div>
           </div>
         </div>
       </DrawerContent>
