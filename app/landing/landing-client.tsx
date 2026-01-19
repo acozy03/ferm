@@ -324,7 +324,7 @@ export default function LandingPage() {
         >
           <div className="relative aspect-video w-full">
             <iframe
-              src="https://www.youtube.com/embed/u7I-SKNEru0?si=QStMv39a6HddGXhM"
+              src=""
               title="ferm overview video"
               allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
