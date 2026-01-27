@@ -376,16 +376,18 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             )}
           </div>
         </div>
-
-        <DialogFooter className="border-t border-border/60 pt-4">
+          
+          <DialogFooter className="border-t border-border/60 pt-4">
+         <div className="gap-2 flex w-full">
           <div className="flex w-full justify-end gap-2">
-            <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" className="flex-1" type="button" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleSave} disabled={!hasChanges}>
+            <Button type="button" className="flex-1" onClick={handleSave} disabled={!hasChanges}>
               Save changes
             </Button>
           </div>
+        </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
