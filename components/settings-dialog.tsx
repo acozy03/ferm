@@ -32,23 +32,19 @@ type SettingsTabId = "login-security" | "chrome-extension" | "donations" | "api-
 const settingsTabs: Array<{ id: SettingsTabId; label: string; description: string }> = [
   {
     id: "login-security",
-    label: "Login & Security",
-    description: "Manage your account, sign-in, and deletion settings.",
+    label: "Login & Security"
   },
   {
     id: "chrome-extension",
-    label: "Chrome Extension",
-    description: "Configure the browser extension connection.",
+    label: "Chrome Extension"
   },
   {
     id: "donations",
-    label: "Donations",
-    description: "Support Ferm and manage donation preferences.",
+    label: "Donations"
   },
   {
     id: "api-key",
-    label: "API Key",
-    description: "Create and manage your API credentials.",
+    label: "API Key"
   },
 ]
 
@@ -82,10 +78,8 @@ const SidebarTabButton = ({
 
 const SettingsPanel = ({ title, children }: { title: string; children: ReactNode }) => {
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      </div>
+    <div >
+     
       {children}
     </div>
   )
@@ -304,7 +298,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-foreground">Delete your account</p>
                   <p className="text-sm text-muted-foreground">
-                    This permanently removes your account and all associated data.
+                    Permanently removes your account all ferm data...
                   </p>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -337,7 +331,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-foreground">Extension status</p>
                   <p className="text-sm text-muted-foreground">
-                    Connect your Ferm workspace with the Chrome extension to capture browsing context.
+                    If using Chrome and desktop ferm, check it out!
                   </p>
                   <Button variant="outline" type="button">
                     View extension instructions
@@ -348,11 +342,11 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             {activeTab === "donations" && (
               <SettingsPanel title="Donations">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-foreground">Support Ferm</p>
+                  <p className="text-sm font-medium text-foreground">Support ferm</p>
                   <p className="text-sm text-muted-foreground">
-                    Contributions help us keep Ferm running and fund new features.
+                    If you like my work, you can support me here :)
                   </p>
-                  <Button type="button">Manage donations</Button>
+                  <Button type="button">Buy me a coffee</Button>
                 </div>
               </SettingsPanel>
             )}

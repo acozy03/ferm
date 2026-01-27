@@ -21,7 +21,7 @@ interface AiKeyPanelProps {
 }
 
 const defaultDescription =
-  "Stored securely to your account. Add your key to use your own OpenAI credits; otherwise we’ll use the shared key with a daily limit."
+  "Add OpenAI API key to use prep and job loading with no limits"
 
 export function AiKeyPanel({
   aiKeyInput,
@@ -35,7 +35,7 @@ export function AiKeyPanel({
   usageRemaining,
   usageLimit,
   usageError,
-  title = "AI key",
+  title = "OpenAI key",
   description = defaultDescription,
 }: AiKeyPanelProps) {
   return (
@@ -68,7 +68,7 @@ export function AiKeyPanel({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {hasStoredAiKey ? "Key saved to your account." : "No key saved yet."}
+        {hasStoredAiKey ? "A key is already saved on your account" : "No key saved yet"}
       </p>
       {usageRemaining !== null && usageRemaining !== undefined && usageLimit !== null && usageLimit !== undefined && (
         <p className="text-xs text-muted-foreground">
