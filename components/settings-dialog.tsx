@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
 import { type SettingsState } from "@/lib/settings"
@@ -14,12 +14,15 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useSupabase } from "@/components/supabase-provider"
+import { Shield, Puzzle, Heart, Key } from "lucide-react"
+import { SettingsPanel } from "@/components/settings/settings-panel" // Import SettingsPanel
 
 interface SettingsDialogProps {
   trigger?: ReactNode
@@ -29,33 +32,37 @@ interface SettingsDialogProps {
 
 type SettingsTabId = "login-security" | "chrome-extension" | "donations" | "api-key"
 
-const settingsTabs: Array<{ id: SettingsTabId; label: string; description: string }> = [
+const settingsTabs: Array<{ id: SettingsTabId; label: string; icon: ReactNode }> = [
   {
     id: "login-security",
-    label: "Login & Security"
+    label: "Security",
+    icon: <Shield className="size-4" />,
   },
   {
     id: "chrome-extension",
-    label: "Chrome Extension"
+    label: "Extension",
+    icon: <Puzzle className="size-4" />,
   },
   {
     id: "donations",
-    label: "Donations"
+    label: "Support",
+    icon: <Heart className="size-4" />,
   },
   {
     id: "api-key",
-    label: "API Key"
+    label: "API Key",
+    icon: <Key className="size-4" />,
   },
 ]
 
 const SidebarTabButton = ({
   label,
-  description,
+  icon,
   isActive,
   onClick,
 }: {
   label: string
-  description: string
+  icon: ReactNode
   isActive: boolean
   onClick: () => void
 }) => {
@@ -64,24 +71,15 @@ const SidebarTabButton = ({
       type="button"
       onClick={onClick}
       className={[
-        "w-full rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-left transition",
+        "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
         isActive
-          ? "border-primary/40 bg-primary/10 text-foreground shadow-sm"
-          : "text-muted-foreground hover:border-border/80 hover:bg-muted/50",
+          ? "bg-accent text-accent-foreground"
+          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
       ].join(" ")}
     >
-      <div className="text-sm font-medium text-foreground">{label}</div>
-      <div className="text-xs text-muted-foreground">{description}</div>
+      {icon}
+      {label}
     </button>
-  )
-}
-
-const SettingsPanel = ({ title, children }: { title: string; children: ReactNode }) => {
-  return (
-    <div >
-     
-      {children}
-    </div>
   )
 }
 
@@ -273,103 +271,146 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
     )
   }
 
-  return (
+return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-6 py-2 sm:flex-row">
-          <aside className="flex w-full flex-col gap-2 sm:w-56">
-            {settingsTabs.map((tab) => (
-              <SidebarTabButton
-                key={tab.id}
-                label={tab.label}
-                description={tab.description}
-                isActive={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-              />
-            ))}
+      <DialogContent className="gap-0 p-0 sm:max-w-2xl">
+        <div className="flex flex-col sm:flex-row">
+          {/* Sidebar */}
+          <aside className="border-b border-border bg-muted/30 p-4 sm:w-44 sm:border-b-0 sm:border-r">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-base">Settings</DialogTitle>
+            </DialogHeader>
+            <nav className="flex flex-row gap-1 sm:flex-col">
+              {settingsTabs.map((tab) => (
+                <SidebarTabButton
+                  key={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                  isActive={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                />
+              ))}
+            </nav>
           </aside>
-          <div className="flex-1 space-y-6 border-l border-border/60 pl-6">
+
+          {/* Content */}
+          <div className="flex-1 p-6">
             {activeTab === "login-security" && (
-              <SettingsPanel title="Login & Security">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-foreground">Delete your account</p>
-                  <p className="text-sm text-muted-foreground">
-                    Permanently removes your account all ferm data...
-                  </p>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" className="w-full sm:w-auto">
-                        Delete account
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => void handleDeleteAccount()}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          disabled={isDeleting}
-                          aria-busy={isDeleting}
-                        >
-                          {isDeleting ? "Deleting..." : "Delete"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+              <div className="space-y-3">
+                <div className="">
+                  <h3 className="font-medium">Account</h3>
+                  
                 </div>
-              </SettingsPanel>
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Delete account</p>
+                      <p className="text-xs text-muted-foreground">
+                        Permanently purge your account
+                      </p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. Your account and all associated data will be permanently deleted.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="gap-2 flex w-full">
+                          <AlertDialogCancel className="flex-1">Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => void handleDeleteAccount()}
+                            className="bg-destructive text-destructive-foreground hover:bg-primary/90 flex-1"
+                            disabled={isDeleting}
+                            aria-busy={isDeleting}
+                          >
+                            {isDeleting ? "Deleting..." : "Delete account"}
+                          </AlertDialogAction>
+                        </div>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              </div>
             )}
+
             {activeTab === "chrome-extension" && (
-              <SettingsPanel title="Chrome Extension">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-foreground">Extension status</p>
-                  <p className="text-sm text-muted-foreground">
-                    If using Chrome and desktop ferm, check it out!
-                  </p>
-                  <Button variant="outline" type="button">
-                    View extension instructions
-                  </Button>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Chrome Extension</h3>
+                 
                 </div>
-              </SettingsPanel>
+                <div className="rounded-lg border p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Get the extension</p>
+                      <p className="text-xs text-muted-foreground">
+                        Available for Chrome on desktop!
+                      </p>
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                      <a
+                        href="https://example.com/chrome-extension"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Go
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
+
             {activeTab === "donations" && (
-              <SettingsPanel title="Donations">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-foreground">Support ferm</p>
-                  <p className="text-sm text-muted-foreground">
-                    If you like my work, you can support me here :)
-                  </p>
-                  <Button type="button">Buy me a coffee</Button>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Support Me</h3>
+                  
                 </div>
-              </SettingsPanel>
+                <div className="rounded-lg border bg-gradient-to-br from-pink-500/5 to-orange-500/5 p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Buy me a coffee</p>
+                      <p className="text-xs text-muted-foreground">
+                        I truly appreciate every fermian
+                      </p>
+                    </div>
+                    <Button asChild size="sm">
+                      <a href="https://example.com/support" target="_blank" rel="noreferrer">
+                        <Heart className="mr-1.5 size-3.5" />
+                        Donate
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
+
             {activeTab === "api-key" && (
-              <SettingsPanel title="API Key">
-                <div className="space-y-2">
-                  <AiKeyPanel
-                    aiKeyInput={aiKeyInput}
-                    onAiKeyInputChange={setAiKeyInput}
-                    aiKeyError={aiKeyError}
-                    onClearError={() => setAiKeyError(null)}
-                    hasStoredAiKey={hasStoredAiKey}
-                    isSavingAiKey={isSavingAiKey}
-                    onSave={saveAiKey}
-                    onClear={clearAiKey}
-                  />
-                </div>
-              </SettingsPanel>
+              <div className="space-y-6">
+              
+                <AiKeyPanel
+                  aiKeyInput={aiKeyInput}
+                  onAiKeyInputChange={setAiKeyInput}
+                  aiKeyError={aiKeyError}
+                  onClearError={() => setAiKeyError(null)}
+                  hasStoredAiKey={hasStoredAiKey}
+                  isSavingAiKey={isSavingAiKey}
+                  onSave={saveAiKey}
+                  onClear={clearAiKey}
+                />
+              </div>
             )}
           </div>
         </div>
-          
-         
       </DialogContent>
     </Dialog>
   )

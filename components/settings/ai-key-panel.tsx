@@ -21,7 +21,7 @@ interface AiKeyPanelProps {
 }
 
 const defaultDescription =
-  "Add OpenAI API key to use prep and job loading with no limits"
+  "Add key to use prep and job loading with no limits"
 
 export function AiKeyPanel({
   aiKeyInput,
@@ -41,8 +41,8 @@ export function AiKeyPanel({
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-m font-semibold">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       <Input
         value={aiKeyInput}
