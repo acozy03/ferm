@@ -8,7 +8,6 @@ import {
   FileText,
   GraduationCap,
   ListChecks,
-  Loader2,
   Mic,
   Plus,
   Send,
@@ -618,7 +617,7 @@ export default function PrepPage() {
 
       const controller = new AbortController()
       titleStreamControllersRef.current[chatId] = controller
-      setTitleDrafts((previous) => ({ ...previous, [chatId]: previous[chatId] ?? "Generating title..." }))
+      setTitleDrafts((previous) => ({ ...previous, [chatId]: previous[chatId] ?? "New chat" }))
 
       try {
         const response = await fetch("/api/prep/chat-title", {
@@ -648,7 +647,7 @@ export default function PrepPage() {
           const { done, value } = await reader.read()
           if (done) break
           accumulated += decoder.decode(value, { stream: true })
-          setTitleDrafts((previous) => ({ ...previous, [chatId]: accumulated.trim() || "Generating title..." }))
+          setTitleDrafts((previous) => ({ ...previous, [chatId]: accumulated.trim() || "New chat" }))
         }
 
         const finalizedTitle = accumulated.trim() || "Prep chat"
@@ -738,15 +737,20 @@ export default function PrepPage() {
     }
   }, [isCreatingChat, selectedInterviewId])
 
-  const handleCreateChat = useCallback(() => {
+  const handleCreateChat = useCallback(async () => {
     setChatError(null)
     setIsSessionEnded(false)
     setIsGenerating(false)
     streamingMessageIndexRef.current = null
-    setSelectedChatId(null)
     setMessages([])
     setInput("")
-  }, [])
+
+    const createdChat = await createChatRecord()
+    if (!createdChat) return
+
+    setChats((previous) => [createdChat, ...previous])
+    setSelectedChatId(createdChat.id)
+  }, [createChatRecord])
 
   const handleSelectChat = useCallback(
     (chatId: string) => {
@@ -781,7 +785,7 @@ export default function PrepPage() {
         if (!createdChat) return
         chatId = createdChat.id
         isNewChat = true
-        const placeholderTitle = titleDrafts[createdChat.id] ?? "Generating title..."
+        const placeholderTitle = titleDrafts[createdChat.id] ?? "New chat"
         setTitleDrafts((previous) => ({ ...previous, [createdChat.id]: placeholderTitle }))
         setChats((previous) => [{ ...createdChat, title: placeholderTitle }, ...previous])
         setSelectedChatId(createdChat.id)
@@ -1239,22 +1243,15 @@ export default function PrepPage() {
                     onClick={handleCreateChat}
                     disabled={isCreatingChat || isChatListLoading}
                   >
-                    {isCreatingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    <Plus className="h-4 w-4" />
                     <span className="ml-2 hidden sm:inline">New</span>
                   </Button>
                 </div>
                 <ScrollArea className="flex-1 p-3">
-                  {isChatListLoading && (
-                    <div className="flex items-center gap-2 px-1 pb-3 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading chats...
-                    </div>
-                  )}
                   <div className="space-y-2">
                     {chats.map((chat) => {
                       const isActive = chat.id === selectedChatId
                       const workingTitle = titleDrafts[chat.id] ?? chat.title
-                      const isStreamingTitle = Boolean(titleDrafts[chat.id])
 
                       return (
                         <div
@@ -1275,7 +1272,6 @@ export default function PrepPage() {
                               {workingTitle || "Untitled chat"}
                             </p>
                             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                              {isStreamingTitle && <Loader2 className="h-3 w-3 animate-spin" />}
                               <span>{new Date(chat.created_at).toLocaleDateString()}</span>
                             </div>
                           </button>
@@ -1427,11 +1423,6 @@ export default function PrepPage() {
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             {isRecording && <span className="text-destructive font-semibold">Recording</span>}
                             {isRecording && <span>• {recordingSeconds}s</span>}
-                            {isProcessingVoice && (
-                              <span className="flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" /> Processing...
-                              </span>
-                            )}
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2">
@@ -1527,7 +1518,7 @@ export default function PrepPage() {
                     disabled={isLoading || jobOptions.length === 0}
                   >
                     <SelectTrigger id="role-select" className="w-full bg-background/70 text-left">
-                      <SelectValue placeholder={isLoading ? "Loading roles..." : "Pick a role"} className="truncate" />
+                      <SelectValue placeholder="Pick a role" className="truncate" />
                     </SelectTrigger>
                     <SelectContent className="max-h-72 truncate max-w-[18.5rem]">
                       {jobOptions.map((job) => (
@@ -1537,12 +1528,6 @@ export default function PrepPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {isLoading && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Fetching applications...
-                    </div>
-                  )}
                   {!isLoading && jobOptions.length === 0 && (
                     <p className="text-sm text-muted-foreground">No roles found yet. Add one from the dashboard to get started.</p>
                   )}
@@ -1674,12 +1659,10 @@ export default function PrepPage() {
                   )}
                 />
                 <div className="relative flex h-36 w-36 items-center justify-center rounded-full bg-white/5 shadow-[0_20px_120px_rgba(0,0,0,0.65)] backdrop-blur">
-                  {isProcessingVoice ? (
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  ) : isRecording ? (
+                  {isRecording ? (
                     <Mic className="h-10 w-10 text-emerald-400" />
                   ) : (
-                    <Volume2 className="h-10 w-10 text-zinc-300" />
+                    <Volume2 className={cn("h-10 w-10", isProcessingVoice ? "text-primary" : "text-zinc-300")} />
                   )}
                 </div>
               </div>
@@ -1690,7 +1673,7 @@ export default function PrepPage() {
                   <p className="text-lg leading-relaxed text-white/90 whitespace-pre-wrap" aria-live="polite">
                     {latestAssistantMessage?.content?.trim()
                       ? latestAssistantMessage.content
-                      : "Waiting for Prep to start speaking..."}
+                      : "Say hello to start."}
                   </p>
                 </div>
               </div>
@@ -1702,17 +1685,11 @@ export default function PrepPage() {
                       "h-2 w-2 rounded-full",
                       isRecording
                         ? "bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.25)]"
-                        : isProcessingVoice
-                          ? "bg-primary shadow-[0_0_0_6px_rgba(99,102,241,0.25)]"
-                          : "bg-zinc-600",
+                        : "bg-zinc-600",
                     )}
                   />
                   <span>
-                    {isProcessingVoice
-                      ? "Processing your reply"
-                      : isRecording
-                        ? "Listening... tap to end"
-                        : "Tap the circle to start speaking"}
+                    {isRecording ? "Listening... tap to end" : "Tap the circle to start speaking"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

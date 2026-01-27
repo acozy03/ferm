@@ -949,9 +949,11 @@ export default function InterviewsPage() {
                       )}
                     </div>
                     <DialogFooter>
-                    
-                      <Button onClick={handleSubmitInterview} disabled={isSubmitting || !hasChanges}>
-                        {isSubmitting ? "Saving..." : isEditing ? "Save changes" : "Save interview"}
+                      <Button onClick={() => handleDialogChange(false)} type="button" variant="outline" className="flex-1">
+                        Close
+                      </Button>
+                      <Button className="flex-1" onClick={handleSubmitInterview} disabled={isSubmitting || !hasChanges}>
+                        {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Add Interview"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
