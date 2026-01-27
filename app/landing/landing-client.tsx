@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowUpRight, Check, Youtube, Linkedin, Play, Twitter } from "lucide-react"
+import { ArrowUpRight, Check, Linkedin, Play, Sparkles, Twitter, Youtube } from "lucide-react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useSupabase } from "@/components/supabase-provider"
+import { CardStack, type Card } from "@/components/card-stack"
 import fermLogo from "@/public/logo.png"
 import heroPlaceholder from "@/public/hero.webp"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
@@ -60,6 +61,39 @@ const chromeExtensionPanels = [
     gifSrc: "data:image/gif;base64,R0lGODlhAQABAPAAACLFXgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
   },
 ] as const
+
+const aiOverviewCards: Card[] = [
+  {
+    id: 1,
+    name: "Instant summaries",
+    designation: "AI follow-up emails",
+    content: (
+      <p>
+        Pulls the key moments from your application history so every follow-up email starts with the right context.
+      </p>
+    ),
+  },
+  {
+    id: 2,
+    name: "Personalized tone",
+    designation: "AI follow-up emails",
+    content: (
+      <p>
+        Adapts to the company voice and recruiter relationship so your outreach stays warm, clear, and intentional.
+      </p>
+    ),
+  },
+  {
+    id: 3,
+    name: "Action-ready drafts",
+    designation: "AI follow-up emails",
+    content: (
+      <p>
+        Suggests next steps and timing, with a draft ready to send the moment you need to reconnect with a lead.
+      </p>
+    ),
+  },
+]
 
 export default function LandingPage() {
   const router = useRouter()
@@ -276,6 +310,19 @@ export default function LandingPage() {
                       className="mt-4 h-32 rounded-xl border border-dashed border-border/70 bg-background/40"
                     />
                   </div>
+                </div>
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                  <div className="flex flex-col gap-4">
+                    <div className="inline-flex items-center gap-2 self-start rounded-full border border-border/80 bg-card/80 px-3 py-1 text-sm font-semibold text-foreground">
+                      <Sparkles className="h-4 w-4 text-emerald-400" />
+                      AI follow-up emails
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Draft thoughtful outreach in seconds with a rotating stack of AI-generated follow-ups that keep your
+                      momentum moving.
+                    </p>
+                  </div>
+                  <CardStack items={aiOverviewCards} />
                 </div>
               </div>
             </div>
