@@ -53,9 +53,10 @@ export default function PrepPage() {
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
   const [chats, setChats] = useState<PrepChat[]>([])
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
-  const [isChatsLoading, setIsChatsLoading] = useState(false)
+  const [isChatListLoading, setIsChatListLoading] = useState(false)
   const [isMessagesLoading, setIsMessagesLoading] = useState(false)
   const [isCreatingChat, setIsCreatingChat] = useState(false)
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null)
   const [chatError, setChatError] = useState<string | null>(null)
   const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({})
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -187,9 +188,27 @@ export default function PrepPage() {
     [refreshUsage, usageLimit, usageRemaining],
   )
 
+  const requestMessages = useCallback(
+    async (chatId: string) => {
+      const response = await fetch(`/api/prep/messages?chatId=${chatId}`)
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to load messages." }))
+        throw new Error(errorPayload.error || "Unable to load messages.")
+      }
+
+      const payload = (await response.json()) as { data?: PrepMessage[] }
+      return (payload.data ?? []).map(mapPrepMessage)
+    },
+    [mapPrepMessage],
+  )
+
   const fetchChats = useCallback(
-    async (interviewId: string | null) => {
-      setIsChatsLoading(true)
+    async (interviewId: string | null, options?: { loadMessages?: boolean }) => {
+      const shouldLoadMessages = options?.loadMessages ?? false
+      setIsChatListLoading(true)
+      if (shouldLoadMessages) {
+        setIsMessagesLoading(true)
+      }
       setChatError(null)
 
       try {
@@ -204,20 +223,39 @@ export default function PrepPage() {
         const payload = (await response.json()) as { data?: PrepChat[] }
         const chatList = payload.data ?? []
 
-        setChats(chatList.map((chat) => (titleDrafts[chat.id] ? { ...chat, title: titleDrafts[chat.id] } : chat)))
-        setSelectedChatId((previous) => {
-          if (previous && chatList.some((chat) => chat.id === previous)) return previous
-          return chatList[0]?.id ?? null
-        })
+        const resolvedChats = chatList.map((chat) =>
+          titleDrafts[chat.id] ? { ...chat, title: titleDrafts[chat.id] } : chat,
+        )
+        const nextSelectedChatId = chatList.some((chat) => chat.id === selectedChatId)
+          ? selectedChatId
+          : chatList[0]?.id ?? null
+
+        setChats(resolvedChats)
+        setSelectedChatId(nextSelectedChatId)
+
+        if (shouldLoadMessages) {
+          if (nextSelectedChatId) {
+            const nextMessages = await requestMessages(nextSelectedChatId)
+            setMessages(nextMessages)
+          } else {
+            setMessages([])
+          }
+        }
       } catch (error) {
         setChatError(error instanceof Error ? error.message : "Unable to load chats.")
         setChats([])
         setSelectedChatId(null)
+        if (shouldLoadMessages) {
+          setMessages([])
+        }
       } finally {
-        setIsChatsLoading(false)
+        setIsChatListLoading(false)
+        if (shouldLoadMessages) {
+          setIsMessagesLoading(false)
+        }
       }
     },
-    [titleDrafts],
+    [requestMessages, selectedChatId, titleDrafts],
   )
 
   useEffect(() => {
@@ -230,14 +268,8 @@ export default function PrepPage() {
       setChatError(null)
 
       try {
-        const response = await fetch(`/api/prep/messages?chatId=${chatId}`)
-        if (!response.ok) {
-          const errorPayload = await response.json().catch(() => ({ error: "Unable to load messages." }))
-          throw new Error(errorPayload.error || "Unable to load messages.")
-        }
-
-        const payload = (await response.json()) as { data?: PrepMessage[] }
-        setMessages((payload.data ?? []).map(mapPrepMessage))
+        const nextMessages = await requestMessages(chatId)
+        setMessages(nextMessages)
       } catch (error) {
         setChatError(error instanceof Error ? error.message : "Unable to load messages.")
         setMessages([])
@@ -245,21 +277,13 @@ export default function PrepPage() {
         setIsMessagesLoading(false)
       }
     },
-    [mapPrepMessage],
+    [requestMessages],
   )
 
   useEffect(() => {
     if (!selectedApplicationId) return
-    void fetchChats(selectedInterviewId)
+    void fetchChats(selectedInterviewId, { loadMessages: true })
   }, [fetchChats, selectedApplicationId, selectedInterviewId])
-
-  useEffect(() => {
-    if (selectedChatId) {
-      void fetchMessages(selectedChatId)
-    } else {
-      setMessages([])
-    }
-  }, [fetchMessages, selectedChatId])
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" })
@@ -635,7 +659,6 @@ export default function PrepPage() {
           return next
         })
         await persistChatTitle(chatId, finalizedTitle)
-        void fetchChats(selectedInterviewId)
       } catch (error) {
         if (controller.signal.aborted) return
         setChatError(error instanceof Error ? error.message : "Unable to generate title.")
@@ -643,13 +666,13 @@ export default function PrepPage() {
         delete titleStreamControllersRef.current[chatId]
       }
     },
-    [fetchChats, persistChatTitle, selectedApplication?.company_name, selectedApplication?.position_title, selectedInterviewId],
+    [persistChatTitle, selectedApplication?.company_name, selectedApplication?.position_title],
   )
 
   const handleDeleteChat = useCallback(
     async (chatId: string) => {
       setChatError(null)
-      setIsChatsLoading(true)
+      setDeletingChatId(chatId)
       titleStreamControllersRef.current[chatId]?.abort()
 
       try {
@@ -660,19 +683,31 @@ export default function PrepPage() {
           throw new Error(errorPayload.error || "Unable to delete chat.")
         }
 
-        setChats((previous) => previous.filter((chat) => chat.id !== chatId))
-        setSelectedChatId((previous) => (previous === chatId ? null : previous))
-        if (selectedChatId === chatId) {
-          setMessages([])
-        }
-        void fetchChats(selectedInterviewId)
+        setTitleDrafts((previous) => {
+          const next = { ...previous }
+          delete next[chatId]
+          return next
+        })
+        setChats((previous) => {
+          const remaining = previous.filter((chat) => chat.id !== chatId)
+          if (selectedChatId === chatId) {
+            const nextChatId = remaining[0]?.id ?? null
+            setSelectedChatId(nextChatId)
+            if (nextChatId) {
+              void fetchMessages(nextChatId)
+            } else {
+              setMessages([])
+            }
+          }
+          return remaining
+        })
       } catch (error) {
         setChatError(error instanceof Error ? error.message : "Unable to delete chat.")
       } finally {
-        setIsChatsLoading(false)
+        setDeletingChatId(null)
       }
     },
-    [fetchChats, selectedChatId, selectedInterviewId],
+    [fetchMessages, selectedChatId],
   )
 
   const createChatRecord = useCallback(async () => {
@@ -712,6 +747,15 @@ export default function PrepPage() {
     setMessages([])
     setInput("")
   }, [])
+
+  const handleSelectChat = useCallback(
+    (chatId: string) => {
+      if (chatId === selectedChatId) return
+      setSelectedChatId(chatId)
+      void fetchMessages(chatId)
+    },
+    [fetchMessages, selectedChatId],
+  )
 
   const handleSend = async () => {
     if (!input.trim() || isGenerating || isSessionEnded || isMessagesLoading) return
@@ -825,11 +869,7 @@ export default function PrepPage() {
         }
       }
 
-      if (chatId) {
-        void fetchMessages(chatId)
-      }
       void updateUsageFromResponse(response)
-      void fetchChats(selectedInterviewId)
     } catch (error) {
       const fallbackMessage =
         error instanceof Error ? error.message : "We hit a snag fetching a response. Please try again."
@@ -1081,12 +1121,7 @@ export default function PrepPage() {
           const messageIndex = streamingMessageIndexRef.current
           if (messageIndex !== null) {
             setTimeout(
-              () =>
-                startTypewriterStream(messageIndex, data.reply ?? "", "technical", () => {
-                  if (selectedChatId) {
-                    void fetchMessages(selectedChatId)
-                  }
-                }),
+              () => startTypewriterStream(messageIndex, data.reply ?? "", "technical"),
               0,
             )
           }
@@ -1202,14 +1237,14 @@ export default function PrepPage() {
                     size="sm"
                     variant="outline"
                     onClick={handleCreateChat}
-                    disabled={isCreatingChat || isChatsLoading}
+                    disabled={isCreatingChat || isChatListLoading}
                   >
                     {isCreatingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                     <span className="ml-2 hidden sm:inline">New</span>
                   </Button>
                 </div>
                 <ScrollArea className="flex-1 p-3">
-                  {isChatsLoading && (
+                  {isChatListLoading && (
                     <div className="flex items-center gap-2 px-1 pb-3 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading chats...
@@ -1234,7 +1269,7 @@ export default function PrepPage() {
                           <button
                             type="button"
                             className="flex-1 text-left"
-                            onClick={() => setSelectedChatId(chat.id)}
+                            onClick={() => handleSelectChat(chat.id)}
                           >
                             <p className="text-sm font-semibold leading-tight text-foreground line-clamp-2">
                               {workingTitle || "Untitled chat"}
@@ -1253,7 +1288,7 @@ export default function PrepPage() {
                               event.stopPropagation()
                               void handleDeleteChat(chat.id)
                             }}
-                            disabled={isChatsLoading}
+                            disabled={deletingChatId === chat.id || isChatListLoading}
                             aria-label="Delete chat"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1263,7 +1298,7 @@ export default function PrepPage() {
                     })}
                   </div>
 
-                  {!isChatsLoading && chats.length === 0 && (
+                  {!isChatListLoading && chats.length === 0 && (
                     <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-4 text-center text-sm text-muted-foreground">
                       No chats yet. Start one to begin prepping.
                     </div>
@@ -1331,9 +1366,7 @@ export default function PrepPage() {
                         {activeChatTitle ?? "Select or create a chat"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {isChatsLoading
-                          ? "Syncing chats..."
-                          : chats.length === 0
+                        {chats.length === 0
                             ? "Create a chat to start prepping."
                             : selectedChatId
                               ? "Keep messaging to refine your prep."
@@ -1345,12 +1378,11 @@ export default function PrepPage() {
                         type="button"
                         variant="outline"
                         onClick={handleCreateChat}
-                        disabled={isCreatingChat || isChatsLoading}
+                        disabled={isCreatingChat}
                       >
                         {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                         New chat
                       </Button>
-                      {isChatsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                     </div>
                   </div>
                   {chatError && <p className="text-xs text-destructive">{chatError}</p>}
@@ -1556,7 +1588,6 @@ export default function PrepPage() {
                           onValueChange={(value) =>
                             setSelectedInterviewId(value === GENERAL_INTERVIEW_VALUE ? null : value)
                           }
-                          disabled={isChatsLoading}
                         >
                           <SelectTrigger className="bg-background/70 text-left">
                             <SelectValue
