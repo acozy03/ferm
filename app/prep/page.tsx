@@ -1359,41 +1359,11 @@ export default function PrepPage() {
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Conversation</p>
-                      <p className="text-base font-semibold leading-snug text-foreground line-clamp-2">
-                        {activeChatTitle ?? "Select or create a chat"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {chats.length === 0
-                            ? "Create a chat to start prepping."
-                            : selectedChatId
-                              ? "Keep messaging to refine your prep."
-                              : "Choose a chat from the sidebar."}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCreateChat}
-                        disabled={isCreatingChat}
-                      >
-                        {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                        New chat
-                      </Button>
-                    </div>
-                  </div>
-                  {chatError && <p className="text-xs text-destructive">{chatError}</p>}
+          
 
                   <ScrollArea className="flex-1 overflow-y-auto" ref={chatRef}>
                     <div className="space-y-4 pr-2 pb-4">
-                      {isMessagesLoading && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" /> Loading messages...
-                        </div>
-                      )}
+                     
                       {messages.map((message, index) => (
                         <div key={message.id ?? `${message.role}-${index}`} className="flex gap-3">
                           <div
