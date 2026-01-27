@@ -241,32 +241,21 @@ export function FollowUpDraftDialog({
           </div>
         
         </div>
-        <DialogFooter className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-          <span className="text-xs text-muted-foreground">
-            {hasGenerated
-              ? hasUnsavedChanges
-                ? "You have unsaved changes."
-                : draft
-                  ? "All changes saved."
-                  : "Your saved draft will appear here."
-              : isGenerating
-                ? "Hang tight—your draft is on its way."
-                : "Your draft will appear here once it’s generated."}
-          </span>
+          
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={isSaving}>
+            <Button variant="outline" className="flex-1" size="sm" onClick={() => setOpen(false)} disabled={isSaving}>
               Cancel
             </Button>
             <Button
               size="sm"
               onClick={() => void saveDraft()}
               disabled={!hasGenerated || !hasUnsavedChanges || isSaving}
+              className="flex-1"
             >
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               {isSaving ? "Saving" : "Save changes"}
             </Button>
           </div>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -356,10 +356,10 @@ export function EditApplicationDialog({
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button type="button" className="flex-1" variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !hasChanges}>
+            <Button type="submit" className="flex-1" disabled={isLoading || !hasChanges}>
               {isLoading ? "Updating..." : "Update Application"}
             </Button>
           </div>

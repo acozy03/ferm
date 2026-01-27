@@ -76,9 +76,7 @@ export function StatusUpdateDialog({
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent showCloseButton={false}>
-        <DialogTitle>
-          <VisuallyHidden>Update Status</VisuallyHidden>
-        </DialogTitle>
+      
         <div className="space-y-6">
           <div className="rounded-lg border bg-muted/10 p-4">
             <p className="text-sm font-medium text-muted-foreground">Status Progress</p>

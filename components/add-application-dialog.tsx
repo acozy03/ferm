@@ -606,10 +606,10 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
           {formErrorMessage ? <p className="text-sm text-destructive">{formErrorMessage}</p> : null}
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => handleDialogChange(false)}>
+            <Button type="button" className="flex-1" variant="outline" onClick={() => handleDialogChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add Application</Button>
+            <Button type="submit" className="flex-1">Add Application</Button>
           </div>
         </form>
       </DialogContent>
