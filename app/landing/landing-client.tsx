@@ -43,6 +43,24 @@ const signUpSchema = z
     path: ["confirmPassword"],
   })
 
+const chromeExtensionPanels = [
+  {
+    title: "Clip job details",
+    description: "Capture job posts in one click so you always know where you applied.",
+    gifSrc: "data:image/gif;base64,R0lGODlhAQABAPAAAO9ERAAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+  },
+  {
+    title: "Track interview stages",
+    description: "Move applications through stages to see momentum at a glance.",
+    gifSrc: "data:image/gif;base64,R0lGODlhAQABAPAAADuC9gAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+  },
+  {
+    title: "Never miss follow-ups",
+    description: "Get reminders for every recruiter touchpoint and next action.",
+    gifSrc: "data:image/gif;base64,R0lGODlhAQABAPAAACLFXgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+  },
+] as const
+
 export default function LandingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -51,6 +69,15 @@ export default function LandingPage() {
   const [isSignUpOpen, setIsSignUpOpen] = useState(false)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [isVideoOpen, setIsVideoOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    chromeExtensionPanels.forEach(({ gifSrc }) => {
+      const img = new window.Image()
+      img.src = gifSrc
+    })
+  }, [])
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -169,30 +196,52 @@ export default function LandingPage() {
           <div className="mx-auto grid max-w-6xl gap-10 px-6 py-20 lg:grid-cols-[1fr_1.4fr] lg:items-center">
             <div className="flex flex-col gap-6">
               <h2 className="text-2xl font-semibold">Chrome extension demo</h2>
-              <div className="rounded-2xl border border-border bg-card/60 p-6">
-                <div
-                  aria-label="Chrome extension demo detail slot 1"
-                  className="h-24 rounded-xl border border-dashed border-border/70 bg-background/40"
-                />
-              </div>
-              <div className="rounded-2xl border border-border bg-card/60 p-6">
-                <div
-                  aria-label="Chrome extension demo detail slot 2"
-                  className="h-24 rounded-xl border border-dashed border-border/70 bg-background/40"
-                />
-              </div>
-              <div className="rounded-2xl border border-border bg-card/60 p-6">
-                <div
-                  aria-label="Chrome extension demo detail slot 3"
-                  className="h-24 rounded-xl border border-dashed border-border/70 bg-background/40"
-                />
+              <div className="flex flex-col gap-4">
+                {chromeExtensionPanels.map((panel, index) => {
+                  const isActive = index === activeIndex
+
+                  return (
+                    <button
+                      key={panel.title}
+                      type="button"
+                      onClick={() => setActiveIndex(index)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          setActiveIndex(index)
+                        }
+                      }}
+                      aria-pressed={isActive}
+                      className={[
+                        "rounded-2xl border p-6 text-left transition duration-200",
+                        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400",
+                        "hover:border-emerald-400/60 hover:bg-emerald-500/10 active:scale-[0.99]",
+                        isActive
+                          ? "border-emerald-400/70 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.35)]"
+                          : "border-border bg-card/60",
+                      ].join(" ")}
+                    >
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-base font-semibold text-foreground">{panel.title}</h3>
+                        <p className="text-sm text-muted-foreground">{panel.description}</p>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
             <div className="rounded-3xl border border-border bg-card/70 p-4 shadow-xl">
               <div
                 aria-label="Chrome extension GIF container"
-                className="aspect-[16/10] w-full rounded-2xl border border-dashed border-border/70 bg-background/40"
-              />
+                className="aspect-[16/10] w-full overflow-hidden rounded-2xl border border-border/70 bg-background/40"
+              >
+                <img
+                  key={chromeExtensionPanels[activeIndex]?.title}
+                  src={chromeExtensionPanels[activeIndex]?.gifSrc}
+                  alt={chromeExtensionPanels[activeIndex]?.title}
+                  className="h-full w-full object-cover transition-opacity duration-300 ease-in-out animate-in fade-in"
+                />
+              </div>
             </div>
           </div>
         </Section>

@@ -68,10 +68,10 @@ const SidebarTabButton = ({
       type="button"
       onClick={onClick}
       className={[
-        "w-full rounded-lg border px-3 py-2 text-left transition",
+        "w-full rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-left transition",
         isActive
-          ? "border-primary/30 bg-primary/10 text-foreground shadow-sm"
-          : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-muted/50",
+          ? "border-primary/40 bg-primary/10 text-foreground shadow-sm"
+          : "text-muted-foreground hover:border-border/80 hover:bg-muted/50",
       ].join(" ")}
     >
       <div className="text-sm font-medium text-foreground">{label}</div>
@@ -282,10 +282,8 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="sm:max-w-3xl"showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-3xl" showCloseButton={false}>
+       
         <div className="flex flex-col gap-6 py-2 sm:flex-row">
           <aside className="flex w-full flex-col gap-2 sm:w-56">
             {settingsTabs.map((tab) => (
@@ -298,45 +296,43 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
               />
             ))}
           </aside>
-          <div className="flex-1 space-y-6 rounded-lg border border-border/70 bg-muted/20 p-4">
+          <div className="flex-1 space-y-6 border-l border-border/60 pl-6">
             {activeTab === "login-security" && (
               <SettingsPanel title="Login & Security">
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">Delete your account</p>
-                    <p className="text-sm text-muted-foreground">
-                      This permanently removes your account and all associated data.
-                    </p>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" className="w-full sm:w-auto">
-                          Delete account
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => void handleDeleteAccount()}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            disabled={isDeleting}
-                            aria-busy={isDeleting}
-                          >
-                            {isDeleting ? "Deleting..." : "Delete"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-foreground">Delete your account</p>
+                  <p className="text-sm text-muted-foreground">
+                    This permanently removes your account and all associated data.
+                  </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="w-full sm:w-auto">
+                        Delete account
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => void handleDeleteAccount()}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          disabled={isDeleting}
+                          aria-busy={isDeleting}
+                        >
+                          {isDeleting ? "Deleting..." : "Delete"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </SettingsPanel>
             )}
             {activeTab === "chrome-extension" && (
               <SettingsPanel title="Chrome Extension">
-                <div className="space-y-2 rounded-lg border border-border/70 bg-background p-4">
+                <div className="space-y-2">
                   <p className="text-sm font-medium text-foreground">Extension status</p>
                   <p className="text-sm text-muted-foreground">
                     Connect your Ferm workspace with the Chrome extension to capture browsing context.
@@ -349,7 +345,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             )}
             {activeTab === "donations" && (
               <SettingsPanel title="Donations">
-                <div className="space-y-2 rounded-lg border border-border/70 bg-background p-4">
+                <div className="space-y-2">
                   <p className="text-sm font-medium text-foreground">Support Ferm</p>
                   <p className="text-sm text-muted-foreground">
                     Contributions help us keep Ferm running and fund new features.
@@ -360,7 +356,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
             )}
             {activeTab === "api-key" && (
               <SettingsPanel title="API Key">
-                <div className="space-y-2 rounded-lg border border-border/70 bg-background p-4">
+                <div className="space-y-2">
                   <AiKeyPanel
                     aiKeyInput={aiKeyInput}
                     onAiKeyInputChange={setAiKeyInput}
@@ -381,7 +377,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
          <div className="gap-2 flex w-full">
           <div className="flex w-full justify-end gap-2">
             <Button variant="outline" className="flex-1" type="button" onClick={() => setDialogOpen(false)}>
-              Cancel
+              Close
             </Button>
             <Button type="button" className="flex-1" onClick={handleSave} disabled={!hasChanges}>
               Save changes

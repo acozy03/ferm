@@ -10,7 +10,6 @@ import {
   ListChecks,
   Loader2,
   Mic,
-  KeyRound,
   Plus,
   Send,
   Sparkles,
@@ -31,13 +30,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/components/ui/use-toast"
 import { createAudioVisualizer, type AudioVisualizer } from "@/lib/audio-visualizer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 import type { JobApplicationWithInterviews, PrepChat, PrepMessage } from "@/lib/types/database"
 import { useSupabase } from "@/components/supabase-provider"
-import { AiKeyPanel } from "@/components/settings/ai-key-panel"
 
 const GENERAL_INTERVIEW_VALUE = "general-prep"
 
@@ -52,7 +49,6 @@ interface ChatMessage {
 export default function PrepPage() {
   const { applications, isLoading } = useJobApplications({ limit: 50, include_interviews: true })
   const { session } = useSupabase()
-  const { toast } = useToast()
   const [selectedApplicationId, setSelectedApplicationId] = useState<string>("")
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null)
   const [chats, setChats] = useState<PrepChat[]>([])
@@ -74,13 +70,8 @@ export default function PrepPage() {
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [visualizerNotice, setVisualizerNotice] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [aiKeyInput, setAiKeyInput] = useState("")
-  const [hasStoredAiKey, setHasStoredAiKey] = useState(false)
-  const [isSavingAiKey, setIsSavingAiKey] = useState(false)
-  const [aiKeyModalError, setAiKeyModalError] = useState<string | null>(null)
   const [usageRemaining, setUsageRemaining] = useState<number | null>(null)
   const [usageLimit, setUsageLimit] = useState<number | null>(null)
-  const [usageError, setUsageError] = useState<string | null>(null)
   const chatRef = useRef<HTMLDivElement | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const recordingStartedAtRef = useRef<number | null>(null)
@@ -158,103 +149,8 @@ export default function PrepPage() {
     }
   }, [])
 
-  const loadStoredAiKey = useCallback(async () => {
-    setAiKeyModalError(null)
-
-    try {
-      const response = await fetch("/api/ai-keys", {
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-      })
-
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => ({ error: "Unable to load your AI key." }))
-        throw new Error(errorPayload.error || "Unable to load your AI key.")
-      }
-
-      const data = (await response.json()) as { hasKey?: boolean }
-      setHasStoredAiKey(Boolean(data.hasKey))
-      setAiKeyInput("")
-    } catch (error) {
-      setAiKeyModalError(error instanceof Error ? error.message : "Unable to load your AI key.")
-      setHasStoredAiKey(false)
-    }
-  }, [session?.access_token])
-
-  const saveAiKey = useCallback(async () => {
-    const trimmed = aiKeyInput.trim()
-    if (!trimmed) return
-    setIsSavingAiKey(true)
-    setAiKeyModalError(null)
-
-    try {
-      if (trimmed.length < 20 || !/^[A-Za-z0-9._:-]+$/.test(trimmed)) {
-        const message = "Please enter a valid OpenAI API key."
-        setAiKeyModalError(message)
-        toast({ title: "Invalid key", description: message, variant: "destructive" })
-        return
-      }
-
-      const response = await fetch("/api/ai-keys", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ apiKey: trimmed }),
-      })
-
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => ({ error: "Unable to save your AI key." }))
-        const message = errorPayload.error || "Unable to save your AI key."
-        setAiKeyModalError(message)
-        toast({ title: "Failed to save key", description: message, variant: "destructive" })
-        return
-      }
-
-      setHasStoredAiKey(true)
-      setAiKeyInput("")
-      toast({ title: "Key saved", description: "Your OpenAI key is ready to use." })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to save your AI key."
-      setAiKeyModalError(message)
-      toast({ title: "Failed to save key", description: message, variant: "destructive" })
-    } finally {
-      setIsSavingAiKey(false)
-    }
-  }, [aiKeyInput, session?.access_token, toast])
-
-  const clearAiKey = useCallback(() => {
-    setIsSavingAiKey(true)
-    setAiKeyModalError(null)
-
-    void (async () => {
-      try {
-        const response = await fetch("/api/ai-keys", {
-          method: "DELETE",
-          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-        })
-
-        if (!response.ok) {
-          const errorPayload = await response.json().catch(() => ({ error: "Unable to clear your AI key." }))
-          throw new Error(errorPayload.error || "Unable to clear your AI key.")
-        }
-
-        setHasStoredAiKey(false)
-        setAiKeyInput("")
-        toast({ title: "Key removed", description: "Your OpenAI key was removed from your account." })
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to clear your AI key."
-        setAiKeyModalError(message)
-        toast({ title: "Failed to clear key", description: message, variant: "destructive" })
-      } finally {
-        setIsSavingAiKey(false)
-      }
-    })()
-  }, [session?.access_token, toast])
-
   const refreshUsage = useCallback(async () => {
     if (!session?.access_token) return
-    setUsageError(null)
 
     try {
       const response = await fetch("/api/prep-usage", {
@@ -270,7 +166,8 @@ export default function PrepPage() {
       setUsageRemaining(usage.remaining ?? null)
       setUsageLimit(usage.limit ?? null)
     } catch (error) {
-      setUsageError(error instanceof Error ? error.message : "Unable to load usage.")
+      setUsageRemaining(null)
+      setUsageLimit(null)
     }
   }, [session?.access_token])
 
@@ -322,10 +219,6 @@ export default function PrepPage() {
     },
     [titleDrafts],
   )
-
-  useEffect(() => {
-    void loadStoredAiKey()
-  }, [loadStoredAiKey])
 
   useEffect(() => {
     void refreshUsage()
@@ -814,8 +707,6 @@ export default function PrepPage() {
     }
   }, [isCreatingChat, selectedInterviewId, streamChatTitle, titleDrafts])
 
-  const hasAiKey = hasStoredAiKey
-
   const handleSend = async () => {
     if (!input.trim() || isGenerating || isSessionEnded || isMessagesLoading) return
     if (!selectedChatId) {
@@ -1253,29 +1144,6 @@ export default function PrepPage() {
                   Messages left: {usageRemaining ?? "--"}
                   {usageLimit !== null ? ` / ${usageLimit}` : ""}
                 </Badge>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <KeyRound className="mr-2 h-4 w-4" />
-                      AI key
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 space-y-3">
-                    <AiKeyPanel
-                      aiKeyInput={aiKeyInput}
-                      onAiKeyInputChange={setAiKeyInput}
-                      aiKeyError={aiKeyModalError}
-                      onClearError={() => setAiKeyModalError(null)}
-                      hasStoredAiKey={hasStoredAiKey}
-                      isSavingAiKey={isSavingAiKey}
-                      onSave={saveAiKey}
-                      onClear={clearAiKey}
-                      usageRemaining={usageRemaining}
-                      usageLimit={usageLimit}
-                      usageError={usageError}
-                    />
-                  </PopoverContent>
-                </Popover>
                 <Button
                   variant={isFocusMode ? "default" : "outline"}
                   size="sm"
@@ -1613,11 +1481,6 @@ export default function PrepPage() {
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
-                    {!hasAiKey && (
-                      <p className="text-xs text-muted-foreground">
-                        Optional: add your AI key to use your own OpenAI credits after the free daily messages are used.
-                      </p>
-                    )}
                   </form>
                 </div>
               </div>
