@@ -675,8 +675,8 @@ export default function PrepPage() {
     [fetchChats, selectedChatId, selectedInterviewId],
   )
 
-  const handleCreateChat = useCallback(async () => {
-    if (isCreatingChat) return
+  const createChatRecord = useCallback(async () => {
+    if (isCreatingChat) return null
 
     setIsCreatingChat(true)
     setChatError(null)
@@ -694,29 +694,34 @@ export default function PrepPage() {
       }
 
       const payload = (await response.json()) as { data: PrepChat }
-      const placeholderTitle = titleDrafts[payload.data.id] ?? "Generating title..."
-      setTitleDrafts((previous) => ({ ...previous, [payload.data.id]: placeholderTitle }))
-      setChats((previous) => [{ ...payload.data, title: placeholderTitle }, ...previous])
-      setSelectedChatId(payload.data.id)
-      setMessages([])
-      void streamChatTitle(payload.data.id)
+      return payload.data
     } catch (error) {
       setChatError(error instanceof Error ? error.message : "Unable to create chat.")
+      return null
     } finally {
       setIsCreatingChat(false)
     }
-  }, [isCreatingChat, selectedInterviewId, streamChatTitle, titleDrafts])
+  }, [isCreatingChat, selectedInterviewId])
+
+  const handleCreateChat = useCallback(() => {
+    setChatError(null)
+    setIsSessionEnded(false)
+    setIsGenerating(false)
+    streamingMessageIndexRef.current = null
+    setSelectedChatId(null)
+    setMessages([])
+    setInput("")
+  }, [])
 
   const handleSend = async () => {
     if (!input.trim() || isGenerating || isSessionEnded || isMessagesLoading) return
-    if (!selectedChatId) {
-      setChatError("Create a chat to start messaging.")
-      return
-    }
 
     const trimmed = input.trim()
     const userMessage: ChatMessage = { role: "user", content: trimmed }
     const history = [...messages, userMessage]
+    let chatId = selectedChatId
+    let isNewChat = false
+    let didAppendMessages = false
 
     setInput("")
     setIsSessionEnded(false)
@@ -727,13 +732,25 @@ export default function PrepPage() {
     let assistantMessageId: string | null = null
 
     try {
+      if (!chatId) {
+        const createdChat = await createChatRecord()
+        if (!createdChat) return
+        chatId = createdChat.id
+        isNewChat = true
+        const placeholderTitle = titleDrafts[createdChat.id] ?? "Generating title..."
+        setTitleDrafts((previous) => ({ ...previous, [createdChat.id]: placeholderTitle }))
+        setChats((previous) => [{ ...createdChat, title: placeholderTitle }, ...previous])
+        setSelectedChatId(createdChat.id)
+        setMessages([])
+      }
+
       const appendResponse = await fetch("/api/prep/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          chatId: selectedChatId,
+          chatId,
           userContent: trimmed,
           assistantContent: "",
           userMetadata: { mode: "text" },
@@ -750,6 +767,7 @@ export default function PrepPage() {
       const assistantRecord = appendPayload.data?.find((message) => message.role === "assistant")
       assistantMessageId = assistantRecord?.id ?? null
       const appendedMessages = (appendPayload.data ?? []).map(mapPrepMessage)
+      didAppendMessages = true
 
       setMessages((previous) => {
         const next = [...previous, ...appendedMessages]
@@ -764,6 +782,10 @@ export default function PrepPage() {
         throw new Error("Unable to track the assistant reply.")
       }
 
+      if (isNewChat && chatId) {
+        void streamChatTitle(chatId, history)
+      }
+
       const response = await fetch("/api/prep", {
         method: "POST",
         headers: {
@@ -771,7 +793,7 @@ export default function PrepPage() {
         },
         body: JSON.stringify({
           applicationId: selectedApplication?.id ?? null,
-          chatId: selectedChatId,
+          chatId,
           assistantMessageId,
           messages: history.map((message) => ({ role: message.role, content: message.content })),
         }),
@@ -803,8 +825,8 @@ export default function PrepPage() {
         }
       }
 
-      if (selectedChatId) {
-        void fetchMessages(selectedChatId)
+      if (chatId) {
+        void fetchMessages(chatId)
       }
       void updateUsageFromResponse(response)
       void fetchChats(selectedInterviewId)
@@ -822,6 +844,16 @@ export default function PrepPage() {
         })
       }
       setChatError(error instanceof Error ? error.message : "We hit a snag fetching a response.")
+      if (isNewChat && chatId && !didAppendMessages) {
+        setChats((previous) => previous.filter((chat) => chat.id !== chatId))
+        setSelectedChatId(null)
+        setTitleDrafts((previous) => {
+          const next = { ...previous }
+          delete next[chatId!]
+          return next
+        })
+        void fetch(`/api/prep/chats?chatId=${encodeURIComponent(chatId)}`, { method: "DELETE" })
+      }
     } finally {
       setIsGenerating(false)
       streamingMessageIndexRef.current = null
