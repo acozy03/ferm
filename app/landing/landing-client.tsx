@@ -1230,15 +1230,14 @@ export default function LandingPage() {
           <SectionFern side="left" />
           <SectionFern side="right" />
           {/* Full-height fern on left (Section 5) */}
-          <div className="mx-auto max-w-4xl px-6 text-center">
-            <div className="mb-12">
+          <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-6 text-center">
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                 Ready to take control of your job search?
               </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
+              <p className="max-w-2xl text-lg text-muted-foreground">
                 Join thousands of job seekers who are landing more interviews with ferm.
               </p>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <div className="flex flex-wrap items-center justify-center gap-4">
                 <Button size="lg" className="gap-2 px-8">
                   Get Started Free
                   <ArrowUpRight className="h-4 w-4" aria-hidden />
@@ -1248,7 +1247,6 @@ export default function LandingPage() {
                   Watch Demo
                 </Button>
               </div>
-            </div>
           </div>
         </section>
 
