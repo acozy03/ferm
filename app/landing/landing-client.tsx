@@ -936,7 +936,7 @@ export default function LandingPage() {
 
             <div className="grid gap-8 lg:grid-cols-[1fr_1.5fr] lg:items-start">
                 {/* Feature tabs - Vertical stacked cards */}
-                <div className="grid gap-3 lg:mt-12 lg:h-[480px] lg:grid-rows-3">
+                <div className="grid gap-3 lg:h-[480px] lg:grid-rows-3">
                 {chromeExtensionPanels.map((panel, index) => {
                   const isActive = index === activeIndex
 
@@ -1193,7 +1193,7 @@ export default function LandingPage() {
                   Everything you need to know about ferm. Can&apos;t find what you&apos;re looking for?
                 </p>
                 <Button variant="outline" className="mt-6 gap-2 bg-transparent" asChild>
-                  <Link href="mailto:support@ferm.dev">
+                  <Link href="mailto:adrian@ferm.dev">
                     Get in touch
                     <ArrowUpRight className="h-4 w-4" aria-hidden />
                   </Link>
