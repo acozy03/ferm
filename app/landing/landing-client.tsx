@@ -936,10 +936,9 @@ export default function LandingPage() {
 
             <div className="grid gap-8 lg:grid-cols-[1fr_1.5fr] lg:items-start">
                 {/* Feature tabs - Vertical stacked cards */}
-                <div className="grid gap-3 lg:mt-12 lg:h-[432px] lg:grid-rows-3">
+                <div className="grid gap-3 lg:mt-12 lg:h-[480px] lg:grid-rows-3">
                 {chromeExtensionPanels.map((panel, index) => {
                   const isActive = index === activeIndex
-                  const Icon = panel.icon
 
                   return (
                     <button
@@ -953,13 +952,13 @@ export default function LandingPage() {
                       }`}
                     >
                       <div className="flex items-start gap-4">
-                        <div
-                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                            isActive ? "bg-foreground text-background" : "bg-muted text-muted-foreground group-hover:bg-foreground/10 group-hover:text-foreground"
+                        <span
+                          className={`shrink-0 text-sm font-semibold ${
+                            isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                           }`}
                         >
-                          <Icon className="h-6 w-6" />
-                        </div>
+                          {index + 1})
+                        </span>
                         <div className="flex-1">
                           <h3 className="font-semibold text-foreground">{panel.title}</h3>
                           <p className="mt-1 text-sm text-muted-foreground">{panel.description}</p>
@@ -1185,8 +1184,8 @@ export default function LandingPage() {
           <SectionFern side="left" />
           <SectionFern side="right" />
           <div className="mx-auto max-w-6xl px-6">
-            <div className="grid gap-12 lg:grid-cols-[1fr_1.5fr] lg:items-start">
-              <div className="lg:sticky lg:top-32">
+            <div className="grid gap-12 lg:grid-cols-[1fr_1.5fr] lg:items-center">
+              <div className="lg:self-center">
                 <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                   Frequently asked questions
                 </h2>
