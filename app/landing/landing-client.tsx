@@ -15,7 +15,6 @@ import {
   Sparkles,
   Twitter,
   Youtube,
-  Zap,
   Target,
   TrendingUp,
   MessageSquare,
@@ -714,13 +713,18 @@ export default function LandingPage() {
     <div className="dark">
       <div className="min-h-screen bg-background text-foreground">
         {/* Header */}
-        <header className="fixed top-0 right-0 left-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Zap className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span>ferm</span>
+        <header className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4">
+          <div className="flex w-full max-w-6xl items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-6 py-3 shadow-lg shadow-black/10 backdrop-blur-xl">
+            <Link href="/" className="flex items-center">
+              <span className="sr-only">ferm</span>
+              <Image
+                src="/logo.png"
+                alt="public slash logo dot"
+                width={32}
+                height={32}
+                className="h-8 w-8"
+                priority
+              />
             </Link>
             <div className="flex items-center gap-3">
               {hasSession ? (
@@ -1239,9 +1243,13 @@ export default function LandingPage() {
               <div className="grid gap-12 md:grid-cols-4">
                 <div className="md:col-span-2">
                   <Link href="/" className="flex items-center gap-2 text-lg font-bold">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                      <Zap className="h-5 w-5 text-primary-foreground" />
-                    </div>
+                    <Image
+                      src="/logo.png"
+                      alt="public slash logo dot"
+                      width={32}
+                      height={32}
+                      className="h-8 w-8"
+                    />
                     <span>ferm</span>
                   </Link>
                   <p className="mt-4 max-w-sm text-sm text-muted-foreground">
