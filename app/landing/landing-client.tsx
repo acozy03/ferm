@@ -31,7 +31,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useSupabase } from "@/components/supabase-provider"
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
+import { motion, useMotionValueEvent, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -642,7 +642,10 @@ export default function LandingPage() {
   const [displayedText, setDisplayedText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
   const [selectedFeature, setSelectedFeature] = useState<string>("interview-prep")
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
+  const lastScrollY = useRef(0)
 
+  const { scrollY } = useScroll()
   const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -651,6 +654,22 @@ export default function LandingPage() {
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 150])
   const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
   const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95])
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    if (latest < 8) {
+      setIsHeaderVisible(true)
+      lastScrollY.current = latest
+      return
+    }
+
+    if (latest > lastScrollY.current) {
+      setIsHeaderVisible(false)
+    } else {
+      setIsHeaderVisible(true)
+    }
+
+    lastScrollY.current = latest
+  })
 
   // Typewriter effect
   useEffect(() => {
@@ -713,8 +732,14 @@ export default function LandingPage() {
     <div className="dark">
       <div className="min-h-screen bg-background text-foreground">
         {/* Header */}
-        <header className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4">
-          <div className="flex w-full max-w-6xl items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-6 py-3 shadow-lg shadow-black/10 backdrop-blur-xl">
+        <motion.header
+          className={`fixed top-4 left-0 right-0 z-50 flex justify-center px-4 ${
+            isHeaderVisible ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+          animate={{ y: isHeaderVisible ? 0 : -120, opacity: isHeaderVisible ? 1 : 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          <div className="flex w-full max-w-7xl items-center justify-between rounded-2xl border border-border/60 bg-background/80 px-6 py-3 shadow-lg shadow-black/10 backdrop-blur-xl">
             <Link href="/" className="flex items-center">
               <span className="sr-only">ferm</span>
               <Image
@@ -731,29 +756,33 @@ export default function LandingPage() {
                 <Button
                   variant="ghost"
                   onClick={() => router.replace(redirectedFrom || "/")}
-                  className="text-muted-foreground"
+                  className="rounded-full text-muted-foreground"
                 >
                   Go to dashboard
                 </Button>
               ) : (
-                <Button variant="ghost" onClick={() => setIsSignUpOpen(true)} className="text-muted-foreground">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsSignUpOpen(true)}
+                  className="rounded-full text-muted-foreground"
+                >
                   Create an account
                 </Button>
               )}
               {hasSession ? (
-                <Button onClick={() => router.replace(redirectedFrom || "/")} className="gap-2">
+                <Button onClick={() => router.replace(redirectedFrom || "/")} className="gap-2 rounded-full">
                   Open ferm
                   <ArrowUpRight className="h-4 w-4" aria-hidden />
                 </Button>
               ) : (
-                <Button onClick={() => setIsLoginOpen(true)} className="gap-2">
+                <Button onClick={() => setIsLoginOpen(true)} className="gap-2 rounded-full">
                   Sign in
                   <ArrowUpRight className="h-4 w-4" aria-hidden />
                 </Button>
               )}
             </div>
           </div>
-        </header>
+        </motion.header>
 
         {/* Hero Section - Centered with static fern plants at bottom */}
         <section ref={heroRef} className="relative overflow-hidden pt-24 bg-zinc-900">
