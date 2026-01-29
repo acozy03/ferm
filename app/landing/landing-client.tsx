@@ -1497,10 +1497,10 @@ function SignUpDialog({
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
 
             <DialogFooter className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" className="w-full sm:w-auto flex-1" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
-              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+              <Button type="submit" className="w-full sm:w-auto flex-1" disabled={isSubmitting}>
                 {isSubmitting ? "Creating account..." : "Create account"}
               </Button>
             </DialogFooter>
@@ -1602,10 +1602,10 @@ function LoginDialog({
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
 
             <DialogFooter className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" className="w-full sm:w-auto flex-1" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
-              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+              <Button type="submit" className="w-full sm:w-auto flex-1" disabled={isSubmitting}>
                 {isSubmitting ? "Signing in..." : "Sign in"}
               </Button>
             </DialogFooter>
