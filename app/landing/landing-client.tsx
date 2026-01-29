@@ -3,7 +3,8 @@
 import React from "react"
 
 import Link from "next/link"
-import { useEffect, useState, useRef, type ReactNode } from "react"
+import Image from "next/image"
+import { useEffect, useState, useRef } from "react"
 import { Heart } from "lucide-react";
 import {
   ArrowUpRight,
@@ -27,21 +28,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
-
-// Scroll-triggered animation wrapper
-function ScrollReveal({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-100px" }}
-      transition={{ duration: 0.6, delay, ease: "easeOut" }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  )
-}
 
 // Decorative leaf/fern SVG shapes for the border frame
 function LeafBorderFrame() {
@@ -233,6 +219,7 @@ function LeafBorderFrame() {
   )
 }
 // Individual fern sprig for bottom border - multiple variants
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function FernSprig({ style, variant = 1 }: { style?: React.CSSProperties; variant?: number }) {
   const variants = {
     1: ( // Classic symmetric fern
@@ -474,14 +461,6 @@ function SectionFern({ side }: { side: 'left' | 'right' }) {
      
     </div>
   )
-}
-
-// Declare CardItem type before using it
-type CardItem = {
-  id: string;
-  name: string;
-  designation: string;
-  content: string;
 }
 
 const chromeExtensionPanels = [
@@ -744,7 +723,7 @@ export default function LandingPage() {
                 className="flex flex-wrap items-center justify-center gap-4"
               >
                 <Button size="lg" className="gap-2 px-8">
-                  Get started, it's free!
+                  Get started, it&apos;s free!
                   <ArrowUpRight className="h-4 w-4" aria-hidden />
                 </Button>
                <Button size="lg" variant="outline" asChild className="gap-2 bg-transparent">
@@ -886,21 +865,15 @@ export default function LandingPage() {
                         linkedin.com/jobs/view/...
                       </div>
                     </div>
-                    <div className="aspect-[16/10] bg-gradient-to-br from-muted/20 to-muted/5 p-8">
-                      <div className="flex h-full items-center justify-center">
-                        <div className="text-center">
-                          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-                            {(() => {
-                              const Icon = chromeExtensionPanels[activeIndex].icon
-                              return <Icon className="h-8 w-8 text-foreground" />
-                            })()}
-                          </div>
-                          <p className="text-lg font-medium text-foreground">{chromeExtensionPanels[activeIndex].title}</p>
-                          <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-                            {chromeExtensionPanels[activeIndex].description}
-                          </p>
-                        </div>
-                      </div>
+                    <div className="relative aspect-[16/10] bg-black/30">
+                      <Image
+                        src="/gifs/chrome-extension-demo.gif"
+                        alt="Chrome extension demo GIF placeholder"
+                        fill
+                        className="object-cover"
+                        sizes="(min-width: 1024px) 720px, 100vw"
+                        unoptimized
+                      />
                     </div>
                   </div>
                   {/* Floating badge */}

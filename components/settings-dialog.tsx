@@ -1,12 +1,11 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/components/ui/use-toast"
-import { type SettingsState } from "@/lib/settings"
 import { useSettings } from "@/components/settings-provider"
 import { AiKeyPanel } from "@/components/settings/ai-key-panel"
 import {
@@ -15,14 +14,12 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useSupabase } from "@/components/supabase-provider"
 import { Shield, Puzzle, Heart, Key } from "lucide-react"
-import { SettingsPanel } from "@/components/settings/settings-panel" // Import SettingsPanel
 
 interface SettingsDialogProps {
   trigger?: ReactNode
@@ -84,13 +81,12 @@ const SidebarTabButton = ({
 }
 
 export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogProps) {
-  const { settings, hasHydrated, updateSettings: saveSettings } = useSettings()
+  const { hasHydrated } = useSettings()
   const { supabase, session } = useSupabase()
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<SettingsTabId>("login-security")
   const [isDeleting, setIsDeleting] = useState(false)
-  const [draft, setDraft] = useState<SettingsState>(settings)
   const [aiKeyInput, setAiKeyInput] = useState("")
   const [hasStoredAiKey, setHasStoredAiKey] = useState(false)
   const [isSavingAiKey, setIsSavingAiKey] = useState(false)
@@ -108,32 +104,10 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
   )
 
   useEffect(() => {
-    if (!hasHydrated) {
-      return
-    }
-
-    setDraft(settings)
-  }, [settings, hasHydrated])
-
-  useEffect(() => {
     if (dialogOpen) {
-      setDraft(settings)
       setActiveTab("login-security")
     }
-  }, [dialogOpen, settings])
-
-  const hasChanges = useMemo(() => {
-    return JSON.stringify(settings) !== JSON.stringify(draft)
-  }, [settings, draft])
-
-  const handleSave = () => {
-    saveSettings(draft)
-    toast({
-      title: "Settings saved",
-      description: "Your workspace preferences have been updated.",
-    })
-    setDialogOpen(false)
-  }
+  }, [dialogOpen])
 
   const loadStoredAiKey = useCallback(async () => {
     setAiKeyError(null)
@@ -198,7 +172,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
     } finally {
       setIsSavingAiKey(false)
     }
-  }, [aiKeyInput, session?.access_token, toast])
+  }, [aiKeyInput, session?.access_token])
 
   const clearAiKey = useCallback(() => {
     setIsSavingAiKey(true)
@@ -227,7 +201,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
         setIsSavingAiKey(false)
       }
     })()
-  }, [session?.access_token, toast])
+  }, [session?.access_token])
 
   useEffect(() => {
     if (dialogOpen && activeTab === "api-key") {

@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toPng } from "html-to-image"
 import { getStatusChartColor, parseStatus } from "@/lib/status"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import  {TruncatedText} from "@/components/ui/truncate"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -223,7 +223,6 @@ export default function AnalyticsPage() {
 
     const appliedFontElements = new Map<Element, string>()
     let exportWrapper: HTMLDivElement | null = null
-    let clonedRoot: HTMLElement | null = null
 
     try {
       const fallbackFontFamily = "var(--font-sans), system-ui, sans-serif"
@@ -286,7 +285,6 @@ export default function AnalyticsPage() {
       exportWrapper.style.zIndex = "-1"
 
       const localClonedRoot = exportRoot.cloneNode(true) as HTMLElement
-      clonedRoot = localClonedRoot
       exportWrapper.appendChild(localClonedRoot)
       document.body.appendChild(exportWrapper)
 

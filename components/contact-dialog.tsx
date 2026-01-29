@@ -1,7 +1,7 @@
 "use client"
 
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -19,10 +19,9 @@ const CONTACT_TOPICS = [
 type ContactDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  userEmail?: string | null
 }
 
-export function ContactDialog({ open, onOpenChange, userEmail }: ContactDialogProps) {
+export function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
   const { toast } = useToast()
   const [topic, setTopic] = useState("")
   const [details, setDetails] = useState("")

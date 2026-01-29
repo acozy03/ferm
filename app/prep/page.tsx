@@ -165,7 +165,7 @@ export default function PrepPage() {
       const usage = (await response.json()) as { remaining?: number; limit?: number }
       setUsageRemaining(usage.remaining ?? null)
       setUsageLimit(usage.limit ?? null)
-    } catch (error) {
+    } catch {
       setUsageRemaining(null)
       setUsageLimit(null)
     }
@@ -1355,7 +1355,20 @@ export default function PrepPage() {
                     </div>
                   )}
 
-          
+                  {(activeChatTitle || chatError) && (
+                    <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
+                      {activeChatTitle && (
+                        <p className="text-sm font-semibold text-foreground line-clamp-2">
+                          {activeChatTitle}
+                        </p>
+                      )}
+                      {chatError && (
+                        <p className="mt-1 text-xs text-destructive">
+                          {chatError}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <ScrollArea className="flex-1 overflow-y-auto" ref={chatRef}>
                     <div className="space-y-4 pr-2 pb-4">

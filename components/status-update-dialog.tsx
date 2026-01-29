@@ -3,12 +3,11 @@
 import type React from "react"
 
 import { useEffect, useMemo, useState } from "react"
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import type { JobApplicationStatus, JobApplicationStatusHistory } from "@/lib/types/database"
 import {
   formatStatusOptionLabel,
