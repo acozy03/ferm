@@ -500,16 +500,22 @@ const chromeExtensionPanels = [
     title: "Clip job details",
     description: "Capture job posts in one click so you always know where you applied.",
     icon: Target,
+    gifSrc: "/gifs/chrome-extension-clip.gif",
+    gifAlt: "Chrome extension demo showing clipping job details.",
   },
   {
     title: "Track interview stages",
     description: "Move applications through stages to see momentum at a glance.",
     icon: TrendingUp,
+    gifSrc: "/gifs/chrome-extension-track.gif",
+    gifAlt: "Chrome extension demo showing tracking interview stages.",
   },
   {
     title: "Never miss follow-ups",
     description: "Get reminders for every recruiter touchpoint and next action.",
     icon: Clock,
+    gifSrc: "/gifs/chrome-extension-followup.gif",
+    gifAlt: "Chrome extension demo showing follow-up reminders.",
   },
 ] as const
 
@@ -930,7 +936,7 @@ export default function LandingPage() {
 
             <div className="grid gap-8 lg:grid-cols-[1fr_1.5fr] lg:items-start">
                 {/* Feature tabs - Vertical stacked cards */}
-                <div className="flex flex-col gap-3">
+                <div className="grid gap-3 lg:mt-12 lg:h-[432px] lg:grid-rows-3">
                 {chromeExtensionPanels.map((panel, index) => {
                   const isActive = index === activeIndex
                   const Icon = panel.icon
@@ -940,7 +946,7 @@ export default function LandingPage() {
                       key={panel.title}
                       type="button"
                       onClick={() => setActiveIndex(index)}
-                      className={`group relative overflow-hidden rounded-xl border p-5 text-left transition-all duration-300 ${
+                      className={`group relative flex h-full overflow-hidden rounded-xl border p-5 text-left transition-all duration-300 ${
                         isActive
                           ? "border-foreground/30 bg-muted shadow-lg"
                           : "border-border bg-card hover:border-foreground/20 hover:bg-card/80"
@@ -968,9 +974,9 @@ export default function LandingPage() {
                 </div>
 
                 {/* Preview area - Browser mockup */}
-                <div className="relative">
-                  <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
-                    <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-3">
+                <div className="relative lg:h-[480px]">
+                  <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+                    <div className="flex h-12 items-center gap-2 border-b border-border bg-muted/50 px-4">
                       <div className="flex gap-2">
                         <div className="h-3 w-3 rounded-full bg-red-500/70" />
                         <div className="h-3 w-3 rounded-full bg-yellow-500/70" />
@@ -980,10 +986,10 @@ export default function LandingPage() {
                         linkedin.com/jobs/view/...
                       </div>
                     </div>
-                    <div className="relative aspect-[16/10] bg-black/30">
+                    <div className="relative flex-1 bg-black/30">
                       <Image
-                        src="/gifs/chrome-extension-demo.gif"
-                        alt="Chrome extension demo GIF placeholder"
+                        src={chromeExtensionPanels[activeIndex].gifSrc}
+                        alt={chromeExtensionPanels[activeIndex].gifAlt}
                         fill
                         className="object-cover"
                         sizes="(min-width: 1024px) 720px, 100vw"
