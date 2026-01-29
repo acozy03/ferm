@@ -1282,11 +1282,9 @@ export default function LandingPage() {
                       height={32}
                       className="h-8 w-8"
                     />
-                    <span>ferm</span>
+                   
                   </Link>
-                  <p className="mt-4 max-w-sm text-sm text-muted-foreground">
-                    The modern job application tracker that helps you land more interviews with less chaos.
-                  </p>
+                  
                   <div className="mt-6 flex items-center gap-4">
                     <SocialLink href="https://www.linkedin.com/company/111001355" label="LinkedIn">
                       <Linkedin className="h-5 w-5" aria-hidden />
@@ -1326,7 +1324,7 @@ export default function LandingPage() {
                   &copy; {new Date().getFullYear()} ferm. All rights reserved.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Made with care for job seekers everywhere.
+                  Made with care for job seekers everywhere
                 </p>
               </div>
             </div>
