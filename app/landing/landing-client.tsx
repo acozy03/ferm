@@ -1273,19 +1273,18 @@ export default function LandingPage() {
           </div>
           <div className="mx-auto max-w-6xl px-6">
               <div className="grid gap-12 md:grid-cols-4">
-                <div className="md:col-span-2">
+                <div className="flex h-full flex-col justify-between md:col-span-2">
                   <Link href="/" className="flex items-center gap-2 text-lg font-bold">
                     <Image
                       src="/logo.png"
                       alt="public slash logo dot"
                       width={32}
                       height={32}
-                      className="h-8 w-8"
+                      className="h-10 w-10"
                     />
-                   
                   </Link>
-                  
-                  <div className="mt-6 flex items-center gap-4">
+
+                  <div className="mt-6 flex items-center gap-4 md:mt-0">
                     <SocialLink href="https://www.linkedin.com/company/111001355" label="LinkedIn">
                       <Linkedin className="h-5 w-5" aria-hidden />
                     </SocialLink>
