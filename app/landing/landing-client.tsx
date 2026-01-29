@@ -904,12 +904,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   {/* Floating badge */}
-                  <div className="absolute -top-4 -right-4 flex h-20 w-20 items-center justify-center rounded-2xl border border-border bg-card shadow-xl">
-                    <div className="text-center">
-                      <Zap className="mx-auto h-6 w-6 text-foreground" />
-                      <p className="mt-1 text-xs font-medium text-foreground">1-Click</p>
-                    </div>
-                  </div>
+                 
                 </div>
               </div>
           </div>
