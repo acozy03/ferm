@@ -1282,8 +1282,8 @@ export default function LandingPage() {
             </svg>
           </div>
           <div className="mx-auto max-w-6xl px-6">
-              <div className="grid gap-12 md:grid-cols-4">
-                <div className="flex h-full flex-col justify-between md:col-span-2">
+              <div className="flex flex-col gap-12 md:flex-row md:items-start md:justify-between">
+                <div className="flex h-full flex-col justify-between">
                   <Link href="/" className="flex items-center gap-2 text-lg font-bold">
                     <Image
                       src="/logo.png"
@@ -1307,24 +1307,26 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="font-semibold text-foreground">Product</h4>
-                  <ul className="mt-4 space-y-3 text-sm">
-                    <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Features</Link></li>
-                    <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Pricing</Link></li>
-                    <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Chrome Extension</Link></li>
-                    <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Changelog</Link></li>
-                  </ul>
-                </div>
+                <div className="grid gap-12 sm:grid-cols-2 md:ml-auto md:text-right">
+                  <div>
+                    <h4 className="font-semibold text-foreground">Product</h4>
+                    <ul className="mt-4 space-y-3 text-sm">
+                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Features</Link></li>
+                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Pricing</Link></li>
+                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Chrome Extension</Link></li>
+                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Changelog</Link></li>
+                    </ul>
+                  </div>
 
-                <div>
-                  <h4 className="font-semibold text-foreground">Company</h4>
-                  <ul className="mt-4 space-y-3 text-sm">
-                    <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">About</Link></li>
-                    <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Blog</Link></li>
-                    <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Privacy</Link></li>
-                    <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Terms</Link></li>
-                  </ul>
+                  <div>
+                    <h4 className="font-semibold text-foreground">Company</h4>
+                    <ul className="mt-4 space-y-3 text-sm">
+                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">About</Link></li>
+                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Blog</Link></li>
+                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Privacy</Link></li>
+                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Terms</Link></li>
+                    </ul>
+                  </div>
                 </div>
               </div>
 
