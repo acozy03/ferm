@@ -651,6 +651,16 @@ export default function LandingPage() {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true)
   const lastScrollY = useRef(0)
 
+  const handleSwitchToSignUp = () => {
+    setIsLoginOpen(false)
+    setIsSignUpOpen(true)
+  }
+
+  const handleSwitchToLogin = () => {
+    setIsSignUpOpen(false)
+    setIsLoginOpen(true)
+  }
+
   const { scrollY } = useScroll()
   const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
@@ -1238,7 +1248,7 @@ export default function LandingPage() {
                 Create an account for free and take control today.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4">
-                <Button size="lg" className="gap-2 px-8">
+                <Button size="lg" className="gap-2 px-8" onClick={() => setIsLoginOpen(true)}>
                   Get Started Free
                   <ArrowUpRight className="h-4 w-4" aria-hidden />
                 </Button>
@@ -1333,9 +1343,15 @@ export default function LandingPage() {
       <SignUpDialog
         open={isSignUpOpen && !hasSession}
         onOpenChange={setIsSignUpOpen}
+        onSwitchToLogin={handleSwitchToLogin}
         supabaseRedirectUrl={baseRedirectUrl}
       />
-      <LoginDialog open={isLoginOpen && !hasSession} onOpenChange={setIsLoginOpen} onGoogleSignIn={handleGoogle} />
+      <LoginDialog
+        open={isLoginOpen && !hasSession}
+        onOpenChange={setIsLoginOpen}
+        onGoogleSignIn={handleGoogle}
+        onSwitchToSignUp={handleSwitchToSignUp}
+      />
 
       {/* Video Dialog */}
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
@@ -1357,10 +1373,12 @@ export default function LandingPage() {
 function SignUpDialog({
   open,
   onOpenChange,
+  onSwitchToLogin,
   supabaseRedirectUrl,
 }: {
   open: boolean
   onOpenChange: (next: boolean) => void
+  onSwitchToLogin: () => void
   supabaseRedirectUrl: string
 }) {
   const { supabase } = useSupabase()
@@ -1495,6 +1513,8 @@ function SignUpDialog({
 
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
 
+           
+
             <DialogFooter className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" className="w-full sm:w-auto flex-1" onClick={() => onOpenChange(false)}>
                 Close
@@ -1504,8 +1524,20 @@ function SignUpDialog({
               </Button>
             </DialogFooter>
           </form>
+          
         </Form>
+           <div className="text-center text-sm text-muted-foreground">
+              Existing user?{" "}
+              <button
+                type="button"
+                onClick={onSwitchToLogin}
+                className="font-medium text-foreground underline-offset-4 hover:underline"
+              >
+                Sign in here
+              </button>
+            </div>
       </DialogContent>
+      
     </Dialog>
   )
 }
@@ -1514,10 +1546,12 @@ function LoginDialog({
   open,
   onOpenChange,
   onGoogleSignIn,
+  onSwitchToSignUp,
 }: {
   open: boolean
   onOpenChange: (next: boolean) => void
   onGoogleSignIn: () => void
+  onSwitchToSignUp: () => void
 }) {
   const { supabase } = useSupabase()
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -1600,6 +1634,8 @@ function LoginDialog({
 
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
 
+           
+
             <DialogFooter className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" className="w-full sm:w-auto flex-1" onClick={() => onOpenChange(false)}>
                 Close
@@ -1610,6 +1646,16 @@ function LoginDialog({
             </DialogFooter>
           </form>
         </Form>
+         <div className="text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                onClick={onSwitchToSignUp}
+                className="font-medium text-foreground underline-offset-4 hover:underline"
+              >
+                Create one
+              </button>
+            </div>
       </DialogContent>
     </Dialog>
   )
