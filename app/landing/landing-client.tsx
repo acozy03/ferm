@@ -1232,10 +1232,10 @@ export default function LandingPage() {
           {/* Full-height fern on left (Section 5) */}
           <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-6 text-center">
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Ready to take control of your job search?
+                Ready to track simple?
               </h2>
               <p className="max-w-2xl text-lg text-muted-foreground">
-                Join thousands of job seekers who are landing more interviews with ferm.
+                Create an account for free and take control today.
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4">
                 <Button size="lg" className="gap-2 px-8">
