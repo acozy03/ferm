@@ -1282,8 +1282,8 @@ export default function LandingPage() {
             </svg>
           </div>
           <div className="mx-auto max-w-6xl px-6">
-              <div className="flex flex-col gap-12 md:flex-row md:items-start md:justify-between">
-                <div className="flex h-full flex-col justify-between">
+              <div className="flex flex-col gap-12 md:flex-row md:items-stretch md:justify-between">
+                <div className="flex h-full flex-col justify-between gap-20">
                   <Link href="/" className="flex items-center gap-2 text-lg font-bold">
                     <Image
                       src="/logo.png"
@@ -1294,7 +1294,7 @@ export default function LandingPage() {
                     />
                   </Link>
 
-                  <div className="mt-6 flex items-center gap-4 md:mt-0">
+                  <div className="flex items-center gap-4">
                     <SocialLink href="https://www.linkedin.com/company/111001355" label="LinkedIn">
                       <Linkedin className="h-5 w-5" aria-hidden />
                     </SocialLink>
