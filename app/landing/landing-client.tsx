@@ -1436,9 +1436,7 @@ function SignUpDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <VisuallyHidden>Create your account</VisuallyHidden>
-        </DialogHeader>
+     
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -1515,8 +1513,6 @@ function SignUpDialog({
 
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
 
-           
-
             <DialogFooter className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" className="w-full sm:w-auto flex-1" onClick={() => onOpenChange(false)}>
                 Close
@@ -1526,18 +1522,18 @@ function SignUpDialog({
               </Button>
             </DialogFooter>
           </form>
-          
+
         </Form>
-           <div className="text-center text-sm text-muted-foreground">
-              Existing user?{" "}
-              <button
-                type="button"
-                onClick={onSwitchToLogin}
-                className="font-medium text-foreground underline-offset-4 hover:underline"
-              >
-                Sign in here
-              </button>
-            </div>
+        <div className="border-t border-border mt-2 pt-4 text-center text-sm text-muted-foreground">
+          Existing user?{" "}
+          <button
+            type="button"
+            onClick={onSwitchToLogin}
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Sign in here
+          </button>
+        </div>
       </DialogContent>
       
     </Dialog>
@@ -1586,11 +1582,9 @@ function LoginDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <VisuallyHidden>Sign in</VisuallyHidden>
-        </DialogHeader>
+     
 
-        <div className="space-y-4">
+        <div className="space-y-4 pt-0.5">
           <Button type="button" variant="outline" className="w-full justify-center" onClick={onGoogleSignIn}>
             <GoogleIcon className="h-4 w-4" />
             Sign in with Google
@@ -1636,8 +1630,6 @@ function LoginDialog({
 
             {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
 
-           
-
             <DialogFooter className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" className="w-full sm:w-auto flex-1" onClick={() => onOpenChange(false)}>
                 Close
@@ -1648,16 +1640,16 @@ function LoginDialog({
             </DialogFooter>
           </form>
         </Form>
-         <div className="text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <button
-                type="button"
-                onClick={onSwitchToSignUp}
-                className="font-medium text-foreground underline-offset-4 hover:underline"
-              >
-                Create one
-              </button>
-            </div>
+        <div className="border-t border-border mt-2 pt-4 text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <button
+            type="button"
+            onClick={onSwitchToSignUp}
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Create one
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   )
