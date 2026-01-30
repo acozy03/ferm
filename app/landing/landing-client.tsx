@@ -1145,15 +1145,15 @@ export default function LandingPage() {
               <span className="text-lg text-muted-foreground italic">/f3ːrm/</span>
               <span className="rounded border border-muted-foreground/50 px-2 py-0.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">noun</span>
             </div>
-            <p className="text-sm text-muted-foreground mb-8">also fer·m | fer-m</p>
+            <p className="text-sm text-muted-foreground mb-8">also fer·m | fer-m | free-permanently</p>
             <div className="border-t border-border mb-8" />
             <div className="space-y-6">
               <div className="flex gap-4">
                 <span className="text-amber-600 font-medium">1</span>
                 <div>
                   <p className="text-foreground">
-                    <span className="font-semibold text-amber-600">ferm turns serendipity into a feature:</span>{" "}
-                    Explore your applications at random, or receive daily curated reviews to rediscover opportunities you&apos;ve tracked in the past.
+                    <span className="font-semibold text-amber-600">User-First Philosophy:</span>{" "}
+                    Guaranteed privacy and zero paywalls. Every detail is curated for a premium, simplistic experience.
                   </p>
                 </div>
               </div>
@@ -1161,17 +1161,17 @@ export default function LandingPage() {
                 <span className="text-amber-600 font-medium">2</span>
                 <div>
                   <p className="text-foreground">
-                    <span className="font-semibold text-amber-600">Connect the dots:</span>{" "}
-                    From job boards, LinkedIn, or emails. When you&apos;re looking for something, ferm connects the dots you wouldn&apos;t.
+                    <span className="font-semibold text-amber-600">Compounding Efforts:</span>{" "}
+                    One follow-up or interview prep per day is all it takes to outpace the competition.
                   </p>
                 </div>
               </div>
             </div>
-            <div className="mt-12 py-6 border-t border-border">
-              <p className="text-lg italic text-amber-600/90">
-                &ldquo;Sometimes you read and highlight something but the timing isn&apos;t right. ferm helps brings it back when you&apos;re ready to learn from it.&rdquo;
-              </p>
-            </div>
+           <div className="mt-12 py-6 border-t border-border">
+  <p className="text-lg italic text-amber-600/90">
+    &ldquo;Luck isn’t a result of pure coincidence. It’s an underlying element that reaches only those who move on their will.&rdquo;
+  </p>
+</div>
           </div>
         </section>
 
