@@ -953,15 +953,15 @@ export default function LandingPage() {
                     >
                       <div className="flex items-start gap-4">
                         <span
-                          className={`shrink-0 text-sm font-semibold ${
+                          className={`shrink-0 text-base font-semibold sm:text-lg ${
                             isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                           }`}
                         >
                           {index + 1})
                         </span>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-foreground">{panel.title}</h3>
-                          <p className="mt-1 text-sm text-muted-foreground">{panel.description}</p>
+                          <h3 className="text-lg font-semibold text-foreground sm:text-xl">{panel.title}</h3>
+                          <p className="mt-1 text-base text-muted-foreground">{panel.description}</p>
                         </div>
                         <ChevronRight
                           className={`h-5 w-5 text-muted-foreground transition-transform ${isActive ? "rotate-90 text-foreground" : ""}`}
