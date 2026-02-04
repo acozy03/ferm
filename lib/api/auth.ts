@@ -18,6 +18,7 @@ const SAFE_HTTP_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
 const CSRF_COOKIE_NAME = "csrf-token"
 const CSRF_HEADER_NAME = "x-csrf-token"
 
+// Expects a csrf-token cookie (minted server-side) that matches the x-csrf-token header.
 export function requireCookieCsrf(request: NextRequest): AuthError | null {
   const authHeader = request.headers.get("authorization") || ""
   const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""

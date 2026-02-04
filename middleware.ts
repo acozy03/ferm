@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
 const PUBLIC_ROUTES = ["/landing", "/auth/callback", "/privacy"]
+const CSRF_COOKIE_NAME = "csrf-token"
+const CSRF_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 12
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -39,6 +41,9 @@ export async function middleware(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
+    if (req.cookies.get(CSRF_COOKIE_NAME)) {
+      res.cookies.delete(CSRF_COOKIE_NAME)
+    }
     // Build redirect and carry over cookies set on `res`
     const url = req.nextUrl.clone()
     url.pathname = "/landing"
@@ -49,6 +54,17 @@ export async function middleware(req: NextRequest) {
       redirect.cookies.set(c)
     }
     return redirect
+  }
+
+  if (!req.cookies.get(CSRF_COOKIE_NAME)) {
+    res.cookies.set({
+      name: CSRF_COOKIE_NAME,
+      value: crypto.randomUUID(),
+      httpOnly: false,
+      sameSite: "lax",
+      maxAge: CSRF_COOKIE_MAX_AGE_SECONDS,
+      secure: process.env.NODE_ENV === "production",
+    })
   }
 
   return res
