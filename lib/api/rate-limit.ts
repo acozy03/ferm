@@ -1,9 +1,14 @@
+import { Ratelimit } from "@upstash/ratelimit"
+import { Redis } from "@upstash/redis"
 import { NextResponse } from "next/server"
-
-const RATE_LIMIT_BUCKETS = new Map<string, { count: number; resetAt: number }>()
 
 const DEFAULT_WINDOW_MS = 60_000
 const DEFAULT_MAX_REQUESTS = 30
+const DEFAULT_PREFIX = "default"
+
+let cachedRedis: Redis | null = null
+let cachedInitError: string | null = null
+const cachedLimiters = new Map<string, Ratelimit>()
 
 type RateLimitConfig = {
   request: Request
@@ -19,6 +24,51 @@ type RateLimitResult = {
   remaining: number
   limit: number
   resetAt: number
+}
+
+function getRedisClient() {
+  if (cachedRedis || cachedInitError) {
+    return cachedRedis
+  }
+
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN
+
+  if (!redisUrl || !redisToken) {
+    cachedInitError = "Missing Upstash Redis configuration."
+    return null
+  }
+
+  cachedRedis = new Redis({ url: redisUrl, token: redisToken })
+  return cachedRedis
+}
+
+function getRateLimiter({
+  maxRequests,
+  windowMs,
+  keyPrefix,
+}: {
+  maxRequests: number
+  windowMs: number
+  keyPrefix: string
+}) {
+  const redis = getRedisClient()
+  if (!redis) return null
+
+  const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000))
+  const limiterKey = `${keyPrefix}:${maxRequests}:${windowSeconds}`
+  const cachedLimiter = cachedLimiters.get(limiterKey)
+  if (cachedLimiter) return cachedLimiter
+
+  const limiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(maxRequests, `${windowSeconds} s`),
+    analytics: false,
+    prefix: `ratelimit:${keyPrefix}`,
+  })
+
+  cachedLimiters.set(limiterKey, limiter)
+  return limiter
 }
 
 function getClientIp(request: Request): string {
@@ -37,47 +87,61 @@ function getClientIp(request: Request): string {
   return "unknown"
 }
 
-function evaluateRateLimit({
+async function evaluateRateLimit({
   request,
   userId,
   maxRequests = DEFAULT_MAX_REQUESTS,
   windowMs = DEFAULT_WINDOW_MS,
-  keyPrefix = "default",
+  keyPrefix = DEFAULT_PREFIX,
 }: RateLimitConfig): RateLimitResult {
   const ip = getClientIp(request)
-  const key = `${keyPrefix}:${userId}:${ip}`
+  const key = `${userId}:${ip}`
   const now = Date.now()
+  const limiter = getRateLimiter({ maxRequests, windowMs, keyPrefix })
 
-  let bucket = RATE_LIMIT_BUCKETS.get(key)
-  if (!bucket || now > bucket.resetAt) {
-    bucket = { count: 0, resetAt: now + windowMs }
-    RATE_LIMIT_BUCKETS.set(key, bucket)
-  }
-
-  if (bucket.count + 1 > maxRequests) {
-    const retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))
+  if (!limiter) {
     return {
-      allowed: false,
-      retryAfterSeconds,
-      remaining: 0,
+      allowed: true,
+      retryAfterSeconds: 0,
+      remaining: maxRequests,
       limit: maxRequests,
-      resetAt: bucket.resetAt,
+      resetAt: now + windowMs,
     }
   }
 
-  bucket.count += 1
+  try {
+    const result = await limiter.limit(key)
+    if (!result.success) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((result.reset - now) / 1000))
+      return {
+        allowed: false,
+        retryAfterSeconds,
+        remaining: 0,
+        limit: result.limit,
+        resetAt: result.reset,
+      }
+    }
 
-  return {
-    allowed: true,
-    retryAfterSeconds: 0,
-    remaining: Math.max(0, maxRequests - bucket.count),
-    limit: maxRequests,
-    resetAt: bucket.resetAt,
+    return {
+      allowed: true,
+      retryAfterSeconds: 0,
+      remaining: result.remaining,
+      limit: result.limit,
+      resetAt: result.reset,
+    }
+  } catch {
+    return {
+      allowed: true,
+      retryAfterSeconds: 0,
+      remaining: maxRequests,
+      limit: maxRequests,
+      resetAt: now + windowMs,
+    }
   }
 }
 
-export function enforceRateLimit(config: RateLimitConfig): NextResponse | null {
-  const result = evaluateRateLimit(config)
+export async function enforceRateLimit(config: RateLimitConfig): Promise<NextResponse | null> {
+  const result = await evaluateRateLimit(config)
   if (result.allowed) return null
 
   const response = NextResponse.json(

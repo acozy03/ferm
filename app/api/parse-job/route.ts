@@ -49,9 +49,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const withRequestId = (response: NextResponse) => {
+    response.headers.set("X-Request-Id", requestId);
+    return response;
+  };
+
   const csrfError = requireCookieCsrf(request);
   if (csrfError) {
-    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status });
+    return withRequestId(
+      NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status }),
+    );
   }
 
   // --- Auth (Supabase) ---
@@ -59,7 +67,7 @@ export async function POST(request: NextRequest) {
   const authHeader = hdrs.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!token) {
-    return NextResponse.json({ error: "Missing token" }, { status: 401 });
+    return withRequestId(NextResponse.json({ error: "Missing token" }, { status: 401 }));
   }
 
   const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
@@ -70,21 +78,21 @@ export async function POST(request: NextRequest) {
     cache: "no-store",
   });
   if (!userResp.ok) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withRequestId(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
   }
   const user = (await userResp.json()) as { id: string };
   if (!user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withRequestId(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
   }
 
-  const rateLimitResponse = enforceRateLimit({
+  const rateLimitResponse = await enforceRateLimit({
     request,
     userId: user.id,
     keyPrefix: "parse-job",
   });
   if (rateLimitResponse) {
     rateLimitResponse.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
-    return rateLimitResponse;
+    return withRequestId(rateLimitResponse);
   }
 
   const supabase = createClient(
@@ -95,9 +103,11 @@ export async function POST(request: NextRequest) {
 
   const { userKey, sharedKey } = await resolveOpenAIKeys({ request, supabase, userId: user.id });
   if (!userKey && !sharedKey) {
-    const response = NextResponse.json(
+    const response = withRequestId(
+      NextResponse.json(
       { error: "The service is not configured with an OpenAI API key." },
       { status: 500 },
+    ),
     );
     response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
     return response;
@@ -112,7 +122,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (usageError && usageError.code !== "PGRST116") {
-    return NextResponse.json({ error: "Unable to check usage." }, { status: 500 });
+    return withRequestId(NextResponse.json({ error: "Unable to check usage." }, { status: 500 }));
   }
 
   const usedToday = usageRow?.job_scrapes_count ?? 0;
@@ -128,9 +138,11 @@ export async function POST(request: NextRequest) {
       apiKey = userKey;
       isUserProvided = true;
     } else {
-      const res = NextResponse.json(
-        { error: "Daily usage limit reached." },
-        { status: 429 },
+      const res = withRequestId(
+        NextResponse.json(
+          { error: "Daily usage limit reached." },
+          { status: 429 },
+        ),
       );
       res.headers.set("Cache-Control", "no-store");
       res.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
@@ -148,13 +160,15 @@ export async function POST(request: NextRequest) {
   try {
     bodyUnknown = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return withRequestId(NextResponse.json({ error: "Invalid request body" }, { status: 400 }));
   }
   const parsedBody = RequestBodySchema.safeParse(bodyUnknown);
   if (!parsedBody.success) {
-    return NextResponse.json(
-      { error: "Invalid input data", details: parsedBody.error.flatten() },
-      { status: 400 }
+    return withRequestId(
+      NextResponse.json(
+        { error: "Invalid input data", details: parsedBody.error.flatten() },
+        { status: 400 },
+      ),
     );
   }
   const { raw_text, job_url } = parsedBody.data;
@@ -238,9 +252,12 @@ URL: ${job_url}
 
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
-      return NextResponse.json(
-        { error: "LLM API call failed", details: errorText },
-        { status: openaiResponse.status }
+      console.error("LLM API call failed", { requestId, status: openaiResponse.status, errorText });
+      return withRequestId(
+        NextResponse.json(
+          { error: "LLM request failed" },
+          { status: openaiResponse.status },
+        ),
       );
     }
 
@@ -248,21 +265,27 @@ URL: ${job_url}
     const messageContent = llmJson?.choices?.[0]?.message?.content;
     const usage = llmJson?.usage ?? null;
     if (!messageContent) {
-      return NextResponse.json({ error: "LLM response format is invalid" }, { status: 500 });
+      return withRequestId(
+        NextResponse.json({ error: "LLM response format is invalid" }, { status: 500 }),
+      );
     }
 
     let raw;
     try {
       raw = JSON.parse(messageContent);
     } catch {
-      return NextResponse.json({ error: "LLM did not return valid JSON" }, { status: 500 });
+      return withRequestId(
+        NextResponse.json({ error: "LLM did not return valid JSON" }, { status: 500 }),
+      );
     }
     const validated = LLMResponseSchema.safeParse(raw);
     if (!validated.success) {
       // If LLM messed up the shape, treat as invalid posting with reason
-      const resMalformed = NextResponse.json(
-        { is_valid_job_posting: false, reason: "LLM returned malformed data", usage, validated },
-        { status: 200 }
+      const resMalformed = withRequestId(
+        NextResponse.json(
+          { is_valid_job_posting: false, reason: "LLM returned malformed data", usage, validated },
+          { status: 200 },
+        ),
       );
       resMalformed.headers.set("Cache-Control", "no-store");
       resMalformed.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
@@ -276,8 +299,8 @@ URL: ${job_url}
       // ... DO UPDATE SET job_scrapes_count = least(llm_usage.job_scrapes_count + 1, 20) RETURNING job_scrapes_count;
       const { data: incCount, error: incErr } = await supabase.rpc("increment_job_scrapes_usage");
       if (incErr) {
-        console.error("increment_job_scrapes_usage error:", incErr);
-        return NextResponse.json({ error: "Usage update failed" }, { status: 500 });
+        console.error("increment_job_scrapes_usage error:", { requestId, incErr });
+        return withRequestId(NextResponse.json({ error: "Usage update failed" }, { status: 500 }));
       }
 
       // Determine new count/remaining
@@ -301,9 +324,11 @@ URL: ${job_url}
     }
 
     // Respond with parsed data + usage headers for instant UI update
-    const res = NextResponse.json(
-      { ...validated.data, usage },
-      { status: 200 }
+    const res = withRequestId(
+      NextResponse.json(
+        { ...validated.data, usage },
+        { status: 200 },
+      ),
     );
     res.headers.set("Cache-Control", "no-store");
     res.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
@@ -316,7 +341,9 @@ URL: ${job_url}
     }
     return res;
   } catch (error) {
-    console.error("parse-job error:", error);
-    return NextResponse.json({ error: "Internal server error during parsing" }, { status: 500 });
+    console.error("parse-job error:", { requestId, error });
+    return withRequestId(
+      NextResponse.json({ error: "Internal server error during parsing" }, { status: 500 }),
+    );
   }
 }

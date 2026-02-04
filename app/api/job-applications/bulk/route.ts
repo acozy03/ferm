@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import type { BulkUpdateJobApplicationsData } from "@/lib/types/api"
 import type { CreateJobApplicationData } from "@/lib/types/database"
@@ -8,6 +9,48 @@ import { requireCookieCsrf } from "@/lib/api/auth"
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const MAX_BODY_CHARS = 100_000
+const MAX_BODY_BYTES = 100_000
+const MAX_LONG_TEXT_LENGTH = 8_192
+const MAX_SHORT_TEXT_LENGTH = 255
+const MAX_STATUS_LENGTH = 64
+
+const BulkUpdateSchema = z
+  .object({
+    ids: z.array(z.string().uuid()).min(1),
+    updates: z
+      .object({
+        company_name: z.string().min(1).max(MAX_SHORT_TEXT_LENGTH).optional(),
+        position_title: z.string().min(1).max(MAX_SHORT_TEXT_LENGTH).optional(),
+        job_url: z.string().url().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+        location: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+        salary_range: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+        employment_type: z.enum(["Full-time", "Part-time", "Contract", "Internship"]).optional(),
+        status: z.string().max(MAX_STATUS_LENGTH).optional(),
+        priority: z.enum(["Low", "Medium", "High"]).optional(),
+        application_date: z.string().max(32).optional(),
+        notes: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+        contact_person: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+        contact_email: z.string().email().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+        job_description: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+        qualifications: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+        job_responsibilities: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+      })
+      .strict(),
+  })
+  .strict()
+
+const BulkDeleteSchema = z
+  .object({
+    ids: z.array(z.string().uuid()).min(1),
+  })
+  .strict()
+
+function truncateString(value: string | null | undefined, maxLength: number) {
+  if (value == null) return value
+  return value.length > maxLength ? value.slice(0, maxLength) : value
+}
 
 export async function PUT(request: NextRequest) {
   try {
@@ -29,7 +72,29 @@ export async function PUT(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    const body: BulkUpdateJobApplicationsData = await request.json()
+    const rawBody = await request.text()
+
+    if (rawBody.length > MAX_BODY_CHARS || Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+    }
+
+    let parsedBody: unknown
+
+    try {
+      parsedBody = JSON.parse(rawBody)
+    } catch (error) {
+      console.error("Bulk update JSON parse failed", error)
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
+
+    const validation = BulkUpdateSchema.safeParse(parsedBody)
+
+    if (!validation.success) {
+      console.error("Bulk update validation failed", validation.error)
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
+
+    const body: BulkUpdateJobApplicationsData = validation.data
     const { ids, updates } = body
 
     if (!ids || ids.length === 0) {
@@ -51,7 +116,10 @@ export async function PUT(request: NextRequest) {
     const mutableUpdates = sanitizedUpdates as Record<string, string | null | undefined>
     for (const field of nullableFields) {
       if (field in mutableUpdates) {
-        mutableUpdates[field as string] = toNullableString(mutableUpdates[field as string])
+        mutableUpdates[field as string] = truncateString(
+          toNullableString(mutableUpdates[field as string]),
+          MAX_LONG_TEXT_LENGTH,
+        )
       }
     }
     delete (sanitizedUpdates as { user_id?: string }).user_id
@@ -169,7 +237,29 @@ export async function DELETE(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    const { ids }: { ids: string[] } = await request.json()
+    const rawBody = await request.text()
+
+    if (rawBody.length > MAX_BODY_CHARS || Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+    }
+
+    let parsedBody: unknown
+
+    try {
+      parsedBody = JSON.parse(rawBody)
+    } catch (error) {
+      console.error("Bulk delete JSON parse failed", error)
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
+
+    const validation = BulkDeleteSchema.safeParse(parsedBody)
+
+    if (!validation.success) {
+      console.error("Bulk delete validation failed", validation.error)
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
+
+    const { ids }: { ids: string[] } = validation.data
 
     if (!ids || ids.length === 0) {
       return NextResponse.json({ error: "No application IDs provided" }, { status: 400 })

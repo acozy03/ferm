@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { requireCookieCsrf } from "@/lib/api/auth"
 import type { UpdateJobApplicationData } from "@/lib/types/database"
@@ -6,6 +7,37 @@ import { toNullableString } from "@/lib/utils"
 import { isStatusProgressionAllowed, normalizeStatusValue, parseStatus } from "@/lib/status"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+
+const MAX_BODY_CHARS = 100_000
+const MAX_BODY_BYTES = 100_000
+const MAX_LONG_TEXT_LENGTH = 8_192
+const MAX_SHORT_TEXT_LENGTH = 255
+const MAX_STATUS_LENGTH = 64
+
+const UpdateJobApplicationSchema = z
+  .object({
+    company_name: z.string().min(1).max(MAX_SHORT_TEXT_LENGTH).optional(),
+    position_title: z.string().min(1).max(MAX_SHORT_TEXT_LENGTH).optional(),
+    job_url: z.string().url().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    location: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    salary_range: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    employment_type: z.enum(["Full-time", "Part-time", "Contract", "Internship"]).optional(),
+    status: z.string().max(MAX_STATUS_LENGTH).optional(),
+    priority: z.enum(["Low", "Medium", "High"]).optional(),
+    application_date: z.string().max(32).optional(),
+    notes: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+    contact_person: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    contact_email: z.string().email().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    job_description: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+    qualifications: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+    job_responsibilities: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+  })
+  .strict()
+
+function truncateString(value: string | null | undefined, maxLength: number) {
+  if (value == null) return value
+  return value.length > maxLength ? value.slice(0, maxLength) : value
+}
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -90,7 +122,29 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     userId = user.id
-    const body: Partial<UpdateJobApplicationData> = await request.json()
+    const rawBody = await request.text()
+
+    if (rawBody.length > MAX_BODY_CHARS || Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+    }
+
+    let parsedBody: unknown
+
+    try {
+      parsedBody = JSON.parse(rawBody)
+    } catch (error) {
+      console.error("Job application update JSON parse failed", error)
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
+
+    const validation = UpdateJobApplicationSchema.safeParse(parsedBody)
+
+    if (!validation.success) {
+      console.error("Job application update validation failed", validation.error)
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    }
+
+    const body: Partial<UpdateJobApplicationData> = validation.data
     const updates: Partial<UpdateJobApplicationData> = { ...body }
     delete (updates as { id?: string }).id
     delete (updates as { user_id?: string }).user_id
@@ -113,7 +167,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const mutableUpdates = sanitizedUpdates as Record<string, string | null | undefined>
     for (const field of nullableFields) {
       if (field in mutableUpdates) {
-        mutableUpdates[field as string] = toNullableString(mutableUpdates[field as string])
+        mutableUpdates[field as string] = truncateString(
+          toNullableString(mutableUpdates[field as string]),
+          MAX_LONG_TEXT_LENGTH,
+        )
       }
     }
 

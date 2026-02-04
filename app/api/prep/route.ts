@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
   }
 
-  const rateLimitResponse = enforceRateLimit({
+  const rateLimitResponse = await enforceRateLimit({
     request,
     userId: auth.userId,
     keyPrefix: "prep",

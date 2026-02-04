@@ -65,6 +65,37 @@ const ResumeScoreSchema = z.object({
   summary: z.string().optional().nullable(),
 })
 
+const MAX_BODY_CHARS = 100_000
+const MAX_BODY_BYTES = 100_000
+const MAX_LONG_TEXT_LENGTH = 8_192
+const MAX_SHORT_TEXT_LENGTH = 255
+const MAX_STATUS_LENGTH = 64
+
+const CreateJobApplicationSchema = z
+  .object({
+    company_name: z.string().min(1).max(MAX_SHORT_TEXT_LENGTH),
+    position_title: z.string().min(1).max(MAX_SHORT_TEXT_LENGTH),
+    job_url: z.string().url().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    location: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    salary_range: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    employment_type: z.enum(["Full-time", "Part-time", "Contract", "Internship"]).optional(),
+    status: z.string().max(MAX_STATUS_LENGTH).optional(),
+    priority: z.enum(["Low", "Medium", "High"]).optional(),
+    application_date: z.string().max(32).optional(),
+    notes: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+    contact_person: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    contact_email: z.string().email().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
+    job_description: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+    qualifications: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+    job_responsibilities: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
+  })
+  .strict()
+
+function truncateString(value: string | null | undefined, maxLength: number) {
+  if (value == null) return value
+  return value.length > maxLength ? value.slice(0, maxLength) : value
+}
+
 interface ResumeScoringPayload {
   job: {
     company_name: string
@@ -334,20 +365,42 @@ export async function POST(request: NextRequest) {
     }
 
     const openaiApiKey = keyResolution.apiKey
-    const body: CreateJobApplicationData = await request.json()
-    
+    const rawBody = await request.text()
+
+    if (rawBody.length > MAX_BODY_CHARS || Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413, headers: corsHeaders })
+    }
+
+    let parsedBody: unknown
+
+    try {
+      parsedBody = JSON.parse(rawBody)
+    } catch (error) {
+      console.error("Job application JSON parse failed", error)
+      return NextResponse.json({ error: "Invalid input" }, { status: 400, headers: corsHeaders })
+    }
+
+    const validation = CreateJobApplicationSchema.safeParse(parsedBody)
+
+    if (!validation.success) {
+      console.error("Job application validation failed", validation.error)
+      return NextResponse.json({ error: "Invalid input" }, { status: 400, headers: corsHeaders })
+    }
+
+    const body: CreateJobApplicationData = validation.data
+
     const insertData = {
       ...body,
       user_id: userId,
       location: toNullableString(body.location ?? null),
       salary_range: toNullableString(body.salary_range ?? null),
-      notes: toNullableString(body.notes ?? null),
+      notes: truncateString(toNullableString(body.notes ?? null), MAX_LONG_TEXT_LENGTH),
       job_url: toNullableString(body.job_url ?? null),
       contact_email: toNullableString(body.contact_email ?? null),
       contact_person: toNullableString(body.contact_person ?? null),
-      job_description: toNullableString(body.job_description ?? null),
-      qualifications: toNullableString(body.qualifications ?? null),
-      job_responsibilities: toNullableString(body.job_responsibilities ?? null),
+      job_description: truncateString(toNullableString(body.job_description ?? null), MAX_LONG_TEXT_LENGTH),
+      qualifications: truncateString(toNullableString(body.qualifications ?? null), MAX_LONG_TEXT_LENGTH),
+      job_responsibilities: truncateString(toNullableString(body.job_responsibilities ?? null), MAX_LONG_TEXT_LENGTH),
       resume_match_score: null as number | null,
       resume_match_summary: null as string | null
     }
