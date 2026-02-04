@@ -332,7 +332,7 @@ return (
                     </div>
                     <Button asChild variant="outline" size="sm">
                       <a
-                        href="https://example.com/chrome-extension"
+                        href="https://chromewebstore.google.com/detail/fermdev-job-loader/akgppdhffcfpeipmapfbgjcmdlkhkfpp"
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -359,7 +359,7 @@ return (
                       </p>
                     </div>
                     <Button asChild size="sm">
-                      <a href="https://example.com/support" target="_blank" rel="noreferrer">
+                      <a href="https://ko-fi.com/adriancosentino" target="_blank" rel="noreferrer">
                         <Heart className="mr-1.5 size-3.5" />
                         Donate
                       </a>
