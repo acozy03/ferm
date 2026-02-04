@@ -34,7 +34,24 @@ const ALLOWED_JOB_BOARD_HOSTS = new Set([
   "icims.com",
 ])
 
-const ENABLE_JOB_BOARD_ALLOWLIST = process.env.JOB_BOARD_ALLOWLIST === "true"
+const DISABLE_JOB_BOARD_ALLOWLIST = process.env.JOB_BOARD_ALLOWLIST === "false"
+
+function getConfiguredJobBoardHosts() {
+  const configured = new Set(ALLOWED_JOB_BOARD_HOSTS)
+  const extraHosts = process.env.JOB_BOARD_ALLOWLIST_HOSTS
+  if (!extraHosts) {
+    return configured
+  }
+
+  for (const host of extraHosts.split(",")) {
+    const trimmed = host.trim().toLowerCase()
+    if (trimmed) {
+      configured.add(trimmed)
+    }
+  }
+
+  return configured
+}
 
 function isPrivateIpv4(ip: string) {
   const parts = ip.split(".").map((segment) => Number.parseInt(segment, 10))
@@ -89,14 +106,15 @@ function isBlockedHost(hostname: string) {
 }
 
 function isAllowedJobBoard(hostname: string) {
-  if (!ENABLE_JOB_BOARD_ALLOWLIST) {
+  if (DISABLE_JOB_BOARD_ALLOWLIST) {
     return true
   }
   const lower = hostname.toLowerCase()
-  if (ALLOWED_JOB_BOARD_HOSTS.has(lower)) {
+  const configuredHosts = getConfiguredJobBoardHosts()
+  if (configuredHosts.has(lower)) {
     return true
   }
-  for (const allowed of ALLOWED_JOB_BOARD_HOSTS) {
+  for (const allowed of configuredHosts) {
     if (lower.endsWith(`.${allowed}`)) {
       return true
     }
@@ -140,6 +158,7 @@ async function assertUrlIsSafe(url: URL) {
   }
 
   if (!isAllowedJobBoard(url.hostname)) {
+    console.warn("Rejected job board host (not allowlisted).", { hostname: url.hostname })
     throw new Error("not-allowlisted")
   }
 
@@ -263,7 +282,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const reason = (error as Error).message
     if (reason === "not-allowlisted") {
-      return NextResponse.json({ error: "Job board host is not allowlisted" }, { status: 400 })
+      return NextResponse.json(
+        {
+          error:
+            "Job board host is not allowlisted. Configure JOB_BOARD_ALLOWLIST_HOSTS or set JOB_BOARD_ALLOWLIST=false to disable the allowlist.",
+        },
+        { status: 400 },
+      )
     }
     if (reason === "dns-failed") {
       return NextResponse.json({ error: "Unable to resolve hostname" }, { status: 400 })

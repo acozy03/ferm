@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { resolveOpenAIKeys, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys";
 import { requireCookieCsrf } from "@/lib/api/auth";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 const DAILY_LIMIT = 20;
 const MAX_RAW_TEXT_LENGTH = 60_000;
@@ -74,6 +75,16 @@ export async function POST(request: NextRequest) {
   const user = (await userResp.json()) as { id: string };
   if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateLimitResponse = enforceRateLimit({
+    request,
+    userId: user.id,
+    keyPrefix: "parse-job",
+  });
+  if (rateLimitResponse) {
+    rateLimitResponse.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`);
+    return rateLimitResponse;
   }
 
   const supabase = createClient(

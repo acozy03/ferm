@@ -49,6 +49,16 @@ function addVaryHeader(response: NextResponse, value: string) {
 }
 
 const RESUME_SCORING_TIMEOUT_MS = 15_000
+const MAX_JOB_APPLICATIONS_LIMIT = 100
+const ALLOWED_JOB_APPLICATION_SORT_FIELDS = new Set([
+  "created_at",
+  "updated_at",
+  "application_date",
+  "company_name",
+  "position_title",
+  "status",
+  "priority",
+])
 
 const ResumeScoreSchema = z.object({
   score: z.number(),
@@ -166,8 +176,10 @@ export async function GET(request: NextRequest) {
     const { supabase, userId } = auth
     const { searchParams } = new URL(request.url)
 
-    const page = Number.parseInt(searchParams.get("page") || "1")
-    const limit = Number.parseInt(searchParams.get("limit") || "10")
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
+    const page = pageParam ? Number.parseInt(pageParam, 10) : 1
+    const requestedLimit = limitParam ? Number.parseInt(limitParam, 10) : 10
     const include_interviews = searchParams.get("include_interviews") === "true"
     const include_activity = searchParams.get("include_activity") === "true"
     const include_status_history = searchParams.get("include_status_history") === "true"
@@ -183,6 +195,20 @@ export async function GET(request: NextRequest) {
     // Sort
     const sort_field = searchParams.get("sort_field") || "created_at"
     const sort_direction = (searchParams.get("sort_direction") || "desc").toLowerCase() === "asc" ? "asc" : "desc"
+
+    if (!Number.isInteger(page) || page < 1) {
+      return NextResponse.json({ error: "Invalid page parameter." }, { status: 400, headers: corsHeaders })
+    }
+
+    if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
+      return NextResponse.json({ error: "Invalid limit parameter." }, { status: 400, headers: corsHeaders })
+    }
+
+    if (!ALLOWED_JOB_APPLICATION_SORT_FIELDS.has(sort_field)) {
+      return NextResponse.json({ error: "Invalid sort_field parameter." }, { status: 400, headers: corsHeaders })
+    }
+
+    const limit = Math.min(requestedLimit, MAX_JOB_APPLICATIONS_LIMIT)
 
     let query = supabase
       .from("job_applications")

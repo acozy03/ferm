@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
+import { enforceRateLimit } from "@/lib/api/rate-limit"
 import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 import { getLatestResumeText } from "@/lib/resume/server"
 
@@ -33,6 +34,16 @@ export async function POST(request: NextRequest) {
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
+  }
+
+  const rateLimitResponse = enforceRateLimit({
+    request,
+    userId: auth.userId,
+    keyPrefix: "follow-ups-draft",
+  })
+  if (rateLimitResponse) {
+    rateLimitResponse.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+    return rateLimitResponse
   }
 
   const keyResolution = await resolveOpenAIApiKey({
@@ -191,6 +202,16 @@ export async function PATCH(request: NextRequest) {
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
+  }
+
+  const rateLimitResponse = enforceRateLimit({
+    request,
+    userId: auth.userId,
+    keyPrefix: "follow-ups-draft",
+  })
+  if (rateLimitResponse) {
+    rateLimitResponse.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+    return rateLimitResponse
   }
 
   const payload = UpdateDraftSchema.safeParse(await request.json())

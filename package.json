@@ -45,6 +45,8 @@
         "@ricky0123/vad-web": "^0.0.30",
         "@supabase/ssr": "latest",
         "@supabase/supabase-js": "latest",
+        "@upstash/ratelimit": "^2.0.8",
+        "@upstash/redis": "^1.36.2",
         "@vercel/analytics": "latest",
         "autoprefixer": "^10.4.20",
         "circular-audio-wave": "^1.0.1",
