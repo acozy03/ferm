@@ -55,6 +55,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const scheduledDate = mergedInterview.scheduled_date
       ? new Date(mergedInterview.scheduled_date)
       : null
+    const currentScheduledDate = currentInterview.scheduled_date
+      ? new Date(currentInterview.scheduled_date)
+      : null
 
     if (!parsedRound) {
       return NextResponse.json({ error: "Invalid interview round" }, { status: 400 })
@@ -64,7 +67,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Invalid scheduled date" }, { status: 400 })
     }
 
-    if (mergedInterview.status === "Scheduled" && scheduledDate.getTime() < Date.now()) {
+    const isScheduledDateUnchanged =
+      currentScheduledDate &&
+      !Number.isNaN(currentScheduledDate.getTime()) &&
+      currentScheduledDate.getTime() === scheduledDate.getTime()
+
+    const shouldValidateScheduledFuture =
+      mergedInterview.status === "Scheduled" &&
+      !(isScheduledDateUnchanged && currentInterview.status === "Scheduled")
+
+    if (shouldValidateScheduledFuture && scheduledDate.getTime() < Date.now()) {
       return NextResponse.json(
         { error: "Scheduled interviews must use a future date and time." },
         { status: 400 },

@@ -424,6 +424,15 @@ export default function InterviewsPage() {
     [formState, scheduledDate, scheduledTime],
   )
 
+  const isScheduleEdited = useMemo(() => {
+    if (!isEditing || !initialFormSnapshot) return true
+
+    return (
+      initialFormSnapshot.scheduledDate !== currentFormSnapshot.scheduledDate ||
+      initialFormSnapshot.scheduledTime !== currentFormSnapshot.scheduledTime
+    )
+  }, [currentFormSnapshot.scheduledDate, currentFormSnapshot.scheduledTime, initialFormSnapshot, isEditing])
+
   const hasChanges = useMemo(() => {
     if (!initialFormSnapshot) return true
 
@@ -499,7 +508,7 @@ export default function InterviewsPage() {
       return
     }
 
-    if (formState.status === "Scheduled" && scheduledDateTime.getTime() < Date.now()) {
+    if (formState.status === "Scheduled" && isScheduleEdited && scheduledDateTime.getTime() < Date.now()) {
       toast({
         title: "Pick a future time",
         description: scheduledInPastMessage,
@@ -562,7 +571,7 @@ export default function InterviewsPage() {
       const sequencingConflict =
         errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled")
 
-      if (message === scheduledInPastMessage) {
+      if (message === scheduledInPastMessage && isScheduleEdited) {
         toast({
           title: "Pick a future time",
           description: scheduledInPastMessage,
