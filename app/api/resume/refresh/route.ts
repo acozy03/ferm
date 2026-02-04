@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { refreshResumeText } from "@/lib/resume/server"
+import { requireCookieCsrf } from "@/lib/api/auth"
 
 const BodySchema = z
   .object({
@@ -14,7 +15,12 @@ const BodySchema = z
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
+
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -63,7 +69,12 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
+
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },

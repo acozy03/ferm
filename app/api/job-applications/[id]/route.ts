@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { requireCookieCsrf } from "@/lib/api/auth"
 import type { UpdateJobApplicationData } from "@/lib/types/database"
 import { toNullableString } from "@/lib/utils"
 import { isStatusProgressionAllowed, normalizeStatusValue, parseStatus } from "@/lib/status"
@@ -70,6 +71,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   let sanitizedUpdates: Partial<UpdateJobApplicationData> = {}
   let userId: string | null = null
   try {
+    const csrfError = requireCookieCsrf(request)
+    if (csrfError) {
+      return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+    }
+
     const supabase = await createServerSupabaseClient()
     const {
       data: { user },
@@ -238,6 +244,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const csrfError = requireCookieCsrf(request)
+    if (csrfError) {
+      return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+    }
+
     const supabase = await createServerSupabaseClient()
     const {
       data: { user },

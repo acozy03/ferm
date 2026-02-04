@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { z } from "zod"
 import { isIP } from "node:net"
 import { lookup } from "node:dns/promises"
+
+import { requireCookieCsrf } from "@/lib/api/auth"
 
 const RequestBodySchema = z.object({
   job_url: z.string().url(),
@@ -206,7 +208,12 @@ function parseHeaderNumber(value: string | null) {
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
+
   const hdrs = headers()
   const authHeader = hdrs.get("authorization") || ""
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
-import { getAuthedClient } from "@/lib/api/auth"
+import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
 import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 import { getLatestResumeText } from "@/lib/resume/server"
 
@@ -25,6 +25,10 @@ const UpdateDraftSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
 
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
@@ -179,6 +183,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
+
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })

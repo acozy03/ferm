@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { requireCookieCsrf } from "@/lib/api/auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -60,8 +61,13 @@ async function deleteUserData(userId: string) {
   }
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const csrfError = requireCookieCsrf(request)
+    if (csrfError) {
+      return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+    }
+
     const supabase = await createServerSupabaseClient()
     const {
       data: { user },

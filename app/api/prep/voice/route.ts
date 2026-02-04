@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import Groq from "groq-sdk"
 
-import { getAuthedClient } from "@/lib/api/auth"
+import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
 import { buildPrepContext } from "../context"
 
 type ChatHistory = { role: string; content: string }[]
@@ -63,6 +63,11 @@ async function synthesizeCartesiaSpeech(text: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
+
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })

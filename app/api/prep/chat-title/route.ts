@@ -3,7 +3,7 @@ import OpenAI from "openai"
 import { z } from "zod"
 
 import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
-import { getAuthedClient } from "@/lib/api/auth"
+import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
 
 const BodySchema = z.object({
   chatId: z.string().uuid(),
@@ -29,6 +29,11 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   let payload: z.infer<typeof BodySchema>
+
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
 
   try {
     payload = BodySchema.parse(await request.json())

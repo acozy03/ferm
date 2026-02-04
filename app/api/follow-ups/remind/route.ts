@@ -3,7 +3,7 @@ import { format } from "date-fns"
 import { z } from "zod"
 import { Resend } from "resend"
 
-import { getAuthedClient } from "@/lib/api/auth"
+import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -105,6 +105,11 @@ return `<!doctype html>
 </html>`}
 
 export async function POST(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
+
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import type { UpdateInterviewData } from "@/lib/types/database"
+import { requireCookieCsrf } from "@/lib/api/auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -10,6 +11,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   const { id } = params
 
   try {
+    const csrfError = requireCookieCsrf(request)
+    if (csrfError) {
+      return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+    }
+
     const supabase = await createServerSupabaseClient()
     const {
       data: { user },
@@ -152,6 +158,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   const { id } = params
 
   try {
+    const csrfError = requireCookieCsrf(request)
+    if (csrfError) {
+      return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+    }
+
     const supabase = await createServerSupabaseClient()
     const {
       data: { user },

@@ -4,12 +4,18 @@ import type { BulkUpdateJobApplicationsData } from "@/lib/types/api"
 import type { CreateJobApplicationData } from "@/lib/types/database"
 import { toNullableString } from "@/lib/utils"
 import { isStatusProgressionAllowed, normalizeStatusValue, parseStatus } from "@/lib/status"
+import { requireCookieCsrf } from "@/lib/api/auth"
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function PUT(request: NextRequest) {
   try {
+    const csrfError = requireCookieCsrf(request)
+    if (csrfError) {
+      return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+    }
+
     const supabase = await createServerSupabaseClient()
     const {
       data: { user },
@@ -145,6 +151,11 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const csrfError = requireCookieCsrf(request)
+    if (csrfError) {
+      return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+    }
+
     const supabase = await createServerSupabaseClient()
     const {
       data: { user },

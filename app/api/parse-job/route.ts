@@ -1,9 +1,10 @@
 // app/api/parse-job/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { resolveOpenAIKeys, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys";
+import { requireCookieCsrf } from "@/lib/api/auth";
 
 const DAILY_LIMIT = 20;
 const MAX_RAW_TEXT_LENGTH = 60_000;
@@ -46,7 +47,12 @@ const LLMResponseSchema = z.object({
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request);
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status });
+  }
+
   // --- Auth (Supabase) ---
   const hdrs = headers();
   const authHeader = hdrs.get("authorization") || "";

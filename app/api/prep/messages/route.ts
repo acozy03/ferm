@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
-import { getAuthedClient } from "@/lib/api/auth"
+import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
 
 const AppendSchema = z.object({
   chatId: z.string().uuid(),
@@ -61,6 +61,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
+
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
@@ -116,6 +121,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
+
   const auth = await getAuthedClient(request)
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
