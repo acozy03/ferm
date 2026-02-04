@@ -22,6 +22,7 @@ import type { CreateJobApplicationData, JobApplicationFilters, JobApplicationSor
 import { useSettings } from "@/components/settings-provider"
 import { ApplicationActionsMenu } from "@/components/application-actions-menu"
 import { defaultViewOptions } from "@/lib/settings"
+import { apiFetch } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 import { getDateOrNull } from "@/lib/date"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
@@ -319,7 +320,7 @@ export default function Dashboard() {
 
   const handleAddApplication = async (application: CreateJobApplicationData) => {
     try {
-      const response = await fetch("/api/job-applications", {
+      const response = await apiFetch("/api/job-applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(application),
@@ -355,7 +356,7 @@ export default function Dashboard() {
 
   const handleBulkStatusUpdate = async (status: string) => {
     try {
-      const response = await fetch("/api/job-applications/bulk", {
+      const response = await apiFetch("/api/job-applications/bulk", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -375,7 +376,7 @@ export default function Dashboard() {
 
   const handleBulkDelete = async () => {
     try {
-      const response = await fetch("/api/job-applications/bulk", {
+      const response = await apiFetch("/api/job-applications/bulk", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -397,7 +398,7 @@ export default function Dashboard() {
 
   const handleStatusChange = async (applicationId: string, status: string, note?: string) => {
     try {
-      const response = await fetch(`/api/job-applications/${applicationId}`, {
+      const response = await apiFetch(`/api/job-applications/${applicationId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

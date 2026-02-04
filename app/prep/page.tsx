@@ -34,6 +34,7 @@ import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 import type { JobApplicationWithInterviews, PrepChat, PrepMessage } from "@/lib/types/database"
 import { useSupabase } from "@/components/supabase-provider"
+import { apiFetch } from "@/lib/fetcher"
 
 const GENERAL_INTERVIEW_VALUE = "general-prep"
 
@@ -586,7 +587,7 @@ export default function PrepPage() {
 
   const persistChatTitle = useCallback(async (chatId: string, title: string) => {
     try {
-      const response = await fetch("/api/prep/chats", {
+      const response = await apiFetch("/api/prep/chats", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: chatId, title }),
@@ -620,7 +621,7 @@ export default function PrepPage() {
       setTitleDrafts((previous) => ({ ...previous, [chatId]: previous[chatId] ?? "New chat" }))
 
       try {
-        const response = await fetch("/api/prep/chat-title", {
+        const response = await apiFetch("/api/prep/chat-title", {
           method: "POST",
           signal: controller.signal,
           headers: { "Content-Type": "application/json" },
@@ -675,7 +676,9 @@ export default function PrepPage() {
       titleStreamControllersRef.current[chatId]?.abort()
 
       try {
-        const response = await fetch(`/api/prep/chats?chatId=${encodeURIComponent(chatId)}`, { method: "DELETE" })
+        const response = await apiFetch(`/api/prep/chats?chatId=${encodeURIComponent(chatId)}`, {
+          method: "DELETE",
+        })
 
         if (!response.ok) {
           const errorPayload = await response.json().catch(() => ({ error: "Unable to delete chat." }))
@@ -716,7 +719,7 @@ export default function PrepPage() {
     setChatError(null)
 
     try {
-      const response = await fetch("/api/prep/chats", {
+      const response = await apiFetch("/api/prep/chats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interviewId: selectedInterviewId }),
@@ -792,7 +795,7 @@ export default function PrepPage() {
         setMessages([])
       }
 
-      const appendResponse = await fetch("/api/prep/messages", {
+      const appendResponse = await apiFetch("/api/prep/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -834,7 +837,7 @@ export default function PrepPage() {
         void streamChatTitle(chatId, history)
       }
 
-      const response = await fetch("/api/prep", {
+      const response = await apiFetch("/api/prep", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -896,7 +899,7 @@ export default function PrepPage() {
           delete next[chatId!]
           return next
         })
-        void fetch(`/api/prep/chats?chatId=${encodeURIComponent(chatId)}`, { method: "DELETE" })
+        void apiFetch(`/api/prep/chats?chatId=${encodeURIComponent(chatId)}`, { method: "DELETE" })
       }
     } finally {
       setIsGenerating(false)
@@ -1098,7 +1101,7 @@ export default function PrepPage() {
         )
       }
 
-      const response = await fetch("/api/prep/voice", {
+      const response = await apiFetch("/api/prep/voice", {
         method: "POST",
         headers: undefined,
         body: formData,

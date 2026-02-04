@@ -22,6 +22,7 @@ import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialo
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/fetcher"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
@@ -267,7 +268,7 @@ export default function ResumePage() {
         let syncErrorMessage: string | null = null
 
         try {
-          const response = await fetch("/api/resume/refresh", {
+          const response = await apiFetch("/api/resume/refresh", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ path }),
@@ -346,7 +347,7 @@ export default function ResumePage() {
       let syncErrorMessage: string | null = null
 
       try {
-        const response = await fetch("/api/resume/refresh", { method: "DELETE" })
+        const response = await apiFetch("/api/resume/refresh", { method: "DELETE" })
 
         if (!response.ok) {
           const payload = (await response.json().catch(() => null)) as { error?: string } | null

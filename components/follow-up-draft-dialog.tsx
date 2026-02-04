@@ -13,6 +13,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import type { JobApplication } from "@/lib/types/database"
 import { useToast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/fetcher"
 
 interface FollowUpDraftDialogProps {
   application: JobApplication
@@ -83,7 +84,7 @@ export function FollowUpDraftDialog({
       const daysSinceApplication = appliedAt
         ? Math.max(0, differenceInCalendarDays(new Date(), appliedAt))
         : 0
-      const response = await fetch("/api/follow-ups/draft", {
+      const response = await apiFetch("/api/follow-ups/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -157,7 +158,7 @@ export function FollowUpDraftDialog({
 
     setIsSaving(true)
     try {
-      const response = await fetch("/api/follow-ups/draft", {
+      const response = await apiFetch("/api/follow-ups/draft", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ job_application_id: application.id, draft: sanitizedDraft }),

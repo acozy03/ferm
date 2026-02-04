@@ -30,6 +30,7 @@ import {
 import type { CreateJobApplicationData, Priority, EmploymentType } from "@/lib/types/database"
 import { SequentialStatusSelect } from "@/components/status-select"
 import { useSupabase } from "@/components/supabase-provider"
+import { apiFetch } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 
 interface AddApplicationDialogProps {
@@ -218,7 +219,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
     setAutofillUsage({ limit: null, remaining: null })
 
     try {
-      const response = await fetch("/api/scrape-job", {
+      const response = await apiFetch("/api/scrape-job", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

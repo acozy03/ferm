@@ -38,6 +38,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/fetcher"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TruncatedText } from "@/components/ui/truncate"
@@ -540,7 +541,7 @@ export default function InterviewsPage() {
       const requestUrl = isUpdate ? `/api/interviews/${editingInterviewId}` : "/api/interviews"
       const requestMethod = isUpdate ? "PUT" : "POST"
 
-      const response = await fetch(requestUrl, {
+      const response = await apiFetch(requestUrl, {
         method: requestMethod,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -604,7 +605,7 @@ export default function InterviewsPage() {
   const handleSaveNotes = async (id: string, payload: NotesUpdatePayload) => {
     setPendingId(id)
     try {
-      const response = await fetch(`/api/interviews/${id}`, {
+      const response = await apiFetch(`/api/interviews/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -644,7 +645,7 @@ export default function InterviewsPage() {
     setDeletingId(interviewId)
 
     try {
-      const response = await fetch(`/api/interviews/${interviewId}`, { method: "DELETE" })
+      const response = await apiFetch(`/api/interviews/${interviewId}`, { method: "DELETE" })
 
       if (!response.ok) {
         throw new Error("Failed to delete interview")

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { apiFetch } from "@/lib/fetcher"
 
 interface AddNoteDialogProps {
   applicationId: string
@@ -26,7 +27,7 @@ export function AddNoteDialog({ applicationId, currentNotes = "", onUpdate, trig
 
     try {
       const payload = { notes: notes.trim() === "" ? null : notes }
-      const response = await fetch(`/api/job-applications/${applicationId}`, {
+      const response = await apiFetch(`/api/job-applications/${applicationId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

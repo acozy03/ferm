@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
+import { apiFetch } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 
 const CONTACT_TOPICS = [
@@ -60,7 +61,7 @@ export function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
 
       setIsSubmitting(true)
       try {
-        const response = await fetch("/api/contact", {
+        const response = await apiFetch("/api/contact", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ topic, details: details.trim() }),

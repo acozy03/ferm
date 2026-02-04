@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useSupabase } from "@/components/supabase-provider"
 import { Shield, Puzzle, Heart, Key } from "lucide-react"
+import { apiFetch } from "@/lib/fetcher"
 
 interface SettingsDialogProps {
   trigger?: ReactNode
@@ -145,7 +146,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
         return
       }
 
-      const response = await fetch("/api/ai-keys", {
+      const response = await apiFetch("/api/ai-keys", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -180,7 +181,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
 
     void (async () => {
       try {
-        const response = await fetch("/api/ai-keys", {
+        const response = await apiFetch("/api/ai-keys", {
           method: "DELETE",
           headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
         })
@@ -212,7 +213,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
     try {
-      const response = await fetch("/api/account/delete", { method: "POST" })
+      const response = await apiFetch("/api/account/delete", { method: "POST" })
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null

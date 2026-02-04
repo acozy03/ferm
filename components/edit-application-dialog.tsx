@@ -26,6 +26,7 @@ import type {
   Priority,
 } from "@/lib/types/database"
 import { SequentialStatusSelect } from "@/components/status-select"
+import { apiFetch } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 
 interface EditApplicationDialogProps {
@@ -113,7 +114,7 @@ export function EditApplicationDialog({
         job_responsibilities: toNullable(formData.job_responsibilities),
       }
 
-      const response = await fetch(`/api/job-applications/${application.id}`, {
+      const response = await apiFetch(`/api/job-applications/${application.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

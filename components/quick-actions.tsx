@@ -6,6 +6,7 @@ import { Plus, Upload, Download, BarChart3, Settings, FileText } from "lucide-re
 import { AddApplicationDialog } from "@/components/add-application-dialog"
 import { ImportApplicationsDialog } from "@/components/import-applications-dialog"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { apiFetch } from "@/lib/fetcher"
 import type { CreateJobApplicationData, JobApplication } from "@/lib/types/database"
 import type { PaginatedResponse } from "@/lib/types/api"
 
@@ -16,7 +17,7 @@ interface QuickActionsProps {
 export function QuickActions({ onApplicationAdded }: QuickActionsProps) {
   const handleAddApplication = async (application: CreateJobApplicationData) => {
     try {
-      const response = await fetch("/api/job-applications", {
+      const response = await apiFetch("/api/job-applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(application),
@@ -33,7 +34,7 @@ export function QuickActions({ onApplicationAdded }: QuickActionsProps) {
   const handleImportApplications = async (applications: CreateJobApplicationData[]) => {
     try {
       const promises = applications.map((app) =>
-        fetch("/api/job-applications", {
+        apiFetch("/api/job-applications", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(app),

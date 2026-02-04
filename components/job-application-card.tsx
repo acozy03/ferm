@@ -16,6 +16,7 @@ import type { JobApplication, JobApplicationStatus } from "@/lib/types/database"
 import { cn } from "@/lib/utils"
 import { formatStatusLabel, getStatusBadgeClass } from "@/lib/status"
 import { getDateOrNull } from "@/lib/date"
+import { apiFetch } from "@/lib/fetcher"
 
 interface JobApplicationCardProps {
   application: JobApplication
@@ -43,7 +44,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
 
   const handleStatusUpdate = async (status: JobApplicationStatus, note?: string) => {
     try {
-      const response = await fetch(`/api/job-applications/${application.id}`, {
+      const response = await apiFetch(`/api/job-applications/${application.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -62,7 +63,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
 
   const deleteApplication = async () => {
     try {
-      const response = await fetch(`/api/job-applications/${application.id}`, {
+      const response = await apiFetch(`/api/job-applications/${application.id}`, {
         method: "DELETE",
       })
 

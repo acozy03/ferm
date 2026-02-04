@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { apiFetch } from "@/lib/fetcher"
 import { TruncatedText } from "@/components/ui/truncate"
 
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
@@ -227,7 +228,7 @@ export default function FollowUpsPage() {
     async (applicationId: string, enabled: boolean, nextReminder: string | null) => {
       setPendingState(applicationId, true)
       try {
-        const response = await fetch("/api/follow-ups", {
+        const response = await apiFetch("/api/follow-ups", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -15,6 +15,7 @@ import { StatusUpdateDialog } from "@/components/status-update-dialog"
 import { EditApplicationDialog } from "@/components/edit-application-dialog"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import type { JobApplication } from "@/lib/types/database"
+import { apiFetch } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 
 interface ApplicationActionsMenuProps {
@@ -38,7 +39,7 @@ export function ApplicationActionsMenu({
 
   const deleteApplication = async () => {
     try {
-      const response = await fetch(`/api/job-applications/${application.id}`, {
+      const response = await apiFetch(`/api/job-applications/${application.id}`, {
         method: "DELETE",
       })
 
@@ -141,4 +142,3 @@ export function ApplicationActionsMenu({
     </>
   )
 }
-
