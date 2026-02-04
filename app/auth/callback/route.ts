@@ -5,17 +5,24 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-
 function getBaseUrl(req: NextRequest) {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
-  return req.nextUrl.origin; 
+  return req.nextUrl.origin;
+}
+
+function safeRedirectPath(next: string | null) {
+  if (!next) return "/";
+  if (!next.startsWith("/")) return "/";
+  if (next.startsWith("//")) return "/";
+  if (next.includes("://")) return "/";
+  return next;
 }
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const baseUrl = getBaseUrl(req);
 
-  const next = url.searchParams.get("next") || "/";
+  const next = safeRedirectPath(url.searchParams.get("next"));
   const target = new URL(next, baseUrl);
 
   const res = NextResponse.redirect(target);

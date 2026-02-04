@@ -14,6 +14,28 @@ type AuthError = { error: { status: number; message: string } }
 
 export type AuthedClientResult = AuthSuccess | AuthError
 
+const SAFE_HTTP_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
+const CSRF_COOKIE_NAME = "csrf-token"
+const CSRF_HEADER_NAME = "x-csrf-token"
+
+export function requireCookieCsrf(request: NextRequest): AuthError | null {
+  const authHeader = request.headers.get("authorization") || ""
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
+
+  if (bearer || SAFE_HTTP_METHODS.has(request.method)) {
+    return null
+  }
+
+  const csrfHeader = request.headers.get(CSRF_HEADER_NAME) || ""
+  const csrfCookie = request.cookies.get(CSRF_COOKIE_NAME)?.value || ""
+
+  if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
+    return { error: { status: 403, message: "Missing or invalid CSRF token." } }
+  }
+
+  return null
+}
+
 /**
  * Authenticate via Bearer (extension) OR cookies (web app),
  * and return a Supabase client bound to the user + the user's id.

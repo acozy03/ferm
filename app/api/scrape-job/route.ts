@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { z } from "zod"
 import { isIP } from "node:net"
+import { lookup } from "node:dns/promises"
 
 const RequestBodySchema = z.object({
   job_url: z.string().url(),
@@ -11,6 +12,7 @@ const MAX_HTML_BYTES = 1_500_000
 const MAX_TEXT_LENGTH = 60_000
 const MIN_TEXT_LENGTH = 120
 const FETCH_TIMEOUT_MS = 12_000
+const MAX_REDIRECTS = 5
 
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
@@ -18,6 +20,19 @@ const BLOCKED_HOSTNAMES = new Set([
   "0.0.0.0",
   "::1",
 ])
+
+const ALLOWED_JOB_BOARD_HOSTS = new Set([
+  "boards.greenhouse.io",
+  "jobs.lever.co",
+  "workable.com",
+  "jobs.workable.com",
+  "jobs.ashbyhq.com",
+  "jobs.smartrecruiters.com",
+  "myworkdayjobs.com",
+  "icims.com",
+])
+
+const ENABLE_JOB_BOARD_ALLOWLIST = process.env.JOB_BOARD_ALLOWLIST === "true"
 
 function isPrivateIpv4(ip: string) {
   const parts = ip.split(".").map((segment) => Number.parseInt(segment, 10))
@@ -29,16 +44,28 @@ function isPrivateIpv4(ip: string) {
   if (parts[0] === 192 && parts[1] === 168) return true
   if (parts[0] === 127) return true
   if (parts[0] === 169 && parts[1] === 254) return true
+  if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true
+  if (parts[0] === 0) return true
+  if (parts[0] === 192 && parts[1] === 0 && parts[2] === 0) return true
+  if (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) return true
+  if (parts[0] === 198 && (parts[1] === 18 || parts[1] === 19)) return true
+  if (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) return true
+  if (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) return true
+  if (parts[0] >= 224) return true
   return false
 }
 
 function isPrivateIpv6(ip: string) {
   const normalized = ip.toLowerCase()
   return (
+    normalized === "::" ||
     normalized === "::1" ||
+    normalized.startsWith("::ffff:") ||
     normalized.startsWith("fc") ||
     normalized.startsWith("fd") ||
-    normalized.startsWith("fe80")
+    normalized.startsWith("fe80") ||
+    normalized.startsWith("ff") ||
+    normalized.startsWith("2001:db8")
   )
 }
 
@@ -57,6 +84,72 @@ function isBlockedHost(hostname: string) {
   }
 
   return false
+}
+
+function isAllowedJobBoard(hostname: string) {
+  if (!ENABLE_JOB_BOARD_ALLOWLIST) {
+    return true
+  }
+  const lower = hostname.toLowerCase()
+  if (ALLOWED_JOB_BOARD_HOSTS.has(lower)) {
+    return true
+  }
+  for (const allowed of ALLOWED_JOB_BOARD_HOSTS) {
+    if (lower.endsWith(`.${allowed}`)) {
+      return true
+    }
+  }
+  return false
+}
+
+function isBlockedIpAddress(ip: string) {
+  const ipType = isIP(ip)
+  if (ipType === 4) {
+    return isPrivateIpv4(ip)
+  }
+  if (ipType === 6) {
+    if (ip.toLowerCase().startsWith("::ffff:")) {
+      const ipv4Part = ip.slice(7)
+      return isPrivateIpv4(ipv4Part)
+    }
+    return isPrivateIpv6(ip)
+  }
+  return true
+}
+
+async function resolveHostnameToIps(hostname: string) {
+  if (isIP(hostname)) {
+    return [hostname]
+  }
+  const results = await lookup(hostname, { all: true })
+  if (!results.length) {
+    return []
+  }
+  return results.map((result) => result.address)
+}
+
+async function assertUrlIsSafe(url: URL) {
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("unsupported-protocol")
+  }
+
+  if (isBlockedHost(url.hostname)) {
+    throw new Error("blocked-host")
+  }
+
+  if (!isAllowedJobBoard(url.hostname)) {
+    throw new Error("not-allowlisted")
+  }
+
+  const resolvedIps = await resolveHostnameToIps(url.hostname)
+  if (!resolvedIps.length) {
+    throw new Error("dns-failed")
+  }
+  for (const ip of resolvedIps) {
+    if (isBlockedIpAddress(ip)) {
+      throw new Error("blocked-ip")
+    }
+  }
 }
 
 function stripDangerousTags(html: string) {
@@ -158,11 +251,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid job_url" }, { status: 400 })
   }
 
-  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-    return NextResponse.json({ error: "Only http/https URLs are supported" }, { status: 400 })
-  }
-
-  if (isBlockedHost(parsedUrl.hostname)) {
+  try {
+    await assertUrlIsSafe(parsedUrl)
+  } catch (error) {
+    const reason = (error as Error).message
+    if (reason === "not-allowlisted") {
+      return NextResponse.json({ error: "Job board host is not allowlisted" }, { status: 400 })
+    }
+    if (reason === "dns-failed") {
+      return NextResponse.json({ error: "Unable to resolve hostname" }, { status: 400 })
+    }
+    if (reason === "unsupported-protocol") {
+      return NextResponse.json({ error: "Only http/https URLs are supported" }, { status: 400 })
+    }
     return NextResponse.json({ error: "Blocked URL" }, { status: 400 })
   }
 
@@ -171,17 +272,46 @@ export async function POST(request: Request) {
 
   let response: Response
   try {
-    response = await fetch(jobUrl, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "FermJobLoader/1.0 (+https://ferm.dev)",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    })
+    let currentUrl = parsedUrl
+    let redirectCount = 0
+
+    while (true) {
+      await assertUrlIsSafe(currentUrl)
+      response = await fetch(currentUrl, {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: {
+          "User-Agent": "FermJobLoader/1.0 (+https://ferm.dev)",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      })
+
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get("location")
+        if (!location) {
+          throw new Error("redirect-without-location")
+        }
+        redirectCount += 1
+        if (redirectCount > MAX_REDIRECTS) {
+          throw new Error("too-many-redirects")
+        }
+        const nextUrl = new URL(location, currentUrl)
+        currentUrl = nextUrl
+        continue
+      }
+
+      break
+    }
   } catch (error) {
     clearTimeout(timeout)
     if ((error as Error).name === "AbortError") {
       return NextResponse.json({ error: "Timed out fetching job posting" }, { status: 504 })
+    }
+    if ((error as Error).message === "too-many-redirects") {
+      return NextResponse.json({ error: "Too many redirects" }, { status: 400 })
+    }
+    if ((error as Error).message === "redirect-without-location") {
+      return NextResponse.json({ error: "Redirect missing location header" }, { status: 400 })
     }
     return NextResponse.json({ error: "Failed to fetch job posting" }, { status: 502 })
   }

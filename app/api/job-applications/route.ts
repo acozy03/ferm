@@ -1,4 +1,5 @@
 // app/api/job-applications/route.ts
+import { headers } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
@@ -6,16 +7,45 @@ import type { CreateJobApplicationData } from "@/lib/types/database"
 import { getLatestResumeText } from "@/lib/resume/server"
 import { toNullableString } from "@/lib/utils"
 import { expandStatusFilters, normalizeStatusValue, parseStatus } from "@/lib/status"
-import { getAuthedClient } from "@/lib/api/auth"
+import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
 import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+const baseCorsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+}
+
+function getCorsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {
+    ...baseCorsHeaders,
+    "Access-Control-Allow-Headers": "content-type",
+  }
+
+  if (origin && allowedOrigins.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin
+    headers["Access-Control-Allow-Headers"] = "authorization, content-type"
+    headers["Vary"] = "Origin"
+  }
+
+  return headers
+}
+
+function addVaryHeader(response: NextResponse, value: string) {
+  const current = response.headers.get("Vary")
+  const values = new Set(
+    current
+      ? current.split(",").map((entry) => entry.trim()).filter(Boolean)
+      : []
+  )
+  value.split(",").map((entry) => entry.trim()).filter(Boolean).forEach((entry) => values.add(entry))
+  response.headers.set("Vary", Array.from(values).join(", "))
 }
 
 const RESUME_SCORING_TIMEOUT_MS = 15_000
@@ -121,11 +151,13 @@ async function generateResumeMatchScore({ job, resumeText, apiKey }: ResumeScori
 }
 
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders })
+  const origin = headers().get("origin")
+  return new NextResponse(null, { status: 204, headers: getCorsHeaders(origin) })
 }
 
 export async function GET(request: NextRequest) {
   try {
+    const corsHeaders = getCorsHeaders(request.headers.get("origin"))
     const auth = await getAuthedClient(request)
     if ("error" in auth) {
       return NextResponse.json({ error: auth.error.message }, { status: auth.error.status, headers: corsHeaders })
@@ -252,6 +284,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const csrfError = requireCookieCsrf(request)
+    if (csrfError) {
+      return NextResponse.json(
+        { error: csrfError.error.message },
+        { status: csrfError.error.status, headers: corsHeaders },
+      )
+    }
+
     const auth = await getAuthedClient(request)
     if ("error" in auth) {
       return NextResponse.json({ error: auth.error.message }, { status: auth.error.status, headers: corsHeaders })
@@ -263,7 +303,7 @@ export async function POST(request: NextRequest) {
     if ("error" in keyResolution) {
       const response = keyResolution.error
       Object.entries(corsHeaders).forEach(([header, value]) => response.headers.set(header, value))
-      response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+      addVaryHeader(response, `Authorization, ${USER_OPENAI_KEY_HEADER}`)
       return response
     }
 
@@ -370,10 +410,11 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({ data }, { status: 201, headers: corsHeaders })
-    response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+    addVaryHeader(response, `Authorization, ${USER_OPENAI_KEY_HEADER}`)
     return response
   } catch (error) {
     console.error("Failed to create job application", error)
+    const corsHeaders = getCorsHeaders(request.headers.get("origin"))
     return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: corsHeaders })
   }
 }

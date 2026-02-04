@@ -7,20 +7,39 @@ const DAILY_LIMIT = 20
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// Simple CORS for the extension + dev
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*", // or echo the Origin header if you want stricter
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+const baseCorsHeaders = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+}
+
+function getCorsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {
+    ...baseCorsHeaders,
+    "Access-Control-Allow-Headers": "content-type",
+  }
+
+  if (origin && allowedOrigins.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin
+    headers["Access-Control-Allow-Headers"] = "authorization, content-type"
+    headers["Vary"] = "Origin"
+  }
+
+  return headers
 }
 
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders })
+  const origin = headers().get("origin")
+  return new NextResponse(null, { status: 204, headers: getCorsHeaders(origin) })
 }
 
 export async function GET() {
   try {
     const hdrs = headers()
+    const corsHeaders = getCorsHeaders(hdrs.get("origin"))
     const authHeader = hdrs.get("authorization") || ""
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
 

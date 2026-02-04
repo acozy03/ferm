@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 import { z } from "zod"
 
-import { getAuthedClient } from "@/lib/api/auth"
+import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
 import { resolveOpenAIKeys, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 import { buildPrepContext } from "./context"
 
@@ -27,6 +27,11 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   let payload: z.infer<typeof BodySchema>
+
+  const csrfError = requireCookieCsrf(request)
+  if (csrfError) {
+    return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
+  }
 
   try {
     payload = BodySchema.parse(await request.json())
