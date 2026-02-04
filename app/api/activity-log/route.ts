@@ -4,17 +4,52 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// Cursor format: `${created_at}|${id}`
-// Example: 2025-12-24T12:34:56.789Z|a9939d4d-7082-47f1-b60f-76f0721fe2f5
-function parseCursor(cursor: string | null) {
-  if (!cursor) return null
-  const [created_at, id] = cursor.split("|")
-  if (!created_at || !id) return null
-  return { created_at, id }
+const ISO_8601_UTC_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+type CursorPayload = { created_at: string; id: string }
+
+// Cursor format (base64url JSON): {"created_at":"...","id":"..."}
+// Legacy format (fallback): `${created_at}|${id}`
+function parseCursor(cursor: string | null): { cursor: CursorPayload | null; error: string | null } {
+  if (!cursor) return { cursor: null, error: null }
+
+  let parsed: CursorPayload | null = null
+
+  try {
+    const decoded = Buffer.from(cursor, "base64url").toString("utf8")
+    const json = JSON.parse(decoded) as Partial<CursorPayload> | null
+    if (json && typeof json === "object" && typeof json.created_at === "string" && typeof json.id === "string") {
+      parsed = { created_at: json.created_at, id: json.id }
+    }
+  } catch {
+    // Ignore base64/json errors and fall back to legacy parsing below.
+  }
+
+  if (!parsed) {
+    const [created_at, id] = cursor.split("|")
+    if (created_at && id) {
+      parsed = { created_at, id }
+    }
+  }
+
+  if (!parsed) {
+    return { cursor: null, error: "Invalid cursor format." }
+  }
+
+  if (!ISO_8601_UTC_REGEX.test(parsed.created_at)) {
+    return { cursor: null, error: "Invalid cursor created_at; expected strict ISO-8601 format." }
+  }
+
+  if (!UUID_REGEX.test(parsed.id)) {
+    return { cursor: null, error: "Invalid cursor id; expected UUID format." }
+  }
+
+  return { cursor: parsed, error: null }
 }
 
-function makeCursor(row: { created_at: string; id: string }) {
-  return `${row.created_at}|${row.id}`
+function makeCursor(row: CursorPayload) {
+  return Buffer.from(JSON.stringify({ created_at: row.created_at, id: row.id }), "utf8").toString("base64url")
 }
 
 export async function GET(request: NextRequest) {
@@ -33,7 +68,10 @@ export async function GET(request: NextRequest) {
     const limitRaw = Number.parseInt(searchParams.get("limit") || "50", 10)
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 50
 
-    const cursor = parseCursor(searchParams.get("cursor"))
+    const { cursor, error: cursorError } = parseCursor(searchParams.get("cursor"))
+    if (cursorError) {
+      return NextResponse.json({ error: cursorError }, { status: 400 })
+    }
 
     let query = supabase
       .from("activity_log")

@@ -15,6 +15,47 @@ const ReminderSchema = z.object({
   message: z.string().optional(),
 })
 
+const RECENT_SEND_WINDOW_MS = 10 * 60 * 1000
+const USER_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
+const USER_RATE_LIMIT_MAX = 5
+const IP_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
+const IP_RATE_LIMIT_MAX = 15
+
+function getAllowedDomains() {
+  const raw = process.env.FOLLOW_UP_ALLOWED_DOMAINS ?? ""
+  return raw
+    .split(",")
+    .map((domain) => domain.trim().toLowerCase())
+    .filter(Boolean)
+}
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase()
+}
+
+function isAllowedRecipient(options: { recipient: string; allowedEmails: string[]; allowedDomains: string[] }) {
+  const recipient = normalizeEmail(options.recipient)
+  if (options.allowedEmails.some((email) => normalizeEmail(email) === recipient)) {
+    return true
+  }
+
+  const domain = recipient.split("@")[1]
+  if (!domain) {
+    return false
+  }
+
+  return options.allowedDomains.includes(domain)
+}
+
+function getRequestIp(request: NextRequest) {
+  const forwardedFor = request.headers.get("x-forwarded-for")
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0]?.trim() || null
+  }
+
+  return request.headers.get("x-real-ip")?.trim() || null
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -133,7 +174,7 @@ export async function POST(request: NextRequest) {
 
   const { data: application, error: applicationError } = await supabase
     .from("job_applications")
-    .select("company_name, position_title, application_date")
+    .select("company_name, position_title, application_date, contact_email")
     .eq("id", job_application_id)
     .eq("user_id", userId)
     .maybeSingle()
@@ -161,6 +202,86 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Follow-up reminders are not enabled for this application" }, { status: 400 })
   }
 
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return NextResponse.json({ error: "Unable to verify sender identity" }, { status: 401 })
+  }
+
+  const verifiedEmail = user.email && (user.email_confirmed_at || user.confirmed_at) ? user.email : null
+  const allowedEmails = [application.contact_email, verifiedEmail].filter(
+    (email): email is string => Boolean(email),
+  )
+  const allowedDomains = getAllowedDomains()
+
+  if (!isAllowedRecipient({ recipient, allowedEmails, allowedDomains })) {
+    return NextResponse.json({ error: "Recipient is not allowed for this reminder" }, { status: 403 })
+  }
+
+  const requestIp = getRequestIp(request)
+  const now = new Date()
+  const recentThreshold = new Date(now.getTime() - RECENT_SEND_WINDOW_MS).toISOString()
+  const userWindowThreshold = new Date(now.getTime() - USER_RATE_LIMIT_WINDOW_MS).toISOString()
+  const ipWindowThreshold = new Date(now.getTime() - IP_RATE_LIMIT_WINDOW_MS).toISOString()
+
+  const { data: recentSend, error: recentSendError } = await supabase
+    .from("follow_up_reminder_sends")
+    .select("id, created_at")
+    .eq("user_id", userId)
+    .eq("job_application_id", job_application_id)
+    .eq("recipient", recipient)
+    .gte("created_at", recentThreshold)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (recentSendError) {
+    return NextResponse.json({ error: recentSendError.message }, { status: 500 })
+  }
+
+  if (recentSend) {
+    console.warn("Follow-up reminder suppressed (recent send)", {
+      userId,
+      job_application_id,
+      recipient,
+      created_at: recentSend.created_at,
+    })
+    return NextResponse.json({ error: "Reminder already sent recently." }, { status: 429 })
+  }
+
+  const { count: userSendCount, error: userCountError } = await supabase
+    .from("follow_up_reminder_sends")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", userWindowThreshold)
+
+  if (userCountError) {
+    return NextResponse.json({ error: userCountError.message }, { status: 500 })
+  }
+
+  if ((userSendCount ?? 0) >= USER_RATE_LIMIT_MAX) {
+    return NextResponse.json({ error: "Too many reminders sent. Please try later." }, { status: 429 })
+  }
+
+  if (requestIp) {
+    const { count: ipSendCount, error: ipCountError } = await supabase
+      .from("follow_up_reminder_sends")
+      .select("id", { count: "exact", head: true })
+      .eq("ip_address", requestIp)
+      .gte("created_at", ipWindowThreshold)
+
+    if (ipCountError) {
+      return NextResponse.json({ error: ipCountError.message }, { status: 500 })
+    }
+
+    if ((ipSendCount ?? 0) >= IP_RATE_LIMIT_MAX) {
+      return NextResponse.json({ error: "Too many reminders sent from this network. Please try later." }, { status: 429 })
+    }
+  }
+
   const emailSubject = subject ?? `Reminder: Follow up with ${application.company_name}`
   const defaultMessage = `It’s time to reach out about your ${application.position_title ?? "No Position Title"} application at ${
     application.company_name
@@ -180,7 +301,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 502 })
   }
 
-  const now = new Date()
+  const { error: logError } = await supabase.from("follow_up_reminder_sends").insert({
+    user_id: userId,
+    job_application_id,
+    recipient,
+    ip_address: requestIp,
+  })
+
+  if (logError) {
+    return NextResponse.json({ error: logError.message }, { status: 500 })
+  }
 
   const { data, error } = await supabase
     .from("application_follow_ups")

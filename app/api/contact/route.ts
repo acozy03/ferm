@@ -1,4 +1,7 @@
+import { createHash } from "crypto"
 import { type NextRequest, NextResponse } from "next/server"
+import { Ratelimit } from "@upstash/ratelimit"
+import { Redis } from "@upstash/redis"
 import { z } from "zod"
 import { Resend } from "resend"
 
@@ -12,6 +15,32 @@ const ContactSchema = z.object({
   details: z.string().min(1),
 })
 
+const RATE_LIMIT_MAX_REQUESTS = 5
+const RATE_LIMIT_WINDOW = "1 h"
+const MAX_PAYLOAD_CHARS = 4000
+const DUPLICATE_WINDOW_SECONDS = 300
+
+const redis =
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? Redis.fromEnv()
+    : null
+
+const contactRateLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW),
+      analytics: true,
+      prefix: "contact",
+    })
+  : null
+
+function normalizePayload(topic: string, details: string) {
+  return JSON.stringify({
+    topic: topic.trim(),
+    details: details.trim(),
+  })
+}
+
 export async function POST(request: NextRequest) {
   const csrfError = requireCookieCsrf(request)
   if (csrfError) {
@@ -23,7 +52,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
   }
 
-  const payload = ContactSchema.safeParse(await request.json())
+  const contentLength = request.headers.get("content-length")
+  if (contentLength && Number.parseInt(contentLength, 10) > MAX_PAYLOAD_CHARS) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+  }
+
+  let rawBody = ""
+
+  try {
+    rawBody = await request.text()
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+  }
+
+  if (rawBody.length > MAX_PAYLOAD_CHARS) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+  }
+
+  let parsedBody: unknown
+
+  try {
+    parsedBody = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+  }
+
+  const payload = ContactSchema.safeParse(parsedBody)
   if (!payload.success) {
     return NextResponse.json({ error: payload.error.message }, { status: 400 })
   }
@@ -42,8 +96,48 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unable to determine user profile" }, { status: 500 })
   }
 
+  if (!redis || !contactRateLimiter) {
+    console.error("Contact rate limiting not configured")
+    return NextResponse.json({ error: "Rate limit configuration missing" }, { status: 500 })
+  }
+
   const { topic, details } = payload.data
   const userEmail = profile.user.email
+  const userId = profile.user.id
+
+  const rateLimitResult = await contactRateLimiter.limit(userId)
+  if (!rateLimitResult.success) {
+    console.warn("Contact rate limit exceeded", {
+      userId,
+      userEmail,
+      reset: rateLimitResult.reset,
+    })
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+  }
+
+  if (rateLimitResult.remaining <= 1) {
+    console.warn("Contact rate limit nearing exhaustion", {
+      userId,
+      userEmail,
+      remaining: rateLimitResult.remaining,
+    })
+  }
+
+  const payloadFingerprint = createHash("sha256")
+    .update(normalizePayload(topic, details))
+    .digest("hex")
+  const duplicateKey = `contact:payload:${userId}:${payloadFingerprint}`
+  const duplicateSet = await redis.set(duplicateKey, "1", {
+    ex: DUPLICATE_WINDOW_SECONDS,
+    nx: true,
+  })
+
+  if (!duplicateSet) {
+    return NextResponse.json(
+      { error: "Duplicate request detected. Please wait before retrying." },
+      { status: 409 },
+    )
+  }
 
   const formattedTopic = topic.replace(/_/g, " ")
   const subject = `Contact request: ${formattedTopic}`
