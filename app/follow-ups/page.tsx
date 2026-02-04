@@ -359,7 +359,7 @@ export default function FollowUpsPage() {
                 ) : (
                   <div className="flex min-h-0 flex-1 flex-col space-y-4 overflow-hidden">
                     <ScrollArea className="flex-1">
-                      <div className="overflow-x-auto rounded-md border pl-4 pr-2 sm:pl-6 sm:pr-4">
+                      <div className="overflow-x-auto rounded-md border pl-4 pr-2 sm:pl-6 sm:pr-6">
                         <Table className="table-auto">
                           <TableHeader>
                             <TableRow>
@@ -368,7 +368,7 @@ export default function FollowUpsPage() {
                               <TableHead className="py-4">Next reminder</TableHead>
                               <TableHead className="py-4">Last reminder</TableHead>
                               <TableHead className="py-4">Status</TableHead>
-                              <TableHead className="py-4 min-w-[220px]">Actions</TableHead>
+                              <TableHead className="py-4 min-w-[220px] text-left">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -414,8 +414,8 @@ export default function FollowUpsPage() {
                                           : "Not scheduled"}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="min-w-[220px]">
-                                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                  <TableCell className="align-top [&>td]:py-5 transition-colors">
+                                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:justify-start">
                                       <FollowUpDraftDialog
                                         application={row.application}
                                         disabled={(!row.enabled && !row.lastSent) || isPending}
@@ -430,6 +430,7 @@ export default function FollowUpsPage() {
                                         variant="outline"
                                         onClick={() => openReminderDialog(row, { isEnabling: !row.enabled })}
                                         disabled={isPending}
+                                        className="w-[12.5rem]"
                                       >
                                         Set reminder
                                       </Button>

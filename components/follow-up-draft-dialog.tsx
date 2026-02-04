@@ -206,7 +206,7 @@ export function FollowUpDraftDialog({
       }
     }}>
       <DialogTrigger asChild>
-        <Button variant="secondary" size="sm" disabled={disabled} className="gap-2">
+        <Button variant="secondary" size="sm" disabled={disabled} className="gap-2 w-[12.5rem]">
           <Wand2 className="h-4 w-4" />
           AI draft
         </Button>
