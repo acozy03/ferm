@@ -15,6 +15,27 @@ const MAX_TEXT_LENGTH = 60_000
 const MIN_TEXT_LENGTH = 120
 const FETCH_TIMEOUT_MS = 12_000
 const MAX_REDIRECTS = 5
+const CONFIGURED_SITE_URL = (() => {
+  const rawSiteUrl =
+    process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || ""
+
+  if (!rawSiteUrl) {
+    throw new Error(
+      "Missing site URL configuration. Set SITE_URL, NEXT_PUBLIC_SITE_URL, or VERCEL_URL.",
+    )
+  }
+
+  const normalized = rawSiteUrl.startsWith("http://") || rawSiteUrl.startsWith("https://")
+    ? rawSiteUrl
+    : `https://${rawSiteUrl}`
+
+  const parsed = new URL(normalized)
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error(`Unsupported SITE_URL protocol: ${parsed.protocol}`)
+  }
+
+  return parsed
+})()
 
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
@@ -233,6 +254,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status })
   }
 
+  const configuredHost = CONFIGURED_SITE_URL.host.toLowerCase()
+  const requestHost = request.headers.get("host")?.toLowerCase()
+  if (requestHost && requestHost !== configuredHost) {
+    return NextResponse.json({ error: "Request origin does not match configured site host" }, { status: 400 })
+  }
+
   const hdrs = headers()
   const authHeader = hdrs.get("authorization") || ""
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
@@ -385,10 +412,13 @@ export async function POST(request: NextRequest) {
   const truncatedText = truncated ? plainText.slice(0, MAX_TEXT_LENGTH) : plainText
   const guardedText = guardrailWrap(truncatedText, truncated)
 
-  const origin = new URL(request.url).origin
+  const parseUrl = new URL("/api/parse-job", CONFIGURED_SITE_URL)
+  if (parseUrl.host.toLowerCase() !== configuredHost) {
+    return NextResponse.json({ error: "Configured site host mismatch" }, { status: 500 })
+  }
   let parseResponse: Response
   try {
-    parseResponse = await fetch(`${origin}/api/parse-job`, {
+    parseResponse = await fetch(parseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
