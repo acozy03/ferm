@@ -866,7 +866,7 @@ export default function LandingPage() {
                         workday.com/jobs/view/...
                       </div>
                     </div>
-                    <div className="relative flex-1 bg-white">
+                    <div className="relative flex-1 bg-black/30">
                       <Image
                         src={chromeExtensionPanels[activeIndex].gifSrc}
                         alt={chromeExtensionPanels[activeIndex].gifAlt}
