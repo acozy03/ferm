@@ -21,8 +21,6 @@ import {
   Mail,
   Star,
   Clock,
-  ChevronRight,
-  Brain,
 } from "lucide-react"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -518,6 +516,7 @@ export default function LandingPage() {
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [isVideoOpen, setIsVideoOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [gifPlaybackVersions, setGifPlaybackVersions] = useState(() => chromeExtensionPanels.map(() => 0))
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
   const [displayedText, setDisplayedText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
@@ -811,7 +810,7 @@ export default function LandingPage() {
                 Capture opportunities instantly
               </h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                ferm's browser extension makes job tracking quick and easy! Just sign in, click the magic button, and let it work
+                ferm&apos;s browser extension makes job tracking quick and easy! Just sign in, click the magic button, and let it work
               </p>
             </div>
 
@@ -825,7 +824,14 @@ export default function LandingPage() {
                     <button
                       key={panel.title}
                       type="button"
-                      onClick={() => setActiveIndex(index)}
+                      onClick={() => {
+                        setActiveIndex(index)
+                        setGifPlaybackVersions((previous) =>
+                          previous.map((version, versionIndex) =>
+                            versionIndex === index ? version + 1 : version,
+                          ),
+                        )
+                      }}
                       className={`group relative flex h-full overflow-hidden rounded-xl border p-5 text-left transition-all duration-300 ${
                         isActive
                           ? "border-foreground/30 bg-muted shadow-lg"
@@ -868,7 +874,8 @@ export default function LandingPage() {
                     </div>
                     <div className="relative flex-1 bg-black/30">
                       <Image
-                        src={chromeExtensionPanels[activeIndex].gifSrc}
+                        key={`${activeIndex}-${gifPlaybackVersions[activeIndex]}`}
+                        src={`${chromeExtensionPanels[activeIndex].gifSrc}?v=${gifPlaybackVersions[activeIndex]}`}
                         alt={chromeExtensionPanels[activeIndex].gifAlt}
                         fill
                         className="object-contain"
