@@ -1031,7 +1031,7 @@ export default function LandingPage() {
                 <div>
                   <p className="text-foreground">
                     <span className="font-semibold text-amber-600">User-First Philosophy:</span>{" "}
-                    Guaranteed privacy and zero paywalls. Every detail is curated for a premium, simplistic experience.
+                    Guaranteed privacy and no paywalls... every detail is curated for a premium, simplistic experience
                   </p>
                 </div>
               </div>
@@ -1040,7 +1040,7 @@ export default function LandingPage() {
                 <div>
                   <p className="text-foreground">
                     <span className="font-semibold text-amber-600">Compounding Efforts:</span>{" "}
-                    One follow-up or interview prep per day is all it takes to outpace the competition.
+                    One follow-up or interview prep per day is all it takes to get closer to being the 1%
                   </p>
                 </div>
               </div>
