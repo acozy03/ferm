@@ -1151,7 +1151,7 @@ export default function LandingPage() {
           </div>
           <div className="mx-auto max-w-6xl px-6">
               <div className="flex flex-col gap-12 md:flex-row md:items-stretch md:justify-between">
-                <div className="flex h-full flex-col justify-between gap-20">
+                <div className="flex h-full flex-col justify-between gap-12">
                   <Link href="/" className="flex items-center gap-2 text-lg font-bold">
                     <Image
                       src="/logo.png"
@@ -1182,7 +1182,7 @@ export default function LandingPage() {
                       <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Features</Link></li>
                       <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Pricing</Link></li>
                       <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Chrome Extension</Link></li>
-                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Changelog</Link></li>
+                     
                     </ul>
                   </div>
 
@@ -1190,7 +1190,6 @@ export default function LandingPage() {
                     <h4 className="font-semibold text-foreground">Company</h4>
                     <ul className="mt-4 space-y-3 text-sm">
                       <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">About</Link></li>
-                      <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Blog</Link></li>
                       <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Privacy</Link></li>
                       <li><Link href="#" className="text-muted-foreground transition-colors hover:text-foreground">Terms</Link></li>
                     </ul>
@@ -1198,7 +1197,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
+              <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
                 <p className="text-sm text-muted-foreground">
                   &copy; {new Date().getFullYear()} ferm. All rights reserved.
                 </p>
