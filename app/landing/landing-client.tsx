@@ -6,7 +6,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Heart } from "lucide-react"
+import { ChevronDown, Heart } from "lucide-react"
 import {
   ArrowUpRight,
   Check,
@@ -376,25 +376,25 @@ function SectionFern({ side }: { side: 'left' | 'right' }) {
 
 const chromeExtensionPanels = [
   {
-    title: "Clip job details",
-    description: "Capture job posts in one click so you always know where you applied.",
+    title: "Sign in with Google",
+    description: "Authenticate so we know where to send the job details to",
     icon: Target,
-    gifSrc: "/gifs/chrome-extension-clip.gif",
-    gifAlt: "Chrome extension demo showing clipping job details.",
+    gifSrc: "/gifs/login_ferm_demo.gif",
+    gifAlt: "Chrome extension demo showing auth.",
   },
   {
-    title: "Track interview stages",
-    description: "Move applications through stages to see momentum at a glance.",
+    title: "Click the button",
+    description: "No need to wait for processing to finish",
     icon: TrendingUp,
-    gifSrc: "/gifs/chrome-extension-track.gif",
-    gifAlt: "Chrome extension demo showing tracking interview stages.",
+    gifSrc: "/gifs/parsing_job_demo.gif",
+    gifAlt: "Chrome extension demo showing button interaction.",
   },
   {
-    title: "Never miss follow-ups",
-    description: "Get reminders for every recruiter touchpoint and next action.",
+    title: "Check back on platform",
+    description: "You'll see all the job info, as well as your position fit score",
     icon: Clock,
-    gifSrc: "/gifs/chrome-extension-followup.gif",
-    gifAlt: "Chrome extension demo showing follow-up reminders.",
+    gifSrc: "/gifs/dash_demo.gif",
+    gifAlt: "Chrome extension demo showing going back to site.",
   },
 ] as const
 
@@ -404,22 +404,17 @@ const faqItems = [
   {
     question: "Is ferm free to use?",
     answer:
-      "Yes! ferm offers a generous free tier that includes tracking up to 50 applications. Premium features like AI follow-ups and advanced analytics are available in our Pro plan.",
+      "Yes! ferm offers generous free limits that include the premium AI features, you can also bypass any limits entirely by providing your own OpenAI API key. The dream is to open-sourece the project :)",
   },
   {
-    question: "How does the Chrome extension work?",
+    question: "Why should I upload my resume?",
     answer:
-      "Our extension automatically detects job postings on popular job boards. With one click, it captures the job title, company, requirements, and URL directly to your ferm dashboard.",
-  },
-  {
-    question: "Can I import existing applications?",
-    answer:
-      "Absolutely! You can import applications via CSV, or manually add them. We also support importing from popular job tracking spreadsheets and other tools.",
+      "Your resume is used when determining job fit score, along with giving the AI interview prep assistant context on your background to help prepare you for the interview at hand!",
   },
   {
     question: "Is my data secure?",
     answer:
-      "Your data is encrypted at rest and in transit. We never share your personal information with third parties, and you can export or delete your data at any time.",
+      "Your data is encrypted at rest and in transit. Your information is never shared with third parties, and you can delete your data or account at any time.",
   },
 ]
 
@@ -811,15 +806,12 @@ export default function LandingPage() {
           <SectionFern side="right" />
           <div className="mx-auto max-w-6xl px-6">
             <div className="mb-12 max-w-2xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-4 py-2 text-sm font-medium">
-                <Target className="h-4 w-4 text-foreground" />
-                Chrome Extension
-              </div>
+           
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                 Capture opportunities instantly
               </h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                Our browser extension makes job tracking effortless. Clip, organize, and never lose track of where you applied.
+                ferm's browser extension makes job tracking quick and easy! Just sign in, click the magic button, and let it work
               </p>
             </div>
 
@@ -850,10 +842,10 @@ export default function LandingPage() {
                         </span>
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-foreground sm:text-xl">{panel.title}</h3>
-                          <p className="mt-1 text-base text-muted-foreground">{panel.description}</p>
+                          <p className="pt-3 mt-1 text-base text-muted-foreground">{panel.description}</p>
                         </div>
-                        <ChevronRight
-                          className={`h-5 w-5 text-muted-foreground transition-transform ${isActive ? "rotate-90 text-foreground" : ""}`}
+                        <ChevronDown
+                          className={`h-5 w-5 text-muted-foreground transition-transform ${isActive ? "-rotate-90 text-foreground" : ""}`}
                         />
                       </div>
                     </button>
@@ -871,16 +863,16 @@ export default function LandingPage() {
                         <div className="h-3 w-3 rounded-full bg-green-500/70" />
                       </div>
                       <div className="ml-4 flex-1 rounded-lg bg-background/50 px-4 py-1.5 text-xs text-muted-foreground">
-                        linkedin.com/jobs/view/...
+                        workday.com/jobs/view/...
                       </div>
                     </div>
-                    <div className="relative flex-1 bg-black/30">
+                    <div className="relative flex-1 bg-white">
                       <Image
                         src={chromeExtensionPanels[activeIndex].gifSrc}
                         alt={chromeExtensionPanels[activeIndex].gifAlt}
                         fill
-                        className="object-cover"
-                        sizes="(min-width: 1024px) 720px, 100vw"
+                        className="object-contain"
+                        sizes=""
                         unoptimized
                       />
                     </div>
@@ -902,10 +894,7 @@ export default function LandingPage() {
           <SectionFern side="left" />
           <div className="mx-auto max-w-6xl px-6">
             <div className="mb-12 text-center">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-4 py-2 text-sm font-medium text-foreground">
-                <Brain className="h-4 w-4" />
-                AI-Powered
-              </div>
+           
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                 Supercharge your job search with AI
               </h2>
@@ -1079,7 +1068,7 @@ export default function LandingPage() {
                   Frequently asked questions
                 </h2>
                 <p className="mt-4 text-lg text-muted-foreground">
-                  Everything you need to know about ferm. Can&apos;t find what you&apos;re looking for?
+                  Can&apos;t find what you&apos;re looking for?
                 </p>
                 <Button variant="outline" className="mt-6 gap-2 bg-transparent" asChild>
                   <Link href="mailto:adrian@ferm.dev">
