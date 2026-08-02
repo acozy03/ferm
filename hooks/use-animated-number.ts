@@ -10,14 +10,10 @@ type UseAnimatedNumberOptions = {
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
 
-export function useAnimatedNumber(
-  targetValue: number | null | undefined,
-  options?: UseAnimatedNumberOptions,
-) {
+export function useAnimatedNumber(targetValue: number | null | undefined, options?: UseAnimatedNumberOptions) {
   const { duration = 800, easing = easeOutCubic, startAtZero = true } = options ?? {}
 
-  const initialValue =
-    typeof targetValue === "number" && Number.isFinite(targetValue) ? targetValue : 0
+  const initialValue = typeof targetValue === "number" && Number.isFinite(targetValue) ? targetValue : 0
 
   const [displayValue, setDisplayValue] = useState<number>(initialValue)
   const previousValueRef = useRef<number>(initialValue)

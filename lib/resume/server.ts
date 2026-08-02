@@ -5,14 +5,20 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 type PdfParseFn = (data: Buffer) => Promise<{ text?: string }>
 
 let _pdfParse: PdfParseFn | null = null
+
+function isPdfParseFn(value: unknown): value is PdfParseFn {
+  return typeof value === "function"
+}
+
 async function getPdfParse(): Promise<PdfParseFn> {
   if (_pdfParse) return _pdfParse
   // Import our local CJS bridge; this guarantees the CJS build is used.
-  const mod = (await import("./pdf-parse.cjs")) as { default?: PdfParseFn } | PdfParseFn
-  _pdfParse = ("default" in mod ? mod.default : mod) ?? null
-  if (!_pdfParse) {
+  const mod: unknown = await import("./pdf-parse.cjs")
+  const candidate = typeof mod === "object" && mod !== null && "default" in mod ? mod.default : mod
+  if (!isPdfParseFn(candidate)) {
     throw new Error("Failed to load pdf-parse")
   }
+  _pdfParse = candidate
   return _pdfParse
 }
 
@@ -91,17 +97,15 @@ async function upsertResumeText({
   }
 
   const updatedAt = new Date().toISOString()
-  const { error: upsertError } = await adminClient
-    .from(RESUME_TEXTS_TABLE)
-    .upsert(
-      {
-        user_id: userId,
-        file_name: sanitizedFileName,
-        text: trimmed,
-        updated_at: updatedAt,
-      },
-      { onConflict: "user_id" },
-    )
+  const { error: upsertError } = await adminClient.from(RESUME_TEXTS_TABLE).upsert(
+    {
+      user_id: userId,
+      file_name: sanitizedFileName,
+      text: trimmed,
+      updated_at: updatedAt,
+    },
+    { onConflict: "user_id" },
+  )
 
   if (upsertError) {
     throw upsertError

@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -143,9 +143,9 @@
     background: transparent !important;
     border: none !important;
   }
-  [data-slot='scroll-area-scrollbar'],
-  [data-slot='scroll-area-thumb'],
-  [data-slot='scroll-area-corner'] {
+  [data-slot="scroll-area-scrollbar"],
+  [data-slot="scroll-area-thumb"],
+  [data-slot="scroll-area-corner"] {
     display: none !important;
   }
 }

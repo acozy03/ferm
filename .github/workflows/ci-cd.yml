@@ -21,7 +21,7 @@ env:
 
 jobs:
   checks:
-    name: Lint and build
+    name: Format, lint, typecheck, and build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -42,8 +42,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
 
       - name: Build
         run: pnpm build

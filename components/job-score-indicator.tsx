@@ -32,13 +32,10 @@ export function JobScoreIndicator({
   const parsedScore = typeof score === "number" ? clamp(score, 0, 100) : null
   const animatedScore = useAnimatedNumber(parsedScore ?? null, { duration: 900 })
 
-  const formatAnimatedScore = useCallback(
-    (value: number) => {
-      const rounded = Math.round(value * 10) / 10
-      return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)
-    },
-    [],
-  )
+  const formatAnimatedScore = useCallback((value: number) => {
+    const rounded = Math.round(value * 10) / 10
+    return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)
+  }, [])
 
   const formattedScore = useMemo(() => {
     if (parsedScore === null) return null
@@ -130,15 +127,10 @@ export function JobScoreIndicator({
           {isPending ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : (
-            <span className={cn("text-sm font-semibold", statusColorClass)}>
-              {formattedScore ?? "--"}
-            </span>
+            <span className={cn("text-sm font-semibold", statusColorClass)}>{formattedScore ?? "--"}</span>
           )}
         </div>
       </div>
-
-      
     </div>
   )
 }
-

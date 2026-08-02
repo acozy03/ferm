@@ -7,8 +7,8 @@ import { toNullableString } from "@/lib/utils"
 import { isStatusProgressionAllowed, normalizeStatusValue, parseStatus } from "@/lib/status"
 import { requireCookieCsrf } from "@/lib/api/auth"
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 const MAX_BODY_CHARS = 100_000
 const MAX_BODY_BYTES = 100_000
@@ -27,7 +27,7 @@ const BulkUpdateSchema = z
         location: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
         salary_range: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
         employment_type: z.enum(["Full-time", "Part-time", "Contract", "Internship"]).optional(),
-        status: z.string().max(MAX_STATUS_LENGTH).optional(),
+        status: z.string().max(MAX_STATUS_LENGTH).transform(normalizeStatusValue).optional(),
         priority: z.enum(["Low", "Medium", "High"]).optional(),
         application_date: z.string().max(32).optional(),
         notes: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
@@ -265,11 +265,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "No application IDs provided" }, { status: 400 })
     }
 
-    const { error } = await supabase
-      .from("job_applications")
-      .delete()
-      .in("id", ids)
-      .eq("user_id", user.id)
+    const { error } = await supabase.from("job_applications").delete().in("id", ids).eq("user_id", user.id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

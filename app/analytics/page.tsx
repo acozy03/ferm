@@ -12,19 +12,13 @@ import { getStatusChartColor, parseStatus } from "@/lib/status"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, ArrowRight } from "lucide-react"
-import  {TruncatedText} from "@/components/ui/truncate"
+import { TruncatedText } from "@/components/ui/truncate"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
 
 const SANKEY_BASE_NODE = "Applications Submitted"
 const SANKEY_BASE_COLOR = "#0EA5E9"
-const ACTIVITY_LEVEL_CLASSES = [
-  "bg-muted/60",
-  "bg-sky-200/70",
-  "bg-sky-300/80",
-  "bg-sky-400/80",
-  "bg-sky-500",
-]
+const ACTIVITY_LEVEL_CLASSES = ["bg-muted/60", "bg-sky-200/70", "bg-sky-300/80", "bg-sky-400/80", "bg-sky-500"]
 type SankeyNodeWithCount = {
   name: string
   color: string
@@ -37,7 +31,13 @@ type SankeyLink = {
   value: number
 }
 
-const CustomSankeyNode = ({ x, y, width, height, payload }: {
+const CustomSankeyNode = ({
+  x,
+  y,
+  width,
+  height,
+  payload,
+}: {
   x: number
   y: number
   width: number
@@ -248,7 +248,7 @@ export default function AnalyticsPage() {
           if (!rules) continue
 
           for (const rule of Array.from(rules)) {
-            if (!("style" in rule) || !("selectorText" in rule)) continue
+            if (!(rule instanceof CSSStyleRule)) continue
 
             const fontValue = rule.style.getPropertyValue("font-family")
             if (!fontValue) continue
@@ -449,7 +449,7 @@ export default function AnalyticsPage() {
         .filter((node) => node.count > 0)
         .map((node) => ({
           name: node.name,
-          color: node.name === SANKEY_BASE_NODE ? SANKEY_BASE_COLOR : getStatusChartColor(node.name) ?? node.color,
+          color: node.name === SANKEY_BASE_NODE ? SANKEY_BASE_COLOR : (getStatusChartColor(node.name) ?? node.color),
         })),
     [sankeyData.nodes],
   )
@@ -481,7 +481,6 @@ export default function AnalyticsPage() {
     const offset = direction === "left" ? -container.clientWidth : container.clientWidth
     container.scrollBy({ left: offset, behavior: "smooth" })
   }
-
 
   return (
     <div className="flex min-h-screen flex-col bg-background overflow-hidden">
@@ -518,7 +517,7 @@ export default function AnalyticsPage() {
                           nodePadding={32}
                           linkCurvature={0.5}
                           iterations={64}
-                          node={<CustomSankeyNode />}
+                          node={CustomSankeyNode}
                           link={{ strokeOpacity: 0.35 }}
                         >
                           <RechartsTooltip
@@ -531,7 +530,9 @@ export default function AnalyticsPage() {
                                   <p className="font-medium text-foreground">
                                     {link.source.name} → {link.target.name}
                                   </p>
-                                  <p className="text-muted-foreground">{link.value} application{link.value === 1 ? "" : "s"}</p>
+                                  <p className="text-muted-foreground">
+                                    {link.value} application{link.value === 1 ? "" : "s"}
+                                  </p>
                                 </div>
                               )
                             }}
@@ -556,20 +557,17 @@ export default function AnalyticsPage() {
                           data-sankey-legend
                           className="flex items-center gap-3 overflow-x-auto whitespace-nowrap"
                         >
-                      {sankeyData.nodes
-                        .filter((node) => node.count > 0)
-                        .map((node) => (
-                          <div
-                            key={node.name}
-                            className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-1.5"
-                          >
-                            <span
-                              className="h-3 w-3 rounded-sm"
-                              style={{ backgroundColor: node.color }}
-                            />
-                            <span className="text-muted-foreground">{node.name}</span>
-                          </div>
-                        ))}
+                          {sankeyData.nodes
+                            .filter((node) => node.count > 0)
+                            .map((node) => (
+                              <div
+                                key={node.name}
+                                className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-1.5"
+                              >
+                                <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: node.color }} />
+                                <span className="text-muted-foreground">{node.name}</span>
+                              </div>
+                            ))}
                         </div>
                       </div>
                       <Button
@@ -607,15 +605,12 @@ export default function AnalyticsPage() {
                   </div>
                 ) : applicationActivity.weeks.length ? (
                   <div className="space-y-4">
-                    <ScrollArea orientation="horizontal">
+                    <ScrollArea>
                       <div className="space-y-2 min-w-[640px] pb-2">
                         <div className="flex items-start gap-3 pl-10">
                           <div className="w-10" aria-hidden />
                           <div className="flex-1">
-                            <div
-                              className="grid gap-1 text-[10px] text-muted-foreground"
-                              style={activityGridColumns}
-                            >
+                            <div className="grid gap-1 text-[10px] text-muted-foreground" style={activityGridColumns}>
                               {monthLabels.map((label, index) => (
                                 <span key={`month-${index}`} className="text-center">
                                   {label}
@@ -652,7 +647,9 @@ export default function AnalyticsPage() {
                                                 ACTIVITY_LEVEL_CLASSES[day.level] ?? ACTIVITY_LEVEL_CLASSES[0],
                                               )}
                                               aria-label={tooltipLabel}
-                                              onClick={() => setSelectedDay({ date: day.date, applications: day.applications })}
+                                              onClick={() =>
+                                                setSelectedDay({ date: day.date, applications: day.applications })
+                                              }
                                             ></button>
                                           </TooltipTrigger>
                                           <TooltipContent side="top" align="center" className="text-xs">
@@ -694,12 +691,13 @@ export default function AnalyticsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">Start logging applications to see your streak build up.</div>
+                  <div className="text-sm text-muted-foreground">
+                    Start logging applications to see your streak build up.
+                  </div>
                 )}
               </CardContent>
             </Card>
           </section>
-
         </div>
       </main>
       <Dialog open={!!selectedDay} onOpenChange={(isOpen) => !isOpen && setSelectedDay(null)}>
@@ -716,10 +714,10 @@ export default function AnalyticsPage() {
                     return (
                       <div key={application.id} className="rounded-md border bg-muted/30 p-3">
                         <TruncatedText
-  text={application.position_title}
-  className="text-sm font-medium text-foreground"
-/>
-                        <TruncatedText text={application.company_name} className="text-sm text-muted-foreground"/>
+                          text={application.position_title}
+                          className="text-sm font-medium text-foreground"
+                        />
+                        <TruncatedText text={application.company_name} className="text-sm text-muted-foreground" />
                         <p className="mt-1 text-xs text-muted-foreground">Status: {status.label}</p>
                       </div>
                     )

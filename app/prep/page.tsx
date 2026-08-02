@@ -65,6 +65,7 @@ export default function PrepPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [isProcessingVoice, setIsProcessingVoice] = useState(false)
+  const [, setVoiceTranscript] = useState("")
   const [voiceReplyUrl, setVoiceReplyUrl] = useState<string | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [isVoiceReplyEnabled, setIsVoiceReplyEnabled] = useState(true)
@@ -228,7 +229,7 @@ export default function PrepPage() {
         )
         const nextSelectedChatId = chatList.some((chat) => chat.id === selectedChatId)
           ? selectedChatId
-          : chatList[0]?.id ?? null
+          : (chatList[0]?.id ?? null)
 
         setChats(resolvedChats)
         setSelectedChatId(nextSelectedChatId)
@@ -328,10 +329,7 @@ export default function PrepPage() {
 
       if (isFocusMode) {
         // Focus mode regression check: surface a warning when we fall back to audio-only playback.
-        console.warn(
-          "[Prep focus mode] Visualizer setup failed; continuing with audio-only playback.",
-          error,
-        )
+        console.warn("[Prep focus mode] Visualizer setup failed; continuing with audio-only playback.", error)
       }
     },
     [isFocusMode],
@@ -401,13 +399,7 @@ export default function PrepPage() {
     }
   }, [isFocusMode, stopMicVisualizationStream, teardownVisualizer])
 
-
-  type ApplicationCardKey =
-    | "jobInformation"
-    | "resumeHighlights"
-    | "responsibilities"
-    | "qualifications"
-    | "notes"
+  type ApplicationCardKey = "jobInformation" | "resumeHighlights" | "responsibilities" | "qualifications" | "notes"
 
   interface ApplicationCardConfig {
     key: ApplicationCardKey
@@ -453,7 +445,6 @@ export default function PrepPage() {
                     </p>
                   </div>
                 )}
-
               </div>
             </div>
           ),
@@ -530,12 +521,7 @@ export default function PrepPage() {
   }, [chats, selectedChatId, titleDrafts])
 
   const startTypewriterStream = useCallback(
-    (
-      targetIndex: number,
-      fullText: string,
-      tone: ChatMessage["tone"] = "technical",
-      onComplete?: () => void,
-    ) => {
+    (targetIndex: number, fullText: string, tone: ChatMessage["tone"] = "technical", onComplete?: () => void) => {
       if (typewriterIntervalRef.current) {
         clearInterval(typewriterIntervalRef.current)
       }
@@ -959,7 +945,9 @@ export default function PrepPage() {
     if (typeof window === "undefined") return
 
     try {
-      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
       const audioContext = new AudioContextClass()
       const oscillator = audioContext.createOscillator()
       const gainNode = audioContext.createGain()
@@ -1127,10 +1115,7 @@ export default function PrepPage() {
           streamingMessageIndexRef.current = nextMessages.length - 1
           const messageIndex = streamingMessageIndexRef.current
           if (messageIndex !== null) {
-            setTimeout(
-              () => startTypewriterStream(messageIndex, data.reply ?? "", "technical"),
-              0,
-            )
+            setTimeout(() => startTypewriterStream(messageIndex, data.reply ?? "", "technical"), 0)
           }
         }
 
@@ -1169,9 +1154,7 @@ export default function PrepPage() {
           try {
             await audioElement.play()
           } catch (playbackError) {
-            setVoiceError(
-              playbackError instanceof Error ? playbackError.message : "Unable to play the audio reply.",
-            )
+            setVoiceError(playbackError instanceof Error ? playbackError.message : "Unable to play the audio reply.")
             return
           }
 
@@ -1186,7 +1169,6 @@ export default function PrepPage() {
       }
 
       void updateUsageFromResponse(response)
-
     } catch (error) {
       setVoiceError(error instanceof Error ? error.message : "Voice mode is unavailable right now.")
     } finally {
@@ -1195,7 +1177,6 @@ export default function PrepPage() {
       setRecordingSeconds(0)
     }
   }
-
 
   return (
     <div className="min-h-screen overflow-hidden ">
@@ -1266,11 +1247,7 @@ export default function PrepPage() {
                               : "border-border/60 hover:border-primary/50 hover:bg-muted/40",
                           )}
                         >
-                          <button
-                            type="button"
-                            className="flex-1 text-left"
-                            onClick={() => handleSelectChat(chat.id)}
-                          >
+                          <button type="button" className="flex-1 text-left" onClick={() => handleSelectChat(chat.id)}>
                             <p className="text-sm font-semibold leading-tight text-foreground line-clamp-2">
                               {workingTitle || "Untitled chat"}
                             </p>
@@ -1316,7 +1293,9 @@ export default function PrepPage() {
                     <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/30 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">Focus mode</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
+                            Focus mode
+                          </p>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {isVoiceReplyEnabled ? "Voice replies on" : "Voice replies muted"}
@@ -1361,21 +1340,14 @@ export default function PrepPage() {
                   {(activeChatTitle || chatError) && (
                     <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
                       {activeChatTitle && (
-                        <p className="text-sm font-semibold text-foreground line-clamp-2">
-                          {activeChatTitle}
-                        </p>
+                        <p className="text-sm font-semibold text-foreground line-clamp-2">{activeChatTitle}</p>
                       )}
-                      {chatError && (
-                        <p className="mt-1 text-xs text-destructive">
-                          {chatError}
-                        </p>
-                      )}
+                      {chatError && <p className="mt-1 text-xs text-destructive">{chatError}</p>}
                     </div>
                   )}
 
                   <ScrollArea className="flex-1 overflow-y-auto" ref={chatRef}>
                     <div className="space-y-4 pr-2 pb-4">
-                     
                       {messages.map((message, index) => (
                         <div key={message.id ?? `${message.role}-${index}`} className="flex gap-3">
                           <div
@@ -1384,19 +1356,33 @@ export default function PrepPage() {
                               message.role === "assistant" ? "bg-primary/10 border-primary/30" : "bg-muted",
                             )}
                           >
-                            {message.role === "assistant" ? <Bot className="h-5 w-5 text-primary" /> : <Sparkles className="h-5 w-5" />}
+                            {message.role === "assistant" ? (
+                              <Bot className="h-5 w-5 text-primary" />
+                            ) : (
+                              <Sparkles className="h-5 w-5" />
+                            )}
                           </div>
                           <div className="flex-1 space-y-2">
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="font-medium text-foreground">{message.role === "assistant" ? "Prep" : "You"}</span>
-                              {message.tone && <Badge variant="outline" className="text-[10px] h-5">{message.tone}</Badge>}
+                              <span className="font-medium text-foreground">
+                                {message.role === "assistant" ? "Prep" : "You"}
+                              </span>
+                              {message.tone && (
+                                <Badge variant="outline" className="text-[10px] h-5">
+                                  {message.tone}
+                                </Badge>
+                              )}
                             </div>
-                            <p className="leading-relaxed break-words text-sm text-foreground whitespace-pre-wrap">{message.content}</p>
+                            <p className="leading-relaxed break-words text-sm text-foreground whitespace-pre-wrap">
+                              {message.content}
+                            </p>
                           </div>
                         </div>
                       ))}
                       {messages.length === 0 && !isMessagesLoading && (
-                        <div className="text-center text-muted-foreground text-sm">Start chatting to begin your interview</div>
+                        <div className="text-center text-muted-foreground text-sm">
+                          Start chatting to begin your interview
+                        </div>
                       )}
                     </div>
                   </ScrollArea>
@@ -1407,7 +1393,6 @@ export default function PrepPage() {
                       handleSend()
                     }}
                   >
-                    
                     <div className="flex items-center gap-2">
                       <Popover>
                         <PopoverTrigger asChild>
@@ -1433,8 +1418,6 @@ export default function PrepPage() {
                               aria-label="Toggle voice replies"
                             />
                           </div>
-
-                          
 
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             {isRecording && <span className="text-destructive font-semibold">Recording</span>}
@@ -1504,9 +1487,7 @@ export default function PrepPage() {
                           {voiceError && <p className="text-xs text-destructive">{voiceError}</p>}
 
                           {visualizerNotice && (
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                              {visualizerNotice}
-                            </p>
+                            <p className="text-xs text-amber-700 dark:text-amber-400">{visualizerNotice}</p>
                           )}
                         </PopoverContent>
                       </Popover>
@@ -1545,7 +1526,9 @@ export default function PrepPage() {
                     </SelectContent>
                   </Select>
                   {!isLoading && jobOptions.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No roles found yet. Add one from the dashboard to get started.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No roles found yet. Add one from the dashboard to get started.
+                    </p>
                   )}
                 </div>
 
@@ -1581,7 +1564,7 @@ export default function PrepPage() {
                       )}
                     </div>
 
-                    <Accordion type="multiple" collapsible defaultValue={["jobInformation"]} className="space-y-2">
+                    <Accordion type="multiple" defaultValue={["jobInformation"]} className="space-y-2">
                       {applicationCards.map((card) => {
                         const Icon = card.icon
 
@@ -1597,7 +1580,9 @@ export default function PrepPage() {
                                 <span>{card.title}</span>
                               </div>
                             </AccordionTrigger>
-                            <AccordionContent className="px-3 pb-4">{card.render(selectedApplication)}</AccordionContent>
+                            <AccordionContent className="px-3 pb-4">
+                              {card.render(selectedApplication)}
+                            </AccordionContent>
                           </AccordionItem>
                         )
                       })}
@@ -1687,9 +1672,7 @@ export default function PrepPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">Prep is speaking</p>
                 <div className="rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
                   <p className="text-lg leading-relaxed text-white/90 whitespace-pre-wrap" aria-live="polite">
-                    {latestAssistantMessage?.content?.trim()
-                      ? latestAssistantMessage.content
-                      : "Say hello to start."}
+                    {latestAssistantMessage?.content?.trim() ? latestAssistantMessage.content : "Say hello to start."}
                   </p>
                 </div>
               </div>
@@ -1699,14 +1682,10 @@ export default function PrepPage() {
                   <span
                     className={cn(
                       "h-2 w-2 rounded-full",
-                      isRecording
-                        ? "bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.25)]"
-                        : "bg-zinc-600",
+                      isRecording ? "bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.25)]" : "bg-zinc-600",
                     )}
                   />
-                  <span>
-                    {isRecording ? "Listening... tap to end" : "Tap the circle to start speaking"}
-                  </span>
+                  <span>{isRecording ? "Listening... tap to end" : "Tap the circle to start speaking"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Volume2 className="h-4 w-4" />

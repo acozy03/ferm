@@ -3,14 +3,7 @@ import type { JobApplicationStatus, JobApplicationStatusHistory } from "@/lib/ty
 export const DEFAULT_MAX_INTERVIEW_ROUNDS = 5
 
 export type PipelineStage =
-  | "applied"
-  | "interview"
-  | "ghosted"
-  | "offer"
-  | "rejected"
-  | "accepted"
-  | "withdrawn"
-  | "unknown"
+  "applied" | "interview" | "ghosted" | "offer" | "rejected" | "accepted" | "withdrawn" | "unknown"
 
 const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
   applied: "Applied",
@@ -190,9 +183,7 @@ export function parseStatus(status: string | null | undefined): StatusMetadata {
   const outcomeMatch = raw.match(OUTCOME_REGEX)
   if (outcomeMatch) {
     const outcome = (outcomeMatch[1] ?? "Rejected").replace(/^[a-z]/, (letter) => letter.toUpperCase()) as
-      | "Ghosted"
-      | "Offer"
-      | "Rejected"
+      "Ghosted" | "Offer" | "Rejected"
     const round = normalizeOutcomeRound(outcomeMatch[2], 0)
     const value = `${outcome} After Round ${round}` as JobApplicationStatus
     const stage: PipelineStage = outcome === "Ghosted" ? "ghosted" : outcome === "Offer" ? "offer" : "rejected"

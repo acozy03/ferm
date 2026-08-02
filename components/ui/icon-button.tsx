@@ -9,13 +9,13 @@ const iconButtonVariants = cva(
   {
     variants: {
       variant: {
-        ghost: "hover:bg-accent/80 hover:text-accent-foreground", 
+        ghost: "hover:bg-accent/80 hover:text-accent-foreground",
         subtle: "hover:bg-primary/15 text-primary",
       },
       size: {
-        default: "h-9 px-3", 
-        sm: "h-8 px-2.5", 
-        icon: "size-9", 
+        default: "h-9 px-3",
+        sm: "h-8 px-2.5",
+        icon: "size-9",
       },
     },
     defaultVariants: {

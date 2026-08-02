@@ -22,7 +22,7 @@ const UpdateJobApplicationSchema = z
     location: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
     salary_range: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
     employment_type: z.enum(["Full-time", "Part-time", "Contract", "Internship"]).optional(),
-    status: z.string().max(MAX_STATUS_LENGTH).optional(),
+    status: z.string().max(MAX_STATUS_LENGTH).transform(normalizeStatusValue).optional(),
     priority: z.enum(["Low", "Medium", "High"]).optional(),
     application_date: z.string().max(32).optional(),
     notes: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
@@ -58,12 +58,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const { data, error } = await supabase
       .from("job_applications")
-      .select(`
+      .select(
+        `
         *,
         interviews(*),
         activity_log(*),
         status_history:job_application_status_history(*)
-      `)
+      `,
+      )
       .eq("id", id)
       .eq("user_id", user.id)
       .single()
@@ -205,10 +207,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             previousStatus,
             attemptedStatus: nextStatus,
           })
-          return NextResponse.json(
-            { error: "Status cannot move backwards in the pipeline" },
-            { status: 400 },
-          )
+          return NextResponse.json({ error: "Status cannot move backwards in the pipeline" }, { status: 400 })
         }
 
         sanitizedUpdates.status = nextStatus
@@ -230,10 +229,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         updates: sanitizedUpdates,
         error,
       })
-      return NextResponse.json(
-        { error: error.message, code: error.code, details: error.details },
-        { status: 500 },
-      )
+      return NextResponse.json({ error: error.message, code: error.code, details: error.details }, { status: 500 })
     }
 
     if (statusInPayload && data?.status && previousStatus !== data.status) {
@@ -321,11 +317,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
     const { id } = params
 
-    const { error } = await supabase
-      .from("job_applications")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id)
+    const { error } = await supabase.from("job_applications").delete().eq("id", id).eq("user_id", user.id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

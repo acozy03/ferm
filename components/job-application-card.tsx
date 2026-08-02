@@ -88,11 +88,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
       return
     }
 
-    if (
-      target.closest(
-        "button, a, [role='button'], input, textarea, select, [data-prevent-card-toggle='true']",
-      )
-    ) {
+    if (target.closest("button, a, [role='button'], input, textarea, select, [data-prevent-card-toggle='true']")) {
       return
     }
 
@@ -113,8 +109,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
     <Card
       className={cn(
         "group relative transition-colors hover:bg-accent/50",
-        onSelect &&
-          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        onSelect && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         isSelected && "bg-accent/70 ring-2 ring-primary",
       )}
       role={onSelect ? "checkbox" : undefined}
@@ -139,10 +134,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <Badge
-              className={`${getStatusBadgeClass(application.status)} shrink-0 h-8 px-3 text-sm`}
-              variant="outline"
-            >
+            <Badge className={`${getStatusBadgeClass(application.status)} shrink-0 h-8 px-3 text-sm`} variant="outline">
               {formatStatusLabel(application.status)}
             </Badge>
             <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
@@ -198,13 +190,10 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
           )}
         </div>
 
-     
-
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="flex flex-wrap items-center gap-2">
             <JobDetailsDialog
               application={application}
-              onUpdate={onUpdate || (() => {})}
               trigger={
                 <Button variant="outline" size="sm">
                   View Details

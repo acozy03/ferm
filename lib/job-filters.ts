@@ -1,5 +1,16 @@
-import type { JobApplicationFilters } from "@/lib/types/database"
+import type { EmploymentType, JobApplicationFilters, Priority } from "@/lib/types/database"
 import type { ReadonlyURLSearchParams } from "next/navigation"
+
+const PRIORITIES: readonly Priority[] = ["Low", "Medium", "High"]
+const EMPLOYMENT_TYPES: readonly EmploymentType[] = ["Full-time", "Part-time", "Contract", "Internship"]
+
+function isPriority(value: string): value is Priority {
+  return PRIORITIES.some((priority) => priority === value)
+}
+
+function isEmploymentType(value: string): value is EmploymentType {
+  return EMPLOYMENT_TYPES.some((employmentType) => employmentType === value)
+}
 
 const FILTER_PARAM_KEYS: Array<keyof JobApplicationFilters> = [
   "status",
@@ -11,9 +22,7 @@ const FILTER_PARAM_KEYS: Array<keyof JobApplicationFilters> = [
   "date_to",
 ]
 
-export function parseJobApplicationFilters(
-  searchParams: ReadonlyURLSearchParams,
-): JobApplicationFilters {
+export function parseJobApplicationFilters(searchParams: ReadonlyURLSearchParams): JobApplicationFilters {
   const statusParam = searchParams.get("status")
   const priorityParam = searchParams.get("priority")
   const employmentTypeParam = searchParams.get("employment_type")
@@ -24,8 +33,8 @@ export function parseJobApplicationFilters(
 
   return {
     status: statusParam ? statusParam.split(",").filter(Boolean) : undefined,
-    priority: priorityParam ? priorityParam.split(",").filter(Boolean) : undefined,
-    employment_type: employmentTypeParam ? employmentTypeParam.split(",").filter(Boolean) : undefined,
+    priority: priorityParam ? priorityParam.split(",").filter(isPriority) : undefined,
+    employment_type: employmentTypeParam ? employmentTypeParam.split(",").filter(isEmploymentType) : undefined,
     company_name: companyName,
     search: searchQuery,
     date_from: dateFrom,
@@ -66,10 +75,7 @@ export function createSearchParamsWithFilters(
   return params
 }
 
-export function countJobFilters(
-  filters: JobApplicationFilters,
-  options: { includeSearch?: boolean } = {},
-): number {
+export function countJobFilters(filters: JobApplicationFilters, options: { includeSearch?: boolean } = {}): number {
   const { includeSearch = false } = options
   let total = 0
   total += filters.status?.length ?? 0

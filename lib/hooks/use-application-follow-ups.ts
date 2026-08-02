@@ -9,7 +9,9 @@ import type { ApiResponse } from "@/lib/types/api"
 type FollowUpResponse = ApiResponse<ApplicationFollowUp[]>
 
 export function useApplicationFollowUps() {
-  const { data, error, isLoading, mutate } = useSWR<FollowUpResponse>("/api/follow-ups", (url) => apiFetcher<FollowUpResponse>(url))
+  const { data, error, isLoading, mutate } = useSWR<FollowUpResponse>("/api/follow-ups", (url: string) =>
+    apiFetcher<FollowUpResponse>(url),
+  )
 
   return {
     followUps: data?.data ?? [],

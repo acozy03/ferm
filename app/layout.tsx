@@ -14,8 +14,8 @@ const jetBrainsMono = JetBrains_Mono({
   display: "swap",
 })
 
-export const revalidate = 60;
-export const runtime = 'nodejs';
+export const revalidate = 60
+export const runtime = "nodejs"
 
 export const metadata: Metadata = {
   title: "ferm.dev - Job Application Tracker",

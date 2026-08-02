@@ -91,10 +91,9 @@ function buildReminderHtml(message: string, options: { company: string | null })
   const logoUrl = getAppUrl("/logo_full.png")
   const dashboardUrl = getAppUrl("/follow-ups")
   const companyHeadline = options.company ? `Follow up with ${escapeHtml(options.company)}` : "Time to follow up"
-  const messageHtml = formatMessageParagraphs(message) ||
-    `<p style="margin: 0;">${escapeHtml(message)}</p>`
+  const messageHtml = formatMessageParagraphs(message) || `<p style="margin: 0;">${escapeHtml(message)}</p>`
 
-return `<!doctype html>
+  return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -143,7 +142,8 @@ return `<!doctype html>
       </tr>
     </table>
   </body>
-</html>`}
+</html>`
+}
 
 export async function POST(request: NextRequest) {
   const csrfError = requireCookieCsrf(request)
@@ -212,9 +212,7 @@ export async function POST(request: NextRequest) {
   }
 
   const verifiedEmail = user.email && (user.email_confirmed_at || user.confirmed_at) ? user.email : null
-  const allowedEmails = [application.contact_email, verifiedEmail].filter(
-    (email): email is string => Boolean(email),
-  )
+  const allowedEmails = [application.contact_email, verifiedEmail].filter((email): email is string => Boolean(email))
   const allowedDomains = getAllowedDomains()
 
   if (!isAllowedRecipient({ recipient, allowedEmails, allowedDomains })) {
@@ -278,7 +276,10 @@ export async function POST(request: NextRequest) {
     }
 
     if ((ipSendCount ?? 0) >= IP_RATE_LIMIT_MAX) {
-      return NextResponse.json({ error: "Too many reminders sent from this network. Please try later." }, { status: 429 })
+      return NextResponse.json(
+        { error: "Too many reminders sent from this network. Please try later." },
+        { status: 429 },
+      )
     }
   }
 
@@ -327,9 +328,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const nextReadable = data.next_follow_up_date
-    ? format(new Date(data.next_follow_up_date), "MMM d, yyyy")
-    : null
+  const nextReadable = data.next_follow_up_date ? format(new Date(data.next_follow_up_date), "MMM d, yyyy") : null
 
   return NextResponse.json({ data: { ...data, next_follow_up_readable: nextReadable } })
 }

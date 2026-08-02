@@ -3,8 +3,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server"
 import type { CreateInterviewData } from "@/lib/types/database"
 import { requireCookieCsrf } from "@/lib/api/auth"
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,10 +28,12 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("interviews")
-      .select(`
+      .select(
+        `
         *,
         job_applications(company_name, position_title)
-      `)
+      `,
+      )
       .eq("user_id", user.id)
 
     if (job_application_id) {
@@ -85,16 +87,11 @@ export async function POST(request: NextRequest) {
 
     const body: CreateInterviewData = await request.json()
 
-    const parsedRound = Number.isFinite(Number(body.interview_round))
-      ? Math.max(1, Number(body.interview_round))
-      : 1
+    const parsedRound = Number.isFinite(Number(body.interview_round)) ? Math.max(1, Number(body.interview_round)) : 1
     const scheduledDate = new Date(body.scheduled_date)
 
     if (body.status === "Scheduled" && scheduledDate.getTime() < Date.now()) {
-      return NextResponse.json(
-        { error: "Scheduled interviews must use a future date and time." },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "Scheduled interviews must use a future date and time." }, { status: 400 })
     }
 
     if (Number.isNaN(scheduledDate.getTime())) {
@@ -116,9 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     const previousInterview = existingInterviews
-      ?.filter((interview) =>
-        typeof interview.interview_round === "number" && interview.interview_round < parsedRound,
-      )
+      ?.filter((interview) => typeof interview.interview_round === "number" && interview.interview_round < parsedRound)
       .sort((a, b) => (b.interview_round ?? 0) - (a.interview_round ?? 0))[0]
 
     if (previousInterview) {
@@ -138,9 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     const nextInterview = existingInterviews
-      ?.filter((interview) =>
-        typeof interview.interview_round === "number" && interview.interview_round > parsedRound,
-      )
+      ?.filter((interview) => typeof interview.interview_round === "number" && interview.interview_round > parsedRound)
       .sort((a, b) => (a.interview_round ?? 0) - (b.interview_round ?? 0))[0]
 
     if (nextInterview) {

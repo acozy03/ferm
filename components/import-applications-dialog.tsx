@@ -9,7 +9,19 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, FileText, AlertCircle } from "lucide-react"
-import type { CreateJobApplicationData } from "@/lib/types/database"
+import { normalizeStatusValue, parseStatus } from "@/lib/status"
+import type { CreateJobApplicationData, EmploymentType, Priority } from "@/lib/types/database"
+
+const EMPLOYMENT_TYPES: EmploymentType[] = ["Full-time", "Part-time", "Contract", "Internship"]
+const PRIORITIES: Priority[] = ["Low", "Medium", "High"]
+
+function isEmploymentType(value: string): value is EmploymentType {
+  return EMPLOYMENT_TYPES.some((type) => type === value)
+}
+
+function isPriority(value: string): value is Priority {
+  return PRIORITIES.some((priority) => priority === value)
+}
 
 interface ImportApplicationsDialogProps {
   trigger: React.ReactNode
@@ -60,15 +72,30 @@ Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,
           return trimmed ? trimmed : null
         }
 
+        const status = normalizeStatusValue(record.status || "Applied")
+        if (parseStatus(status).stage === "unknown") {
+          throw new Error(`Row ${index + 2}: Invalid status "${record.status}"`)
+        }
+
+        const employmentType = record.employment_type || "Full-time"
+        if (!isEmploymentType(employmentType)) {
+          throw new Error(`Row ${index + 2}: Invalid employment type "${employmentType}"`)
+        }
+
+        const priority = record.priority || "Medium"
+        if (!isPriority(priority)) {
+          throw new Error(`Row ${index + 2}: Invalid priority "${priority}"`)
+        }
+
         const applicationData: CreateJobApplicationData = {
           company_name: record.company,
           position_title: record.position,
-          status: record.status || "Applied",
+          status,
           application_date: record.applied_date || new Date().toISOString().split("T")[0],
           location: toNullable(record.location),
           salary_range: toNullable(record.salary_range || record.salary),
-          employment_type: (record.employment_type as CreateJobApplicationData["employment_type"]) || "Full-time",
-          priority: (record.priority as CreateJobApplicationData["priority"]) || "Medium",
+          employment_type: employmentType,
+          priority,
           job_description: toNullable(record.job_description),
           qualifications: toNullable(record.qualifications),
           job_responsibilities: toNullable(record.job_responsibilities),
@@ -127,8 +154,8 @@ Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,
             <FileText className="h-4 w-4" />
             <AlertDescription>
               Upload a CSV file with columns: Company, Position, Status, Applied Date, Location, Salary Range,
-              Employment Type, Priority, Job Description, Qualifications, Job Responsibilities, Notes, Job URL,
-              Contact Person, Contact Email. Company, Position, and Applied Date are required.
+              Employment Type, Priority, Job Description, Qualifications, Job Responsibilities, Notes, Job URL, Contact
+              Person, Contact Email. Company, Position, and Applied Date are required.
             </AlertDescription>
           </Alert>
 

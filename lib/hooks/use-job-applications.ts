@@ -41,15 +41,12 @@ export function useJobApplications<
   TIncludeStatusHistory extends boolean | undefined = undefined,
   TIncludeInterviews extends boolean | undefined = undefined,
 >(
-  params: UseJobApplicationsParams<
+  params: UseJobApplicationsParams<TIncludeStatusHistory, TIncludeInterviews> = {} as UseJobApplicationsParams<
     TIncludeStatusHistory,
     TIncludeInterviews
-  > = {} as UseJobApplicationsParams<TIncludeStatusHistory, TIncludeInterviews>,
+  >,
 ) {
-  const effectiveFilters = useMemo<JobApplicationFilters>(
-    () => params.filters ?? {},
-    [params.filters],
-  )
+  const effectiveFilters = useMemo<JobApplicationFilters>(() => params.filters ?? {}, [params.filters])
 
   const requestUrl = useMemo(() => {
     const searchParams = new URLSearchParams()
@@ -85,7 +82,7 @@ export function useJobApplications<
 
   const { data, error, isLoading, mutate } = useSWR<
     PaginatedResponse<JobApplicationResult<TIncludeStatusHistory, TIncludeInterviews>>
-  >(requestUrl, (url) =>
+  >(requestUrl, (url: string) =>
     apiFetcher<PaginatedResponse<JobApplicationResult<TIncludeStatusHistory, TIncludeInterviews>>>(url),
   )
 
@@ -118,7 +115,7 @@ export function useJobApplications<
 export function useJobApplication(id: string) {
   const { data, error, isLoading, mutate } = useSWR<{ data: JobApplication }>(
     id ? `/api/job-applications/${id}` : null,
-    (url) => apiFetcher<{ data: JobApplication }>(url),
+    (url: string) => apiFetcher<{ data: JobApplication }>(url),
   )
 
   return {

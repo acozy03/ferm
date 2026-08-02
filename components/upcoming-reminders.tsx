@@ -32,20 +32,17 @@ type ReminderTheme = {
 
 const reminderThemes: Record<ReminderStatus, ReminderTheme> = {
   overdue: {
-    card:
-      "text-destructive/80 shadow-none  dark:text-destructive/70",
+    card: "text-destructive/80 shadow-none  dark:text-destructive/70",
     label: "text-destructive dark:text-destructive/80",
     time: "text-destructive dark:text-destructive/80",
   },
   soon: {
-    card:
-      "  text-amber-800/80 shadow-none  dark:text-amber-200/80",
+    card: "  text-amber-800/80 shadow-none  dark:text-amber-200/80",
     label: "text-amber-800 dark:text-amber-200",
     time: "text-amber-800 dark:text-amber-200",
   },
   scheduled: {
-    card:
-      " text-emerald-800/80 shadow-none  dark:text-emerald-200/80",
+    card: " text-emerald-800/80 shadow-none  dark:text-emerald-200/80",
     label: "text-emerald-800 dark:text-emerald-200",
     time: "text-emerald-800 dark:text-emerald-200",
   },
@@ -100,14 +97,12 @@ export function UpcomingReminders() {
         let countdownLabel: string
         if (difference < 0) {
           const overdueDays = Math.max(1, Math.ceil(Math.abs(remainingDays)))
-          countdownLabel =
-            overdueDays === 1 ? "Overdue by 1 day" : `Overdue by ${overdueDays} days`
+          countdownLabel = overdueDays === 1 ? "Overdue by 1 day" : `Overdue by ${overdueDays} days`
         } else if (difference <= dayMs) {
           countdownLabel = "in <24hrs"
         } else {
           const daysLeft = Math.ceil(remainingDays)
-          countdownLabel =
-            daysLeft === 1 ? "in 1 day" : `in ${daysLeft} days`
+          countdownLabel = daysLeft === 1 ? "in 1 day" : `in ${daysLeft} days`
         }
 
         return {
@@ -130,9 +125,7 @@ export function UpcomingReminders() {
             <BellRing className="h-4 w-4 text-muted-foreground" />
             Upcoming Reminders
           </span>
-
         </CardTitle>
-
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
@@ -162,10 +155,7 @@ export function UpcomingReminders() {
                   return (
                     <div
                       key={reminder.id}
-                      className={cn(
-                        "rounded-lg border bg-card/70 p-4 transition-colors",
-                        theme.card,
-                      )}
+                      className={cn("rounded-lg border bg-card/70 p-4 transition-colors", theme.card)}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -180,7 +170,6 @@ export function UpcomingReminders() {
                             maxWidthClass="max-w-[14rem]"
                           />
                         </div>
-                    
                       </div>
 
                       <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">

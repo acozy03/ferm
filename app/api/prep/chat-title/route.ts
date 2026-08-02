@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
     .filter(Boolean)
     .join(" | ")
 
-  const condensedMessages = (payload.messages ?? []).map((message) =>
-    `${message.role === "assistant" ? "Coach" : "Candidate"}: ${message.content}`,
+  const condensedMessages = (payload.messages ?? []).map(
+    (message) => `${message.role === "assistant" ? "Coach" : "Candidate"}: ${message.content}`,
   )
 
   const instructions = [

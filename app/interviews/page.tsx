@@ -2,39 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import {
-  CalendarClock,
-  CalendarIcon,
-  ChevronDown,
-  ClipboardPen,
-  NotebookPen,
-  Trash,
-  Plus,
-  Search,
-} from "lucide-react"
+import { CalendarClock, CalendarIcon, ChevronDown, ClipboardPen, NotebookPen, Trash, Plus, Search } from "lucide-react"
 
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
@@ -46,11 +25,7 @@ import { cn } from "@/lib/utils"
 import { useInterviews } from "@/lib/hooks/use-interviews"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { getStatusRound } from "@/lib/status"
-import type {
-  InterviewStatus,
-  InterviewType,
-  InterviewWithApplication,
-} from "@/lib/types/database"
+import type { InterviewStatus, InterviewType, InterviewWithApplication } from "@/lib/types/database"
 
 type NotesUpdatePayload = Pick<InterviewWithApplication, "prep_notes" | "post_interview_notes">
 
@@ -126,8 +101,7 @@ function InterviewNotesCard({ interview, onSave, pendingId }: InterviewNotesCard
     setPostNotes(interview.post_interview_notes ?? "")
   }, [interview.id, interview.post_interview_notes, interview.prep_notes])
 
-  const isDirty =
-    prepNotes !== (interview.prep_notes ?? "") || postNotes !== (interview.post_interview_notes ?? "")
+  const isDirty = prepNotes !== (interview.prep_notes ?? "") || postNotes !== (interview.post_interview_notes ?? "")
 
   const isPending = pendingId === interview.id
 
@@ -206,11 +180,7 @@ export default function InterviewsPage() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [initialFormSnapshot, setInitialFormSnapshot] = useState<FormSnapshot | null>(null)
 
-  const createFormSnapshot = (
-    state: InterviewFormState,
-    date: Date | undefined,
-    time: string,
-  ): FormSnapshot => ({
+  const createFormSnapshot = (state: InterviewFormState, date: Date | undefined, time: string): FormSnapshot => ({
     formState: state,
     scheduledDate: date ? date.toISOString() : null,
     scheduledTime: time,
@@ -314,13 +284,12 @@ export default function InterviewsPage() {
       status: interview.status,
     }
     const nextScheduledDate = isValidDate ? scheduledDateValue : undefined
-    const nextScheduledTime =
-      isValidDate
-        ? `${scheduledDateValue.getHours().toString().padStart(2, "0")}:${scheduledDateValue
-            .getMinutes()
-            .toString()
-            .padStart(2, "0")}`
-        : ""
+    const nextScheduledTime = isValidDate
+      ? `${scheduledDateValue.getHours().toString().padStart(2, "0")}:${scheduledDateValue
+          .getMinutes()
+          .toString()
+          .padStart(2, "0")}`
+      : ""
 
     setFormState(nextFormState)
     setScheduledDate(nextScheduledDate)
@@ -438,9 +407,7 @@ export default function InterviewsPage() {
     if (!initialFormSnapshot) return true
 
     const formStateEqual = Object.entries(initialFormSnapshot.formState).every(
-      ([key, value]) =>
-        currentFormSnapshot.formState[key as keyof InterviewFormState] ===
-        value,
+      ([key, value]) => currentFormSnapshot.formState[key as keyof InterviewFormState] === value,
     )
 
     return !(
@@ -496,9 +463,7 @@ export default function InterviewsPage() {
     const scheduledDateTime = new Date(scheduledDate)
     scheduledDateTime.setHours(hours ?? 0, minutes ?? 0, 0, 0)
 
-    const isEligible = eligibleApplications.some(
-      (application) => application.id === formState.job_application_id,
-    )
+    const isEligible = eligibleApplications.some((application) => application.id === formState.job_application_id)
 
     if (!isEditing && !isEligible) {
       toast({
@@ -555,7 +520,6 @@ export default function InterviewsPage() {
         throw error
       }
 
-
       toast({
         title: isEditing ? "Interview updated" : "Interview logged",
         description: isEditing ? "Details saved." : "Keep prepping and add notes as you go.",
@@ -569,8 +533,7 @@ export default function InterviewsPage() {
       console.error(error)
       const message = error instanceof Error ? error.message : String(error)
       const errorCode = (error as { code?: string } | null)?.code
-      const sequencingConflict =
-        errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled")
+      const sequencingConflict = errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled")
 
       if (message === scheduledInPastMessage && isScheduleEdited) {
         toast({
@@ -728,8 +691,7 @@ export default function InterviewsPage() {
                             <SelectTrigger
                               className={cn(
                                 "w-full",
-                                formErrors.job_application_id &&
-                                  "border-destructive focus-visible:ring-destructive",
+                                formErrors.job_application_id && "border-destructive focus-visible:ring-destructive",
                               )}
                             >
                               <SelectValue
@@ -737,8 +699,8 @@ export default function InterviewsPage() {
                                   isLoadingApplications
                                     ? "Loading applications..."
                                     : applicationOptions.length === 0
-                                        ? "Update job statuses to log interviews"
-                                        : "Select a job"
+                                      ? "Update job statuses to log interviews"
+                                      : "Select a job"
                                 }
                               />
                             </SelectTrigger>
@@ -753,7 +715,7 @@ export default function InterviewsPage() {
                                     key={application.id}
                                     value={application.id}
                                     maxWidthClassName="max-w-[25rem]"
-                                  > 
+                                  >
                                     {application.company_name} — {application.position_title}
                                   </SelectItem>
                                 ))
@@ -848,12 +810,9 @@ export default function InterviewsPage() {
                                 variant="outline"
                                 className={cn(
                                   "w-full justify-start text-left font-normal sm:w-auto sm:flex-1",
-                                  formErrors.scheduled_date &&
-                                    "border-destructive focus-visible:ring-destructive",
+                                  formErrors.scheduled_date && "border-destructive focus-visible:ring-destructive",
                                 )}
-                                onClick={() =>
-                                  setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
-                                }
+                                onClick={() => setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))}
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {scheduledDate ? format(scheduledDate, "PPP") : "Pick a date"}
@@ -881,8 +840,7 @@ export default function InterviewsPage() {
                             <SelectTrigger
                               className={cn(
                                 "w-full sm:w-[200px]",
-                                formErrors.scheduled_date &&
-                                  "border-destructive focus-visible:ring-destructive",
+                                formErrors.scheduled_date && "border-destructive focus-visible:ring-destructive",
                               )}
                             >
                               <SelectValue placeholder="Time" />
@@ -954,12 +912,15 @@ export default function InterviewsPage() {
                           className="min-h-[80px]"
                         />
                       </div>
-                      {formErrorMessage && (
-                        <p className="text-sm text-destructive">{formErrorMessage}</p>
-                      )}
+                      {formErrorMessage && <p className="text-sm text-destructive">{formErrorMessage}</p>}
                     </div>
                     <DialogFooter>
-                      <Button onClick={() => handleDialogChange(false)} type="button" variant="outline" className="flex-1">
+                      <Button
+                        onClick={() => handleDialogChange(false)}
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                      >
                         Close
                       </Button>
                       <Button className="flex-1" onClick={handleSubmitInterview} disabled={isSubmitting || !hasChanges}>
@@ -969,8 +930,6 @@ export default function InterviewsPage() {
                   </DialogContent>
                 </Dialog>
               </div>
-
-            
             </CardHeader>
 
             <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
@@ -996,15 +955,12 @@ export default function InterviewsPage() {
                 <div className="flex flex-1 items-center justify-center text-center">
                   <div className="space-y-2">
                     <p className="text-lg font-semibold">No matches found</p>
-                    <p className="text-sm text-muted-foreground">
-                      Adjust your search to find a saved interview.
-                    </p>
+                    <p className="text-sm text-muted-foreground">Adjust your search to find a saved interview.</p>
                   </div>
                 </div>
               ) : (
                 <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[360px_1fr]">
                   <div className="flex min-h-0 flex-col rounded-lg border bg-muted/40">
-
                     <ScrollArea className="flex-1">
                       <div className="space-y-3 p-4 pr-2">
                         {groupedInterviews.map((group) => {
@@ -1131,27 +1087,24 @@ export default function InterviewsPage() {
                               size="sm"
                               onClick={() => handleEditInterview(selectedInterview)}
                             >
-                              <NotebookPen/>
+                              <NotebookPen />
                             </Button>
-                        
+
                             <Button
                               variant="destructive"
                               size="sm"
                               onClick={() => setIsDeleteDialogOpen(true)}
                               disabled={deletingId === selectedInterview.id}
                             >
-                              <Trash/>
+                              <Trash />
                             </Button>
-
                           </div>
                         </div>
 
                         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
                           <div className="grid gap-3 rounded-lg border bg-muted/50 p-3 sm:grid-cols-4 sm:p-4">
                             <div className="rounded-md border bg-background/60 p-3 shadow-sm">
-                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Round
-                              </p>
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Round</p>
                               <p className="text-sm font-semibold text-foreground">
                                 {selectedInterview.interview_round
                                   ? `Round ${selectedInterview.interview_round}`
@@ -1182,10 +1135,7 @@ export default function InterviewsPage() {
                               </p>
                               <p className="text-sm font-semibold text-foreground break-words">
                                 {selectedInterview.interviewer_email ? (
-                                  <a
-                                    href={`mailto:${selectedInterview.interviewer_email}`}
-                                    className="hover:underline"
-                                  >
+                                  <a href={`mailto:${selectedInterview.interviewer_email}`} className="hover:underline">
                                     {selectedInterview.interviewer_email}
                                   </a>
                                 ) : (

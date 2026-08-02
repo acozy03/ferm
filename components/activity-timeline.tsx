@@ -25,15 +25,10 @@ const activityColors = {
 }
 
 export function ActivityTimeline() {
-    const {
-    activities,
-    totalCount,
-    isLoading,
-    error,
-    hasMore,
-    isLoadingMore,
-    loadMore,
-  } = useActivityLogInfinite(undefined, 30)
+  const { activities, totalCount, isLoading, error, hasMore, isLoadingMore, loadMore } = useActivityLogInfinite(
+    undefined,
+    30,
+  )
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
@@ -117,7 +112,7 @@ export function ActivityTimeline() {
     )
   }
 
-   return (
+  return (
     <Card className="flex h-full flex-col">
       <CardHeader className="shrink-0">
         <CardTitle className="flex items-center justify-between gap-3 text-base">
@@ -140,9 +135,7 @@ export function ActivityTimeline() {
               <span>No recent activity</span>
             </div>
           ) : (
-            <div className="space-y-3">
-              {activities.map((item) => renderActivityItem(item))}
-            </div>
+            <div className="space-y-3">{activities.map((item) => renderActivityItem(item))}</div>
           )}
 
           {activities.length > 0 ? (

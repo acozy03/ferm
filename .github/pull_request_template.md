@@ -4,7 +4,9 @@
 
 ## Validation
 
+- [ ] `pnpm format:check`
 - [ ] `pnpm lint`
+- [ ] `pnpm typecheck`
 - [ ] `pnpm build`
 - [ ] Relevant manual testing completed
 

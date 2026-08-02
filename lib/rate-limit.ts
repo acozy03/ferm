@@ -24,10 +24,7 @@ function getRateLimiter() {
 
   cachedLimiter = new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(
-      CHECK_EMAIL_RATE_LIMIT_MAX_ATTEMPTS,
-      `${CHECK_EMAIL_RATE_LIMIT_WINDOW_SECONDS} s`,
-    ),
+    limiter: Ratelimit.slidingWindow(CHECK_EMAIL_RATE_LIMIT_MAX_ATTEMPTS, `${CHECK_EMAIL_RATE_LIMIT_WINDOW_SECONDS} s`),
     analytics: false,
     prefix: "ratelimit:check-email",
   })

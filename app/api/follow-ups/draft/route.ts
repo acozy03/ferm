@@ -73,8 +73,7 @@ export async function POST(request: NextRequest) {
     jobDescription,
     appliedAt,
     daysSinceApplication,
-  } =
-    payload.data
+  } = payload.data
 
   const { data: application, error: applicationError } = await supabase
     .from("job_applications")
@@ -113,9 +112,9 @@ export async function POST(request: NextRequest) {
     response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
     return response
   }
-  
+
   const { data: profile, error: profileError } = await supabase.auth.getUser()
-  
+
   if (profileError) {
     return NextResponse.json({ error: "Unable to determine user profile" }, { status: 500 })
   }

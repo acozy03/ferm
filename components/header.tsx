@@ -65,11 +65,9 @@ export function Header() {
   }, [user])
   const handleSignOut = useCallback(async () => {
     await supabase.auth.signOut()
-    await mutate(
-      (key) => typeof key === "string" && key.startsWith("/api/job-applications"),
-      undefined,
-      { revalidate: false },
-    )
+    await mutate((key) => typeof key === "string" && key.startsWith("/api/job-applications"), undefined, {
+      revalidate: false,
+    })
     router.replace("/landing")
     router.refresh()
   }, [mutate, router, supabase])
@@ -133,9 +131,7 @@ export function Header() {
                     disabled={isAuthLoading}
                   >
                     <Avatar className="h-7 w-7">
-                      {userAvatar ? (
-                        <AvatarImage src={userAvatar} alt={user?.email ?? "Account avatar"} />
-                      ) : null}
+                      {userAvatar ? <AvatarImage src={userAvatar} alt={user?.email ?? "Account avatar"} /> : null}
                       <AvatarFallback>
                         <UserRound className="h-4 w-4" />
                       </AvatarFallback>
@@ -196,7 +192,7 @@ export function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <ContactDialog open={isContactOpen} onOpenChange={setIsContactOpen} userEmail={user?.email ?? null} />
+              <ContactDialog open={isContactOpen} onOpenChange={setIsContactOpen} />
               <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
             </div>
           </div>

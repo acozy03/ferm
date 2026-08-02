@@ -2,8 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { getStatusStage } from "@/lib/status"
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
@@ -112,11 +112,14 @@ export async function GET(request: NextRequest) {
       response_rate: Math.round(response_rate * 100) / 100,
     }
 
-    return NextResponse.json({ data: stats }, {
-      headers: {
-        "Cache-Control": "no-store",
+    return NextResponse.json(
+      { data: stats },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
       },
-    })
+    )
   } catch (error) {
     console.error("Failed to load dashboard stats", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

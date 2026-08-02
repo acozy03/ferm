@@ -13,9 +13,7 @@ export function parseDateInput(value: string | null | undefined): Date | null {
   }
 
   const hasTimeComponent = trimmed.includes("T")
-  const parsed = hasTimeComponent
-    ? parseISO(trimmed)
-    : parse(trimmed, DATE_ONLY_PATTERN, new Date())
+  const parsed = hasTimeComponent ? parseISO(trimmed) : parse(trimmed, DATE_ONLY_PATTERN, new Date())
 
   return isValid(parsed) ? parsed : null
 }

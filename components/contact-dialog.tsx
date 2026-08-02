@@ -32,11 +32,10 @@ export function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
     onOpenChange(false)
   }, [onOpenChange])
 
-  const canSubmit = useMemo(() => topic.trim().length > 0 && details.trim().length > 0 && !isSubmitting, [
-    details,
-    isSubmitting,
-    topic,
-  ])
+  const canSubmit = useMemo(
+    () => topic.trim().length > 0 && details.trim().length > 0 && !isSubmitting,
+    [details, isSubmitting, topic],
+  )
 
   useEffect(() => {
     if (!open) {
@@ -90,10 +89,9 @@ export function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg"showCloseButton={false}>
+      <DialogContent className="sm:max-w-lg" showCloseButton={false}>
         <DialogHeader className="space-y-2">
           <DialogTitle>Feedback &amp; Support</DialogTitle>
-          
         </DialogHeader>
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-3">

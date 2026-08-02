@@ -16,12 +16,7 @@ interface BulkActionsProps {
   onClearSelection: () => void
 }
 
-export function BulkActions({
-  selectedCount,
-  onBulkStatusUpdate,
-  onBulkDelete,
-  onClearSelection,
-}: BulkActionsProps) {
+export function BulkActions({ selectedCount, onBulkStatusUpdate, onBulkDelete, onClearSelection }: BulkActionsProps) {
   const [bulkStatus, setBulkStatus] = useState<JobApplicationStatus | undefined>(undefined)
   const [mounted, setMounted] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)

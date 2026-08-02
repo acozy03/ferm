@@ -15,7 +15,7 @@ export function useInterviews(params: UseInterviewsParams = {}) {
 
   const { data, error, isLoading, mutate } = useSWR<{ data: InterviewWithApplication[] }>(
     `/api/interviews?${searchParams.toString()}`,
-    (url) => apiFetcher<{ data: InterviewWithApplication[] }>(url),
+    (url: string) => apiFetcher<{ data: InterviewWithApplication[] }>(url),
   )
 
   return {

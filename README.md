@@ -23,16 +23,17 @@ Fill in the Supabase values in `.env.local` before opening <http://localhost:300
 ## Checks
 
 ```sh
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm build
 ```
 
-`pnpm typecheck` currently exposes pre-existing type errors that are ignored by the Next.js production build. It is available for local cleanup but is not yet a CI gate.
+Use `pnpm format` to apply Prettier formatting. CI requires formatting, linting, type-checking, and the production build to pass.
 
 ## CI/CD
 
-Pull requests and pushes to `master` run linting and a production build. Successful pushes to `master`, version tags, and manual workflow runs publish a container to `ghcr.io/cosentinode/ferm`.
+Pull requests and pushes to `master` run formatting, linting, type-checking, and a production build. Successful pushes to `master`, version tags, and manual workflow runs publish a container to `ghcr.io/cosentinode/ferm`.
 
 Configure these GitHub repository variables so the published client bundle points at the production Supabase project:
 

@@ -34,10 +34,13 @@ const ActivityTimeline = dynamic(() => import("@/components/activity-timeline").
   loading: () => <div className="h-full rounded-xl border bg-muted/40" />,
 })
 
-const UpcomingReminders = dynamic(() => import("@/components/upcoming-reminders").then((mod) => mod.UpcomingReminders), {
-  ssr: false,
-  loading: () => <div className="h-full rounded-xl border bg-muted/40" />,
-})
+const UpcomingReminders = dynamic(
+  () => import("@/components/upcoming-reminders").then((mod) => mod.UpcomingReminders),
+  {
+    ssr: false,
+    loading: () => <div className="h-full rounded-xl border bg-muted/40" />,
+  },
+)
 
 const serializeFilters = (filters: JobApplicationFilters) =>
   createSearchParamsWithFilters(new URLSearchParams(), filters).toString()
@@ -64,9 +67,9 @@ const countActiveFilters = (filters: JobApplicationFilters) => {
   if (filters.search?.trim()) count++
   if (filters.company_name?.trim()) count++
 
-  if (filters.status?.length) count+=filters.status.length
-  if (filters.priority?.length) count+=filters.priority.length
-  if (filters.employment_type?.length) count+=filters.employment_type.length
+  if (filters.status?.length) count += filters.status.length
+  if (filters.priority?.length) count += filters.priority.length
+  if (filters.employment_type?.length) count += filters.employment_type.length
 
   if (filters.date_from || filters.date_to) count++
 
@@ -78,7 +81,6 @@ export default function Dashboard() {
   const router = useRouter()
   const pathname = usePathname()
   const { settings } = useSettings()
-
 
   const preferredView = useMemo<DashboardView>(() => settings.defaultView as DashboardView, [settings.defaultView])
 
@@ -121,10 +123,7 @@ export default function Dashboard() {
   const [view, setView] = useState<DashboardView>(viewFromParams)
   const [resultsLimit, setResultsLimit] = useState(DEFAULT_DASHBOARD_LIMIT)
   const filtersSignature = useMemo(() => serializeFilters(filters), [filters])
-  const activeFilterCount = useMemo(
-  () => countActiveFilters(filters),
-  [filters]
-)
+  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters])
   useEffect(() => {
     setFilters((previous) => {
       if (serializeFilters(previous) === serializeFilters(filtersFromParams)) {
@@ -148,11 +147,7 @@ export default function Dashboard() {
   }, [sortFromParams])
 
   const buildDashboardHref = useCallback(
-    (next?: {
-      filters?: JobApplicationFilters
-      sort?: JobApplicationSort
-      view?: DashboardView
-    }) => {
+    (next?: { filters?: JobApplicationFilters; sort?: JobApplicationSort; view?: DashboardView }) => {
       const nextFilters = next?.filters ?? filters
       const nextSort = next?.sort ?? sort
       const nextView = next?.view ?? view
@@ -184,11 +179,7 @@ export default function Dashboard() {
   )
 
   const commitState = useCallback(
-    (next?: {
-      filters?: JobApplicationFilters
-      sort?: JobApplicationSort
-      view?: DashboardView
-    }) => {
+    (next?: { filters?: JobApplicationFilters; sort?: JobApplicationSort; view?: DashboardView }) => {
       const href = buildDashboardHref(next)
       router.replace(href, { scroll: false })
     },
@@ -453,384 +444,374 @@ export default function Dashboard() {
 
             <div className="flex min-h-0 flex-col gap-6 overflow-hidden lg:col-span-1">
               <div className="flex min-h-0 flex-1 flex-col gap-4 pb-4">
-                  <Tabs
-                    value={view}
-                    onValueChange={(next) => {
-                      if (isDashboardView(next)) {
-                        handleViewChange(next)
+                <Tabs
+                  value={view}
+                  onValueChange={(next) => {
+                    if (isDashboardView(next)) {
+                      handleViewChange(next)
+                    }
+                  }}
+                  className="flex min-h-0 flex-1 flex-col gap-4"
+                >
+                  <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                    {/* Tabs */}
+                    <TabsList className="shrink-0 whitespace-nowrap overflow-x-auto">
+                      <TabsTrigger value="full" className="gap-2" href={buildDashboardHref({ view: "full" })}>
+                        <LayoutPanelLeft className="h-4 w-4" />
+                        Full
+                      </TabsTrigger>
+                      <TabsTrigger value="table" className="gap-2" href={buildDashboardHref({ view: "table" })}>
+                        <Table2 className="h-4 w-4" />
+                        Table
+                      </TabsTrigger>
+                      <TabsTrigger value="condensed" className="gap-2" href={buildDashboardHref({ view: "condensed" })}>
+                        <CalendarClock className="h-4 w-4" />
+                        Condensed
+                      </TabsTrigger>
+                    </TabsList>
+                    {/* Search bar (flexes) */}
+                    <div className="relative flex-1 min-w-[220px] max-w-[520px]">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        placeholder="Search applications..."
+                        className="w-full pl-9 pr-9"
+                      />
+                      {searchTerm ? (
+                        <button
+                          type="button"
+                          onClick={clearSearch}
+                          className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+                        >
+                          <X className="h-4 w-4" />
+                          <span className="sr-only">Clear search</span>
+                        </button>
+                      ) : null}
+                    </div>
+                    {/* Add application button */}
+                    <AddApplicationDialog
+                      onAdd={handleAddApplication}
+                      trigger={
+                        <Button type="button" variant="outline" size="sm" className="gap-2 shrink-0">
+                          <Plus className="h-4 w-4" />
+                          Add application
+                        </Button>
                       }
-                    }}
-                    className="flex min-h-0 flex-1 flex-col gap-4"
-                  >
-               <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
-  {/* Tabs */}
-  <TabsList className="shrink-0 whitespace-nowrap overflow-x-auto">
-    <TabsTrigger value="full" className="gap-2" href={buildDashboardHref({ view: "full" })}>
-      <LayoutPanelLeft className="h-4 w-4" />
-      Full
-    </TabsTrigger>
-    <TabsTrigger value="table" className="gap-2" href={buildDashboardHref({ view: "table" })}>
-      <Table2 className="h-4 w-4" />
-      Table
-    </TabsTrigger>
-    <TabsTrigger value="condensed" className="gap-2" href={buildDashboardHref({ view: "condensed" })}>
-      <CalendarClock className="h-4 w-4" />
-      Condensed
-    </TabsTrigger>
-  </TabsList>
-  {/* Search bar (flexes) */}
-  <div className="relative flex-1 min-w-[220px] max-w-[520px]">
-    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-    <Input
-      value={searchTerm}
-      onChange={handleSearchChange}
-      placeholder="Search applications..."
-      className="w-full pl-9 pr-9"
-    />
-    {searchTerm ? (
-      <button
-        type="button"
-        onClick={clearSearch}
-        className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-      >
-        <X className="h-4 w-4" />
-        <span className="sr-only">Clear search</span>
-      </button>
-    ) : null}
-  </div>
-  {/* Add application button */}
-  <AddApplicationDialog
-    onAdd={handleAddApplication}
-    trigger={
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="gap-2 shrink-0"
-      >
-        <Plus className="h-4 w-4" />
-        Add application
-      </Button>
-    }
-  />
+                    />
 
+                    {/* Open Library button */}
+                    <div className=" shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setIsApplicationsDrawerOpen(true)}
+                      >
+                        <Filter className="h-4 w-4" />
+                        Filters
+                        {activeFilterCount > 0 && (
+                          <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-medium">
+                            {activeFilterCount}
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
 
+                  <TabsContent value="full" className="flex min-h-0 flex-1 flex-col gap-4">
+                    <BulkActions
+                      selectedCount={selectedApplications.length}
+                      onBulkStatusUpdate={handleBulkStatusUpdate}
+                      onBulkDelete={handleBulkDelete}
+                      onClearSelection={() => setSelectedApplications([])}
+                    />
 
-  {/* Open Library button */}
-  <div className=" shrink-0">
-<Button
-  type="button"
-  variant="ghost"
-  size="sm"
-  className="gap-2"
-  onClick={() => setIsApplicationsDrawerOpen(true)}
->
-  <Filter className="h-4 w-4" />
-  Filters
-  {activeFilterCount > 0 && (
-    <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-medium">
-      {activeFilterCount}
-    </span>
-  )}
-</Button>
-  </div>
-</div>
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
+                      <ScrollArea className="flex-1">
+                        <div className="space-y-4 p-4">
+                          {isLoading ? (
+                            <div className="grid gap-4">
+                              {[...Array(3)].map((_, i) => (
+                                <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />
+                              ))}
+                            </div>
+                          ) : applications.length === 0 ? (
+                            <div className="py-12 text-center">
+                              <p className="text-muted-foreground">
+                                No applications found. Add your first application to get started!
+                              </p>
+                            </div>
+                          ) : (
+                            applications.map((application) => (
+                              <JobApplicationCard
+                                key={application.id}
+                                application={application}
+                                isSelected={selectedApplications.includes(application.id)}
+                                onSelect={(selected) => handleSelectApplication(application.id, selected)}
+                                onUpdate={handleApplicationUpdate}
+                              />
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </TabsContent>
 
+                  <TabsContent value="table" className="flex min-h-0 flex-1 flex-col gap-4">
+                    <BulkActions
+                      selectedCount={selectedApplications.length}
+                      onBulkStatusUpdate={handleBulkStatusUpdate}
+                      onBulkDelete={handleBulkDelete}
+                      onClearSelection={() => setSelectedApplications([])}
+                    />
 
-
-                    <TabsContent value="full" className="flex min-h-0 flex-1 flex-col gap-4">
-                      <BulkActions
-                        selectedCount={selectedApplications.length}
-                        onBulkStatusUpdate={handleBulkStatusUpdate}
-                        onBulkDelete={handleBulkDelete}
-                        onClearSelection={() => setSelectedApplications([])}
-                      />
-
-                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
-                        <ScrollArea className="flex-1">
-                          <div className="space-y-4 p-4">
-                            {isLoading ? (
-                              <div className="grid gap-4">
-                                {[...Array(3)].map((_, i) => (
-                                  <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />
-                                ))}
-                              </div>
-                            ) : applications.length === 0 ? (
-                              <div className="py-12 text-center">
-                                <p className="text-muted-foreground">
-                                  No applications found. Add your first application to get started!
-                                </p>
-                              </div>
-                            ) : (
-                              applications.map((application) => (
-                                <JobApplicationCard
-                                  key={application.id}
-                                  application={application}
-                                  isSelected={selectedApplications.includes(application.id)}
-                                  onSelect={(selected) => handleSelectApplication(application.id, selected)}
-                                  onUpdate={handleApplicationUpdate}
-                                />
-                              ))
-                            )}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="table" className="flex min-h-0 flex-1 flex-col gap-4">
-                      <BulkActions
-                        selectedCount={selectedApplications.length}
-                        onBulkStatusUpdate={handleBulkStatusUpdate}
-                        onBulkDelete={handleBulkDelete}
-                        onClearSelection={() => setSelectedApplications([])}
-                      />
-
-                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
-                        <ScrollArea className="flex-1">
-                          <div className="min-w-full p-4">
-                            {isLoading ? (
-                              <div className="space-y-2">
-                                {[...Array(4)].map((_, index) => (
-                                  <div key={index} className="h-12 rounded-md border bg-muted animate-pulse" />
-                                ))}
-                              </div>
-                            ) : applications.length === 0 ? (
-                              <div className="py-12 text-center">
-                                <p className="text-muted-foreground">
-                                  No applications found. Adjust your filters or add a new application.
-                                </p>
-                              </div>
-                            ) : (
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead className="min-w-[40rem]">Role</TableHead>
-                                    <TableHead className="w-[120px] text-right">Status</TableHead>
-                                    <TableHead className="w-[150px] text-right">Match score</TableHead>
-                                    <TableHead>Applied</TableHead>
-                                    <TableHead className="hidden lg:table-cell w-[190px]">Location</TableHead>
-                                    <TableHead className="w-[72px] text-right">Actions</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {applications.map((application) => {
-                                    const isSelected = selectedApplications.includes(application.id)
-                                    return (
-                                      <TableRow
-                                        key={application.id}
-                                        data-state={isSelected ? "selected" : undefined}
-                                        className={cn(
-                                          "cursor-pointer transition-colors hover:bg-accent/50",
-                                          isSelected && "bg-muted",
-                                        )}
-                                        onClick={(event) => {
-                                          if (event.defaultPrevented) return
-
-                                          const target = event.target as HTMLElement
-                                          if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
-                                            return
-                                          }
-
-                                          handleSelectApplication(application.id, !isSelected)
-                                        }}
-                                      >
-                                        <TableCell className="w-[50%] max-w-[40rem]">
-                                          <div className="min-w-0 space-y-1">
-                                            <TruncatedText
-                                              text={application.position_title}
-                                              className="text-sm font-medium leading-tight"
-                                              maxWidthClass="max-w-full"
-                                            />
-                                            <TruncatedText
-                                              text={application.company_name}
-                                              className="text-xs text-muted-foreground"
-                                              maxWidthClass="max-w-full"
-                                            />
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="w-[190px] align-middle">
-                                          <div>
-                                            <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
-                                            {formatStatusLabel(application.status)}
-                                          </Badge>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="text-justify">
-                                          <div className="flex justify-end">
-                                            <JobScoreIndicator
-                                              score={application.resume_match_score ?? null}
-                                              createdAt={application.created_at}
-                                              size={48}
-                                              showDescription={false}
-                                            />
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="flex flex-col">
-                                            <span className="text-sm font-medium">
-                                              {formatApplicationDate(application.application_date)}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                              {formatDaysSinceApplied(application.application_date)}
-                                            </span>
-                                          </div>
-                                        </TableCell>
-                                        <TableCell className="hidden w-[190px] max-w-[14rem] lg:table-cell">
-                                          {application.location ? (
-                                            <TruncatedText
-                                              as="span"
-                                              text={application.location}
-                                              className="block text-sm"
-                                              maxWidthClass="max-w-full"
-                                            />
-                                          ) : (
-                                            <span className="text-xs text-muted-foreground">—</span>
-                                          )}
-                                        </TableCell>
-                                        <TableCell className="w-[72px] text-right">
-                                          <div className="flex justify-end">
-                                            <ApplicationActionsMenu
-                                              application={application}
-                                              onStatusUpdate={(status, note) =>
-                                                handleStatusChange(application.id, status, note)
-                                              }
-                                              onApplicationUpdate={handleApplicationUpdate}
-                                            />
-                                          </div>
-                                        </TableCell>
-                                      </TableRow>
-                                    )
-                                  })}
-                                </TableBody>
-                              </Table>
-                            )}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="condensed" className="flex min-h-0 flex-1 flex-col gap-6">
-                      <BulkActions
-                        selectedCount={selectedApplications.length}
-                        onBulkStatusUpdate={handleBulkStatusUpdate}
-                        onBulkDelete={handleBulkDelete}
-                        onClearSelection={() => setSelectedApplications([])}
-                      />
-
-                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
-                        <ScrollArea className="flex-1">
-                          <div className="relative mx-auto w-full max-w-4xl space-y-6 p-6">
-                            {isLoading ? (
-                              <div className="space-y-4">
-                                {[...Array(4)].map((_, index) => (
-                                  <div key={index} className="h-20 rounded-md border bg-muted animate-pulse" />
-                                ))}
-                              </div>
-                            ) : applications.length === 0 ? (
-                              <div className="py-12 text-center">
-                                <p className="text-muted-foreground">
-                                  No applications to display yet. Apply to a role to start your timeline.
-                                </p>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="absolute left-1.5 top-6 bottom-6 w-px bg-border" aria-hidden />
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
+                      <ScrollArea className="flex-1">
+                        <div className="min-w-full p-4">
+                          {isLoading ? (
+                            <div className="space-y-2">
+                              {[...Array(4)].map((_, index) => (
+                                <div key={index} className="h-12 rounded-md border bg-muted animate-pulse" />
+                              ))}
+                            </div>
+                          ) : applications.length === 0 ? (
+                            <div className="py-12 text-center">
+                              <p className="text-muted-foreground">
+                                No applications found. Adjust your filters or add a new application.
+                              </p>
+                            </div>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="min-w-[40rem]">Role</TableHead>
+                                  <TableHead className="w-[120px] text-right">Status</TableHead>
+                                  <TableHead className="w-[150px] text-right">Match score</TableHead>
+                                  <TableHead>Applied</TableHead>
+                                  <TableHead className="hidden lg:table-cell w-[190px]">Location</TableHead>
+                                  <TableHead className="w-[72px] text-right">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
                                 {applications.map((application) => {
                                   const isSelected = selectedApplications.includes(application.id)
-
                                   return (
-                                    <div key={application.id} className="relative pl-6">
-                                      <span className="absolute left-0 top-2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-primary" />
-                                      <div
-                                        className={cn(
-                                          "flex flex-col gap-2 rounded-lg border bg-card/50 p-4 transition-colors hover:bg-accent/50",
-                                          isSelected && "border-primary/40 bg-muted",
-                                        )}
-                                        onClick={(event) => {
-                                          if (event.defaultPrevented) return
+                                    <TableRow
+                                      key={application.id}
+                                      data-state={isSelected ? "selected" : undefined}
+                                      className={cn(
+                                        "cursor-pointer transition-colors hover:bg-accent/50",
+                                        isSelected && "bg-muted",
+                                      )}
+                                      onClick={(event) => {
+                                        if (event.defaultPrevented) return
 
-                                          const target = event.target as HTMLElement
-                                          if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
-                                            return
-                                          }
+                                        const target = event.target as HTMLElement
+                                        if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
+                                          return
+                                        }
 
-                                          handleSelectApplication(application.id, !isSelected)
-                                        }}
-                                      >
-                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                                          <div className="min-w-0">
-                                            <TruncatedText
-                                              text={application.position_title}
-                                              className="font-medium leading-tight"
-                                              maxWidthClass="max-w-[40rem]"
-                                            />
-                                            <TruncatedText
-                                              text={application.company_name}
-                                              className="text-sm text-muted-foreground"
-                                              maxWidthClass="max-w-[40rem]"
-                                            />
-                                          </div>
-
-                                          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
-                                            <JobScoreIndicator
-                                              score={application.resume_match_score ?? null}
-                                              createdAt={application.created_at}
-                                              size={48}
-                                              showDescription={false}
-                                            />
-                                            <ApplicationActionsMenu
-                                              application={application}
-                                              onStatusUpdate={(status, note) =>
-                                                handleStatusChange(application.id, status, note)
-                                              }
-                                              onApplicationUpdate={handleApplicationUpdate}
-                                            />
-                                          </div>
-                                        </div>
-                                        {application.notes && (
+                                        handleSelectApplication(application.id, !isSelected)
+                                      }}
+                                    >
+                                      <TableCell className="w-[50%] max-w-[40rem]">
+                                        <div className="min-w-0 space-y-1">
                                           <TruncatedText
-                                            text={application.notes}
-                                            className="break-words max-w-[35rem] text-sm text-muted-foreground"
-                                            clampClassName="line-clamp-2"
+                                            text={application.position_title}
+                                            className="text-sm font-medium leading-tight"
                                             maxWidthClass="max-w-full"
                                           />
-                                        )}
-                                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
-                                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                            <span>Applied {formatApplicationDate(application.application_date)}</span>
-                                            <span>•</span>
-                                            <span>{formatDaysSinceApplied(application.application_date)}</span>
-                                            {application.location && (
-                                              <>
-                                                <span>•</span>
-                                                <TruncatedText
-                                                  as="span"
-                                                  text={application.location}
-                                                  className="inline-block"
-                                                  maxWidthClass="max-w-[14rem]"
-                                                />
-                                              </>
-                                            )}
-                                          </div>
-                                          <Badge
-                                            variant="outline"
-                                            className={cn("shrink-0", getStatusBadgeClass(application.status))}
-                                          >
+                                          <TruncatedText
+                                            text={application.company_name}
+                                            className="text-xs text-muted-foreground"
+                                            maxWidthClass="max-w-full"
+                                          />
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="w-[190px] align-middle">
+                                        <div>
+                                          <Badge variant="outline" className={getStatusBadgeClass(application.status)}>
                                             {formatStatusLabel(application.status)}
                                           </Badge>
                                         </div>
-                                      </div>
-                                    </div>
+                                      </TableCell>
+                                      <TableCell className="text-justify">
+                                        <div className="flex justify-end">
+                                          <JobScoreIndicator
+                                            score={application.resume_match_score ?? null}
+                                            createdAt={application.created_at}
+                                            size={48}
+                                            showDescription={false}
+                                          />
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex flex-col">
+                                          <span className="text-sm font-medium">
+                                            {formatApplicationDate(application.application_date)}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground">
+                                            {formatDaysSinceApplied(application.application_date)}
+                                          </span>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="hidden w-[190px] max-w-[14rem] lg:table-cell">
+                                        {application.location ? (
+                                          <TruncatedText
+                                            as="span"
+                                            text={application.location}
+                                            className="block text-sm"
+                                            maxWidthClass="max-w-full"
+                                          />
+                                        ) : (
+                                          <span className="text-xs text-muted-foreground">—</span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="w-[72px] text-right">
+                                        <div className="flex justify-end">
+                                          <ApplicationActionsMenu
+                                            application={application}
+                                            onStatusUpdate={(status, note) =>
+                                              handleStatusChange(application.id, status, note)
+                                            }
+                                            onApplicationUpdate={handleApplicationUpdate}
+                                          />
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
                                   )
                                 })}
-                              </>
-                            )}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </TabsContent>
 
+                  <TabsContent value="condensed" className="flex min-h-0 flex-1 flex-col gap-6">
+                    <BulkActions
+                      selectedCount={selectedApplications.length}
+                      onBulkStatusUpdate={handleBulkStatusUpdate}
+                      onBulkDelete={handleBulkDelete}
+                      onClearSelection={() => setSelectedApplications([])}
+                    />
+
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card/40">
+                      <ScrollArea className="flex-1">
+                        <div className="relative mx-auto w-full max-w-4xl space-y-6 p-6">
+                          {isLoading ? (
+                            <div className="space-y-4">
+                              {[...Array(4)].map((_, index) => (
+                                <div key={index} className="h-20 rounded-md border bg-muted animate-pulse" />
+                              ))}
+                            </div>
+                          ) : applications.length === 0 ? (
+                            <div className="py-12 text-center">
+                              <p className="text-muted-foreground">
+                                No applications to display yet. Apply to a role to start your timeline.
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="absolute left-1.5 top-6 bottom-6 w-px bg-border" aria-hidden />
+                              {applications.map((application) => {
+                                const isSelected = selectedApplications.includes(application.id)
+
+                                return (
+                                  <div key={application.id} className="relative pl-6">
+                                    <span className="absolute left-0 top-2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-primary" />
+                                    <div
+                                      className={cn(
+                                        "flex flex-col gap-2 rounded-lg border bg-card/50 p-4 transition-colors hover:bg-accent/50",
+                                        isSelected && "border-primary/40 bg-muted",
+                                      )}
+                                      onClick={(event) => {
+                                        if (event.defaultPrevented) return
+
+                                        const target = event.target as HTMLElement
+                                        if (target.closest(INTERACTIVE_ELEMENT_SELECTOR)) {
+                                          return
+                                        }
+
+                                        handleSelectApplication(application.id, !isSelected)
+                                      }}
+                                    >
+                                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                                        <div className="min-w-0">
+                                          <TruncatedText
+                                            text={application.position_title}
+                                            className="font-medium leading-tight"
+                                            maxWidthClass="max-w-[40rem]"
+                                          />
+                                          <TruncatedText
+                                            text={application.company_name}
+                                            className="text-sm text-muted-foreground"
+                                            maxWidthClass="max-w-[40rem]"
+                                          />
+                                        </div>
+
+                                        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-3">
+                                          <JobScoreIndicator
+                                            score={application.resume_match_score ?? null}
+                                            createdAt={application.created_at}
+                                            size={48}
+                                            showDescription={false}
+                                          />
+                                          <ApplicationActionsMenu
+                                            application={application}
+                                            onStatusUpdate={(status, note) =>
+                                              handleStatusChange(application.id, status, note)
+                                            }
+                                            onApplicationUpdate={handleApplicationUpdate}
+                                          />
+                                        </div>
+                                      </div>
+                                      {application.notes && (
+                                        <TruncatedText
+                                          text={application.notes}
+                                          className="break-words max-w-[35rem] text-sm text-muted-foreground"
+                                          clampClassName="line-clamp-2"
+                                          maxWidthClass="max-w-full"
+                                        />
+                                      )}
+                                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                          <span>Applied {formatApplicationDate(application.application_date)}</span>
+                                          <span>•</span>
+                                          <span>{formatDaysSinceApplied(application.application_date)}</span>
+                                          {application.location && (
+                                            <>
+                                              <span>•</span>
+                                              <TruncatedText
+                                                as="span"
+                                                text={application.location}
+                                                className="inline-block"
+                                                maxWidthClass="max-w-[14rem]"
+                                              />
+                                            </>
+                                          )}
+                                        </div>
+                                        <Badge
+                                          variant="outline"
+                                          className={cn("shrink-0", getStatusBadgeClass(application.status))}
+                                        >
+                                          {formatStatusLabel(application.status)}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
           </div>

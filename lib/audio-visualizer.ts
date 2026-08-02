@@ -120,9 +120,7 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
       try {
         await audioContext.resume()
       } catch (error) {
-        throw new Error(
-          `Unable to resume audio context: ${error instanceof Error ? error.message : "Unknown error"}`,
-        )
+        throw new Error(`Unable to resume audio context: ${error instanceof Error ? error.message : "Unknown error"}`)
       }
     }
 
@@ -146,12 +144,16 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
         analyser.connect(silentOutput)
         silentOutput.connect(audioContext.destination)
       } else {
-        const reuseExistingSource = mediaElementSource && currentSource === source
-        const elementSource = reuseExistingSource ? mediaElementSource : audioContext.createMediaElementSource(source)
+        let elementSource: MediaElementAudioSourceNode
+        if (mediaElementSource && currentSource === source) {
+          elementSource = mediaElementSource
+        } else {
+          elementSource = audioContext.createMediaElementSource(source)
+        }
         mediaElementSource = elementSource
         sourceNode = elementSource
         outputNode = audioContext.destination
-        sourceNode.connect(analyser)
+        elementSource.connect(analyser)
         analyser.connect(audioContext.destination)
       }
 

@@ -93,7 +93,7 @@ async function evaluateRateLimit({
   maxRequests = DEFAULT_MAX_REQUESTS,
   windowMs = DEFAULT_WINDOW_MS,
   keyPrefix = DEFAULT_PREFIX,
-}: RateLimitConfig): RateLimitResult {
+}: RateLimitConfig): Promise<RateLimitResult> {
   const ip = getClientIp(request)
   const key = `${userId}:${ip}`
   const now = Date.now()
@@ -144,10 +144,7 @@ export async function enforceRateLimit(config: RateLimitConfig): Promise<NextRes
   const result = await evaluateRateLimit(config)
   if (result.allowed) return null
 
-  const response = NextResponse.json(
-    { error: "Rate limit exceeded. Please try again later." },
-    { status: 429 },
-  )
+  const response = NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 })
   response.headers.set("Retry-After", String(result.retryAfterSeconds))
   response.headers.set("Cache-Control", "no-store")
   response.headers.set("X-RateLimit-Limit", String(result.limit))
