@@ -32,12 +32,12 @@ function getCorsHeaders(origin: string | null) {
 }
 
 export async function OPTIONS() {
-  const origin = headers().get("origin")
+  const origin = (await headers()).get("origin")
   return new NextResponse(null, { status: 204, headers: getCorsHeaders(origin) })
 }
 
 export async function GET() {
-  const hdrs = headers()
+  const hdrs = await headers()
   const requestId = hdrs.get("x-request-id") ?? crypto.randomUUID()
   const corsHeaders = getCorsHeaders(hdrs.get("origin"))
   const withRequestId = (response: NextResponse) => {

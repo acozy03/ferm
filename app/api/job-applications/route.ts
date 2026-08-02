@@ -221,7 +221,7 @@ async function generateResumeMatchScore({ job, resumeText, apiKey }: ResumeScori
 }
 
 export async function OPTIONS() {
-  const origin = headers().get("origin")
+  const origin = (await headers()).get("origin")
   return new NextResponse(null, { status: 204, headers: getCorsHeaders(origin) })
 }
 

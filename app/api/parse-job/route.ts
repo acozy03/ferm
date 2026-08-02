@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   }
 
   // --- Auth (Supabase) ---
-  const hdrs = headers()
+  const hdrs = await headers()
   const authHeader = hdrs.get("authorization") || ""
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
   if (!token) {

@@ -7,14 +7,14 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const requestId = headers().get("x-request-id") ?? crypto.randomUUID()
+  const requestId = (await headers()).get("x-request-id") ?? crypto.randomUUID()
   const withRequestId = (response: NextResponse) => {
     response.headers.set("X-Request-Id", requestId)
     return response
   }
 
   try {
-    const hdrs = headers()
+    const hdrs = await headers()
     const authHeader = hdrs.get("authorization") || ""
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
 

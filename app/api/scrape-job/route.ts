@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Request origin does not match configured site host" }, { status: 400 })
   }
 
-  const hdrs = headers()
+  const hdrs = await headers()
   const authHeader = hdrs.get("authorization") || ""
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
 

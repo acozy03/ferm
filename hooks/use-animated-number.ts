@@ -18,7 +18,7 @@ export function useAnimatedNumber(targetValue: number | null | undefined, option
   const [displayValue, setDisplayValue] = useState<number>(initialValue)
   const previousValueRef = useRef<number>(initialValue)
   const hasAnimatedRef = useRef<boolean>(false)
-  const frameRef = useRef<number>()
+  const frameRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     return () => {

@@ -7,7 +7,8 @@ import { requireCookieCsrf } from "@/lib/api/auth"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const { id } = params
 
   try {
@@ -156,7 +157,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const { id } = params
 
   try {
