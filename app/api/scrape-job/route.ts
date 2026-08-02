@@ -16,18 +16,14 @@ const MIN_TEXT_LENGTH = 120
 const FETCH_TIMEOUT_MS = 12_000
 const MAX_REDIRECTS = 5
 const CONFIGURED_SITE_URL = (() => {
-  const rawSiteUrl =
-    process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || ""
+  const rawSiteUrl = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || ""
 
   if (!rawSiteUrl) {
-    throw new Error(
-      "Missing site URL configuration. Set SITE_URL, NEXT_PUBLIC_SITE_URL, or VERCEL_URL.",
-    )
+    throw new Error("Missing site URL configuration. Set SITE_URL, NEXT_PUBLIC_SITE_URL, or VERCEL_URL.")
   }
 
-  const normalized = rawSiteUrl.startsWith("http://") || rawSiteUrl.startsWith("https://")
-    ? rawSiteUrl
-    : `https://${rawSiteUrl}`
+  const normalized =
+    rawSiteUrl.startsWith("http://") || rawSiteUrl.startsWith("https://") ? rawSiteUrl : `https://${rawSiteUrl}`
 
   const parsed = new URL(normalized)
   if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -37,12 +33,7 @@ const CONFIGURED_SITE_URL = (() => {
   return parsed
 })()
 
-const BLOCKED_HOSTNAMES = new Set([
-  "localhost",
-  "127.0.0.1",
-  "0.0.0.0",
-  "::1",
-])
+const BLOCKED_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"])
 
 const ALLOWED_JOB_BOARD_HOSTS = new Set([
   "boards.greenhouse.io",
@@ -231,12 +222,7 @@ function guardrailWrap(text: string, truncated: boolean) {
     lines.push(`Note: Content truncated to the first ${MAX_TEXT_LENGTH.toLocaleString()} characters for safety.`)
   }
 
-  return [
-    ...lines,
-    "SCRAPED_JOB_CONTENT_START",
-    text,
-    "SCRAPED_JOB_CONTENT_END",
-  ].join("\n")
+  return [...lines, "SCRAPED_JOB_CONTENT_START", text, "SCRAPED_JOB_CONTENT_END"].join("\n")
 }
 
 function parseHeaderNumber(value: string | null) {
@@ -289,10 +275,7 @@ export async function POST(request: NextRequest) {
 
   const parsedBody = RequestBodySchema.safeParse(bodyUnknown)
   if (!parsedBody.success) {
-    return NextResponse.json(
-      { error: "Invalid input data", details: parsedBody.error.flatten() },
-      { status: 400 },
-    )
+    return NextResponse.json({ error: "Invalid input data", details: parsedBody.error.flatten() }, { status: 400 })
   }
 
   const { job_url: jobUrl } = parsedBody.data

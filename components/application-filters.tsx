@@ -115,10 +115,7 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
         <div>
           <h4 className="text-sm font-medium mb-3">Status</h4>
           <div className="space-y-3">
-            <Select
-              value={statusBuilder}
-              onValueChange={(next) => setStatusBuilder(next as PipelineStage)}
-            >
+            <Select value={statusBuilder} onValueChange={(next) => setStatusBuilder(next as PipelineStage)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a status" />
               </SelectTrigger>

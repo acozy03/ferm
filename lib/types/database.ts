@@ -17,11 +17,7 @@ export type EmploymentType = "Full-time" | "Part-time" | "Contract" | "Internshi
 export type InterviewType = "Phone" | "Video" | "In-person" | "Technical" | "Final"
 export type InterviewStatus = "Scheduled" | "Completed" | "Cancelled" | "Rescheduled"
 export type ActivityType =
-  | "application_created"
-  | "status_change"
-  | "notes_update"
-  | "interview_scheduled"
-  | "interview_completed"
+  "application_created" | "status_change" | "notes_update" | "interview_scheduled" | "interview_completed"
 
 export interface JobApplication {
   id: string
@@ -214,4 +210,3 @@ export interface PrepMessage {
   created_at: string
   metadata?: Record<string, unknown> | null
 }
-

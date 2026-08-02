@@ -79,7 +79,9 @@ export async function buildPrepContext({
   ]
 
   if (resume?.text) {
-    contextSections.push(`Resume (${resume.fileName ?? "upload"}, updated ${resume.updatedAt ?? "recently"}):\n${trimSection(resume.text)}`)
+    contextSections.push(
+      `Resume (${resume.fileName ?? "upload"}, updated ${resume.updatedAt ?? "recently"}):\n${trimSection(resume.text)}`,
+    )
   } else {
     contextSections.push("No resume on file; rely on the job description and interview notes for guidance.")
   }
@@ -91,7 +93,9 @@ export async function buildPrepContext({
         application.job_description ? `Job description: ${trimSection(application.job_description)}` : null,
         application.qualifications ? `Qualifications: ${trimSection(application.qualifications)}` : null,
         application.job_responsibilities ? `Responsibilities: ${trimSection(application.job_responsibilities)}` : null,
-        application.resume_match_summary ? `Resume fit summary: ${trimSection(application.resume_match_summary, 800)}` : null,
+        application.resume_match_summary
+          ? `Resume fit summary: ${trimSection(application.resume_match_summary, 800)}`
+          : null,
         application.notes ? `Recruiter or personal notes: ${trimSection(application.notes, 800)}` : null,
       ]
         .filter(Boolean)

@@ -34,11 +34,13 @@ export async function middleware(req: NextRequest) {
           res.cookies.set({ name, value: "", expires: new Date(0), ...options })
         },
       },
-    }
+    },
   )
 
   // Touch session (may set/refresh cookies on `res`)
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) {
     if (req.cookies.get(CSRF_COOKIE_NAME)) {

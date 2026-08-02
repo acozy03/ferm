@@ -117,17 +117,15 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { error } = await auth.supabase
-    .from("user_ai_keys")
-    .upsert(
-      {
-        user_id: auth.userId,
-        provider: PROVIDER,
-        encrypted_api_key: encryptedApiKey,
-        encryption_iv: encryptionIv,
-      },
-      { onConflict: "user_id,provider" },
-    )
+  const { error } = await auth.supabase.from("user_ai_keys").upsert(
+    {
+      user_id: auth.userId,
+      provider: PROVIDER,
+      encrypted_api_key: encryptedApiKey,
+      encryption_iv: encryptionIv,
+    },
+    { onConflict: "user_id,provider" },
+  )
 
   if (error) {
     return NextResponse.json({ error: "Unable to store API key." }, { status: 500 })

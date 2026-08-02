@@ -1,3 +1,5 @@
+import { createElement } from "react"
+
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsTruncated } from "@/hooks/truncate-text"
 import { cn } from "@/lib/utils"
@@ -23,11 +25,7 @@ export function TruncatedText({
   const Component = as
 
   const clampClass = clampClassName ?? (lineClamp ? `line-clamp-${lineClamp}` : "truncate")
-  const content = (
-    <Component ref={ref} className={cn(clampClass, maxWidthClass, className)}>
-      {text}
-    </Component>
-  )
+  const content = createElement(Component, { ref, className: cn(clampClass, maxWidthClass, className) }, text)
 
   return isTruncated ? (
     <Tooltip>

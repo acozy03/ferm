@@ -16,7 +16,7 @@ import {
   User,
   Mail,
   Info,
-  CalendarRange
+  CalendarRange,
 } from "lucide-react"
 import type { JobApplication as DbJobApplication } from "@/lib/types/database"
 import { formatStatusLabel } from "@/lib/status"
@@ -30,12 +30,7 @@ type JobDetailsDialogProps = {
   onOpenChange?: (open: boolean) => void
 }
 
-export function JobDetailsDialog({
-  application,
-  trigger,
-  open: controlledOpen,
-  onOpenChange,
-}: JobDetailsDialogProps) {
+export function JobDetailsDialog({ application, trigger, open: controlledOpen, onOpenChange }: JobDetailsDialogProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const isControlled = typeof controlledOpen === "boolean" && typeof onOpenChange === "function"
   const dialogOpen = isControlled ? controlledOpen : uncontrolledOpen
@@ -49,26 +44,31 @@ export function JobDetailsDialog({
 
   const jobDescription = application.job_description?.trim() ? application.job_description : null
   const qualifications = application.qualifications?.trim() ? application.qualifications : null
-  const responsibilities = application.job_responsibilities?.trim()
-    ? application.job_responsibilities
-    : null
+  const responsibilities = application.job_responsibilities?.trim() ? application.job_responsibilities : null
 
   const qualificationLines = qualifications
-    ? qualifications.split("\n").map((line) => line.trim()).filter(Boolean)
+    ? qualifications
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
     : []
   const responsibilityLines = responsibilities
-    ? responsibilities.split("\n").map((line) => line.trim()).filter(Boolean)
+    ? responsibilities
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
     : []
-  const hasStructuredSections = Boolean(jobDescription || qualificationLines.length > 0 || responsibilityLines.length > 0)
+  const hasStructuredSections = Boolean(
+    jobDescription || qualificationLines.length > 0 || responsibilityLines.length > 0,
+  )
 
- const computedDaysSinceApplied = (() => {
-  const appliedDate = getDateOrNull(application.created_at)
-  if (!appliedDate) return null
+  const computedDaysSinceApplied = (() => {
+    const appliedDate = getDateOrNull(application.created_at)
+    if (!appliedDate) return null
 
-  const msPerDay = 1000 * 60 * 60 * 24
-  return Math.ceil((Date.now() - appliedDate.getTime()) / msPerDay)
-})()
-
+    const msPerDay = 1000 * 60 * 60 * 24
+    return Math.ceil((Date.now() - appliedDate.getTime()) / msPerDay)
+  })()
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
@@ -84,12 +84,7 @@ export function JobDetailsDialog({
             />
           </DialogTitle>
           <h3 className="text-lg font-medium max-w-[35rem]">
-            <TruncatedText
-              text={application.company_name}
-              as="span"
-              className="block"
-              maxWidthClass="max-w-[35rem]"
-            />
+            <TruncatedText text={application.company_name} as="span" className="block" maxWidthClass="max-w-[35rem]" />
           </h3>
         </DialogHeader>
 
@@ -99,13 +94,15 @@ export function JobDetailsDialog({
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Applied:</span>
-                <span className="truncate">{(application.application_date)}</span>
+                <span className="truncate">{application.application_date}</span>
               </div>
               {application.location && (
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Location:</span>
-                  <span className="truncate max-w-[10rem]"title={application.location}>{application.location}</span>
+                  <span className="truncate max-w-[10rem]" title={application.location}>
+                    {application.location}
+                  </span>
                 </div>
               )}
               {application.salary_range && (

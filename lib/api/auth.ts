@@ -63,11 +63,9 @@ export async function getAuthedClient(request: NextRequest): Promise<AuthedClien
       return { error: { status: 401, message: "Unauthorized (no user id)" } }
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { Authorization: `Bearer ${bearer}` } } },
-    ) as unknown as SupabaseClientInstance
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      global: { headers: { Authorization: `Bearer ${bearer}` } },
+    }) as unknown as SupabaseClientInstance
 
     return { supabase, userId: user.id }
   }

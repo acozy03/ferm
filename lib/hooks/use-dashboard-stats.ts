@@ -15,7 +15,7 @@ export function useDashboardStats(params: UseDashboardStatsParams = {}) {
 
   const { data, error, isLoading, mutate } = useSWR<{ data: DashboardStats }>(
     `/api/dashboard/stats?${searchParams.toString()}`,
-    (url) => apiFetcher<{ data: DashboardStats }>(url),
+    (url: string) => apiFetcher<{ data: DashboardStats }>(url),
   )
 
   return {

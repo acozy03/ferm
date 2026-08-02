@@ -2,7 +2,14 @@
 
 import type { ReactNode } from "react"
 import { format } from "date-fns"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { TruncatedText } from "@/components/ui/truncate"
 import type { ActivityLogWithApplication } from "@/lib/types/database"
 
@@ -26,12 +33,8 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
   const companyName = job?.company_name ?? activity.job_company_snapshot ?? undefined
   const hasJobInfo = Boolean(jobTitle || companyName)
   const showValueComparison =
-    Boolean(activity.old_value) &&
-    Boolean(activity.new_value) &&
-    activity.old_value !== activity.new_value
-  const singleValue = !showValueComparison
-    ? activity.new_value ?? activity.old_value ?? null
-    : null
+    Boolean(activity.old_value) && Boolean(activity.new_value) && activity.old_value !== activity.new_value
+  const singleValue = !showValueComparison ? (activity.new_value ?? activity.old_value ?? null) : null
 
   return (
     <Dialog>
@@ -46,7 +49,6 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
                 as="span"
                 className="block"
                 maxWidthClass="max-w-[25rem]"
-                
               />
               {companyName ? (
                 <TruncatedText
@@ -54,17 +56,16 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
                   as="span"
                   className="block text-muted-foreground"
                   maxWidthClass="max-w-[25rem]"
-                
                 />
               ) : null}
             </div>
           ) : (
             <p className="text-sm font-medium text-pretty text-muted-foreground">No job details available.</p>
           )}
-          
+
           <DialogDescription>Logged {format(timestamp, "PPpp")}</DialogDescription>
         </DialogHeader>
-            
+
         <div className="space-y-6 text-sm">
           {showValueComparison ? (
             <div className="grid grid-cols-1 gap-2 text-left sm:grid-cols-2">

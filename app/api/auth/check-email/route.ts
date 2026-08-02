@@ -11,12 +11,7 @@ interface RequestBody {
 function getClientIdentifier(request: NextRequest) {
   const forwardedFor = request.headers.get("x-forwarded-for")
   const ip = forwardedFor?.split(",")[0]?.trim()
-  return (
-    ip ||
-    request.headers.get("cf-connecting-ip") ||
-    request.headers.get("x-real-ip") ||
-    "unknown"
-  )
+  return ip || request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || "unknown"
 }
 
 function hasTrustedSecret(request: NextRequest) {
@@ -80,16 +75,13 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase.auth.admin.listUsers({
         page,
         perPage,
-        emailFilter: email,
       })
 
       if (error) {
         throw error
       }
 
-      const found = data.users.find(
-        (user) => (user.email ?? "").toLowerCase() === emailLower,
-      )
+      const found = data.users.find((user) => (user.email ?? "").toLowerCase() === emailLower)
       if (found) {
         exists = true
         break

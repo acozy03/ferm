@@ -20,8 +20,7 @@ interface AiKeyPanelProps {
   description?: string
 }
 
-const defaultDescription =
-  "Add key to use prep and job loading with no limits"
+const defaultDescription = "Add key to use prep and job loading with no limits"
 
 export function AiKeyPanel({
   aiKeyInput,

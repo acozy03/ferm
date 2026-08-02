@@ -10,19 +10,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarIcon } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import type {
   EmploymentType,
   JobApplication,
   JobApplicationStatus,
+  JobApplicationWithStatusHistory,
   Priority,
 } from "@/lib/types/database"
 import { SequentialStatusSelect } from "@/components/status-select"
@@ -30,7 +25,7 @@ import { apiFetch } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 
 interface EditApplicationDialogProps {
-  application: JobApplication
+  application: JobApplication & Partial<Pick<JobApplicationWithStatusHistory, "status_history">>
   onUpdate: () => void
   trigger?: React.ReactNode
   open?: boolean
@@ -181,9 +176,7 @@ export function EditApplicationDialog({
               </Label>
               <Select
                 value={formData.priority}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, priority: value as Priority })
-                }
+                onValueChange={(value) => setFormData({ ...formData, priority: value as Priority })}
               >
                 <SelectTrigger id="priority" className="w-full md:w-40">
                   <SelectValue />
@@ -203,9 +196,7 @@ export function EditApplicationDialog({
               </Label>
               <Select
                 value={formData.employment_type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, employment_type: value as EmploymentType })
-                }
+                onValueChange={(value) => setFormData({ ...formData, employment_type: value as EmploymentType })}
               >
                 <SelectTrigger id="employment_type" className="w-full md:w-40">
                   <SelectValue />
@@ -226,14 +217,9 @@ export function EditApplicationDialog({
               <Label>Applied Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn("w-full justify-start text-left font-normal bg-transparent")}
-                  >
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal bg-transparent")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.application_date
-                      ? format(parseISO(formData.application_date), "PPP")
-                      : "Pick a date"}
+                    {formData.application_date ? format(parseISO(formData.application_date), "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">

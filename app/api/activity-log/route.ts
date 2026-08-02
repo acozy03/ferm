@@ -91,9 +91,7 @@ export async function GET(request: NextRequest) {
     if (cursor) {
       // PostgREST OR syntax:
       // (created_at < cursor.created_at) OR (created_at == cursor.created_at AND id < cursor.id)
-      query = query.or(
-        `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`,
-      )
+      query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`)
     }
 
     const { data, error, count } = await query
@@ -103,7 +101,10 @@ export async function GET(request: NextRequest) {
     const activities = data ?? []
     const nextCursor =
       activities.length === limit
-        ? makeCursor({ created_at: activities[activities.length - 1].created_at, id: activities[activities.length - 1].id })
+        ? makeCursor({
+            created_at: activities[activities.length - 1].created_at,
+            id: activities[activities.length - 1].id,
+          })
         : null
 
     return NextResponse.json(

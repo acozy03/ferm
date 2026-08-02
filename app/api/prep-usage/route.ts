@@ -36,20 +36,16 @@ export async function GET() {
       return withRequestId(NextResponse.json({ error: "Invalid token" }, { status: 401 }))
     }
 
-    const user = await userResp.json() as { id: string }
+    const user = (await userResp.json()) as { id: string }
     if (!user?.id) {
       return withRequestId(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
       },
-    )
+    })
 
     const today = new Date().toISOString().split("T")[0]
     const { data, error } = await supabase
@@ -67,9 +63,7 @@ export async function GET() {
     const prepMessagesCount = data?.prep_messages_count ?? 0
     const remaining = Math.max(0, DAILY_LIMIT - prepMessagesCount)
 
-    return withRequestId(
-      NextResponse.json({ prep_messages_count: prepMessagesCount, limit: DAILY_LIMIT, remaining }),
-    )
+    return withRequestId(NextResponse.json({ prep_messages_count: prepMessagesCount, limit: DAILY_LIMIT, remaining }))
   } catch (e: unknown) {
     console.error("prep-usage handler error:", { requestId, error: e })
     return withRequestId(NextResponse.json({ error: "Server error" }, { status: 500 }))

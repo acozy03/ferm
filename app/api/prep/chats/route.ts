@@ -18,10 +18,16 @@ export const dynamic = "force-dynamic"
 function buildInterviewSeedTitle(interview: {
   interview_round?: number | null
   interview_type?: string | null
-  job_applications?: { position_title?: string | null; company_name?: string | null } | null
+  job_applications?:
+    | { position_title?: string | null; company_name?: string | null }
+    | { position_title?: string | null; company_name?: string | null }[]
+    | null
 }) {
-  const role = interview.job_applications?.position_title?.trim()
-  const company = interview.job_applications?.company_name?.trim()
+  const application = Array.isArray(interview.job_applications)
+    ? interview.job_applications[0]
+    : interview.job_applications
+  const role = application?.position_title?.trim()
+  const company = application?.company_name?.trim()
   const interviewLabel =
     interview.interview_round && interview.interview_round > 0
       ? `Interview Round ${interview.interview_round}`
@@ -183,11 +189,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Chat id is required." }, { status: 400 })
   }
 
-  const { error } = await auth.supabase
-    .from("prep_chats")
-    .delete()
-    .eq("id", chatId)
-    .eq("user_id", auth.userId)
+  const { error } = await auth.supabase.from("prep_chats").delete().eq("id", chatId).eq("user_id", auth.userId)
 
   if (error) {
     return NextResponse.json({ error: "Unable to delete chat." }, { status: 500 })

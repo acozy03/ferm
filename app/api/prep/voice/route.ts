@@ -99,7 +99,11 @@ export async function POST(request: NextRequest) {
   const extraContext = jobContext
     ? (() => {
         try {
-          const parsed = JSON.parse(jobContext) as { role?: string | null; company?: string | null; latestNote?: string | null }
+          const parsed = JSON.parse(jobContext) as {
+            role?: string | null
+            company?: string | null
+            latestNote?: string | null
+          }
           const jobLine = `You are prepping the user for ${parsed.role ?? "their role"} at ${parsed.company ?? "their company"}.`
           const noteLine = parsed.latestNote ? ` Keep this note in mind: ${parsed.latestNote}` : ""
           return `${jobLine}${noteLine}`
@@ -117,7 +121,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.2,
     })
 
-    const transcript = transcription.trim()
+    const transcript = (typeof transcription === "string" ? transcription : transcription.text).trim()
 
     if (!transcript) {
       return NextResponse.json({ transcript: "", reply: "", audioBase64: null })

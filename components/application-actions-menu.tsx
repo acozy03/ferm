@@ -4,12 +4,7 @@ import { useState } from "react"
 import { MoreHorizontal } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { JobDetailsDialog } from "@/components/job-details-dialog"
 import { StatusUpdateDialog } from "@/components/status-update-dialog"
 import { EditApplicationDialog } from "@/components/edit-application-dialog"
@@ -113,12 +108,7 @@ export function ApplicationActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <JobDetailsDialog
-        application={application}
-        onUpdate={onApplicationUpdate}
-        open={isDetailsDialogOpen}
-        onOpenChange={setIsDetailsDialogOpen}
-      />
+      <JobDetailsDialog application={application} open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen} />
       <StatusUpdateDialog
         currentStatus={application.status}
         onStatusUpdate={onStatusUpdate}

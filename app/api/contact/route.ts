@@ -20,10 +20,7 @@ const RATE_LIMIT_WINDOW = "1 h"
 const MAX_PAYLOAD_CHARS = 4000
 const DUPLICATE_WINDOW_SECONDS = 300
 
-const redis =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    ? Redis.fromEnv()
-    : null
+const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN ? Redis.fromEnv() : null
 
 const contactRateLimiter = redis
   ? new Ratelimit({
@@ -123,9 +120,7 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  const payloadFingerprint = createHash("sha256")
-    .update(normalizePayload(topic, details))
-    .digest("hex")
+  const payloadFingerprint = createHash("sha256").update(normalizePayload(topic, details)).digest("hex")
   const duplicateKey = `contact:payload:${userId}:${payloadFingerprint}`
   const duplicateSet = await redis.set(duplicateKey, "1", {
     ex: DUPLICATE_WINDOW_SECONDS,
@@ -133,10 +128,7 @@ export async function POST(request: NextRequest) {
   })
 
   if (!duplicateSet) {
-    return NextResponse.json(
-      { error: "Duplicate request detected. Please wait before retrying." },
-      { status: 409 },
-    )
+    return NextResponse.json({ error: "Duplicate request detected. Please wait before retrying." }, { status: 409 })
   }
 
   const formattedTopic = topic.replace(/_/g, " ")

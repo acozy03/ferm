@@ -8,13 +8,8 @@ interface ActivityLogPage {
   totalCount: number
 }
 
-export function useActivityLogInfinite(
-  jobApplicationId?: string,
-  limit = 100,
-) {
-  const base = jobApplicationId
-    ? `/api/job-applications/${jobApplicationId}/activity`
-    : `/api/activity-log`
+export function useActivityLogInfinite(jobApplicationId?: string, limit = 100) {
+  const base = jobApplicationId ? `/api/job-applications/${jobApplicationId}/activity` : `/api/activity-log`
 
   const getKey = (pageIndex: number, prev: ActivityLogPage | null) => {
     if (prev && !prev.nextCursor) return null
@@ -26,12 +21,11 @@ export function useActivityLogInfinite(
     return `${base}?${params.toString()}`
   }
 
-  const { data, error, isLoading, size, setSize, mutate } =
-    useSWRInfinite<ActivityLogPage>(
-      getKey,
-      (url) => apiFetcher<ActivityLogPage>(url),
-      { revalidateFirstPage: false },
-    )
+  const { data, error, isLoading, size, setSize, mutate } = useSWRInfinite<ActivityLogPage>(
+    getKey,
+    (url) => apiFetcher<ActivityLogPage>(url),
+    { revalidateFirstPage: false },
+  )
 
   const pages = data ?? []
   const activities = pages.flatMap((p) => p.activities)

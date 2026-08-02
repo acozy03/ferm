@@ -41,10 +41,17 @@ function addVaryHeader(response: NextResponse, value: string) {
   const current = response.headers.get("Vary")
   const values = new Set(
     current
-      ? current.split(",").map((entry) => entry.trim()).filter(Boolean)
-      : []
+      ? current
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      : [],
   )
-  value.split(",").map((entry) => entry.trim()).filter(Boolean).forEach((entry) => values.add(entry))
+  value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .forEach((entry) => values.add(entry))
   response.headers.set("Vary", Array.from(values).join(", "))
 }
 
@@ -65,6 +72,28 @@ const ResumeScoreSchema = z.object({
   summary: z.string().optional().nullable(),
 })
 
+const FollowUpDraftSchema = z
+  .object({
+    generated_at: z.string().nullish(),
+    draft_text: z.string().nullish(),
+  })
+  .passthrough()
+
+const StatusHistorySchema = z
+  .object({
+    status: z.string(),
+    changed_at: z.string(),
+  })
+  .passthrough()
+
+const JobApplicationResultSchema = z
+  .object({
+    status: z.string(),
+    follow_up_draft: z.union([FollowUpDraftSchema, z.array(FollowUpDraftSchema)]).nullish(),
+    status_history: z.array(StatusHistorySchema).nullish(),
+  })
+  .passthrough()
+
 const MAX_BODY_CHARS = 100_000
 const MAX_BODY_BYTES = 100_000
 const MAX_LONG_TEXT_LENGTH = 8_192
@@ -79,7 +108,7 @@ const CreateJobApplicationSchema = z
     location: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
     salary_range: z.string().max(MAX_SHORT_TEXT_LENGTH).nullable().optional(),
     employment_type: z.enum(["Full-time", "Part-time", "Contract", "Internship"]).optional(),
-    status: z.string().max(MAX_STATUS_LENGTH).optional(),
+    status: z.string().max(MAX_STATUS_LENGTH).transform(normalizeStatusValue).optional(),
     priority: z.enum(["Low", "Medium", "High"]).optional(),
     application_date: z.string().max(32).optional(),
     notes: z.string().max(MAX_LONG_TEXT_LENGTH).nullable().optional(),
@@ -117,7 +146,7 @@ async function generateResumeMatchScore({ job, resumeText, apiKey }: ResumeScori
 
   const systemPrompt =
     "You are an expert career coach. Compare the candidate's resume against the job listing and respond with strict JSON. " +
-    "Return keys `score` (0-100 whole integers) and `summary` (<=75 words). You should be very harsh, honest and critical.";
+    "Return keys `score` (0-100 whole integers) and `summary` (<=75 words). You should be very harsh, honest and critical."
 
   const userPrompt = `Job application details:\n${JSON.stringify(job, null, 2)}\n\nCandidate resume:\n"""\n${resumeText}\n"""`
 
@@ -197,8 +226,9 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
+  const corsHeaders = getCorsHeaders(request.headers.get("origin"))
+
   try {
-    const corsHeaders = getCorsHeaders(request.headers.get("origin"))
     const auth = await getAuthedClient(request)
     if ("error" in auth) {
       return NextResponse.json({ error: auth.error.message }, { status: auth.error.status, headers: corsHeaders })
@@ -241,18 +271,17 @@ export async function GET(request: NextRequest) {
 
     const limit = Math.min(requestedLimit, MAX_JOB_APPLICATIONS_LIMIT)
 
-    let query = supabase
-      .from("job_applications")
-      .select(
-        `
+    const selectColumns: string = `
         *
         ${include_interviews ? ", interviews(*)" : ""}
         ${include_activity ? ", activity_log(*)" : ""}
         ${include_status_history ? ", status_history:job_application_status_history(*)" : ""}
         , follow_up_draft:application_follow_up_drafts (generated_at, draft_text)
-      `,
-        { count: "exact" }
-      )
+      `
+
+    let query = supabase
+      .from("job_applications")
+      .select(selectColumns, { count: "exact" })
       // belt-and-suspenders: still filter by user_id even with RLS
       .eq("user_id", userId)
 
@@ -272,7 +301,7 @@ export async function GET(request: NextRequest) {
           `contact_email.ilike.%${sanitizedSearch}%`,
           `notes.ilike.%${sanitizedSearch}%`,
           `location.ilike.%${sanitizedSearch}%`,
-        ].join(",")
+        ].join(","),
       )
     }
 
@@ -288,8 +317,9 @@ export async function GET(request: NextRequest) {
     }
 
     const normalizedData = (data ?? []).map((application) => {
-      const normalizedStatus = parseStatus(application.status).value
-      const { follow_up_draft: followUpDraftRaw, ...applicationWithoutDraft } = application
+      const parsedApplication = JobApplicationResultSchema.parse(application)
+      const normalizedStatus = parseStatus(parsedApplication.status).value
+      const { follow_up_draft: followUpDraftRaw, ...applicationWithoutDraft } = parsedApplication
       const draftRecords = Array.isArray(followUpDraftRaw)
         ? followUpDraftRaw
         : followUpDraftRaw
@@ -331,7 +361,7 @@ export async function GET(request: NextRequest) {
           ...corsHeaders,
           "Cache-Control": "no-store",
         },
-      }
+      },
     )
   } catch (error) {
     console.error("Failed to load job applications", error)
@@ -340,6 +370,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const corsHeaders = getCorsHeaders(request.headers.get("origin"))
+
   try {
     const csrfError = requireCookieCsrf(request)
     if (csrfError) {
@@ -402,7 +434,7 @@ export async function POST(request: NextRequest) {
       qualifications: truncateString(toNullableString(body.qualifications ?? null), MAX_LONG_TEXT_LENGTH),
       job_responsibilities: truncateString(toNullableString(body.job_responsibilities ?? null), MAX_LONG_TEXT_LENGTH),
       resume_match_score: null as number | null,
-      resume_match_summary: null as string | null
+      resume_match_summary: null as string | null,
     }
 
     if (insertData.status) {
@@ -493,7 +525,6 @@ export async function POST(request: NextRequest) {
     return response
   } catch (error) {
     console.error("Failed to create job application", error)
-    const corsHeaders = getCorsHeaders(request.headers.get("origin"))
     return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: corsHeaders })
   }
 }

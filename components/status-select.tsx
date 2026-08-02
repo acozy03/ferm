@@ -34,7 +34,11 @@ export function SequentialStatusSelect({
   )
 
   return (
-    <Select value={value ?? undefined} onValueChange={(next) => onChange(next as JobApplicationStatus)} disabled={disabled}>
+    <Select
+      value={value ?? undefined}
+      onValueChange={(next) => onChange(next as JobApplicationStatus)}
+      disabled={disabled}
+    >
       <SelectTrigger id={id} className={triggerClassName}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

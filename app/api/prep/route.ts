@@ -96,19 +96,16 @@ export async function POST(request: NextRequest) {
         apiKey = userKey
         isUserProvided = true
       } else {
-        return new NextResponse(
-          JSON.stringify({ error: "Daily prep limit reached." }),
-          {
-            status: 429,
-            headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "no-store",
-              Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
-              "X-Usage-Limit": String(DAILY_LIMIT),
-              "X-Usage-Remaining": "0",
-            },
+        return new NextResponse(JSON.stringify({ error: "Daily prep limit reached." }), {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+            Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
+            "X-Usage-Limit": String(DAILY_LIMIT),
+            "X-Usage-Remaining": "0",
           },
-        )
+        })
       }
     } else if (userKey) {
       apiKey = userKey

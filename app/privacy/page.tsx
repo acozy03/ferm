@@ -59,15 +59,17 @@ export default function PrivacyPolicyPage() {
           <div className="rounded-3xl border border-zinc-800 bg-zinc-950/60 p-6">
             <h2 className="text-xl font-semibold text-white">Contact</h2>
             <p className="mt-3 text-zinc-300">
-              If you have questions about this policy or how ferm handles your data, please contact us at
-              {" "}
-              <a href="mailto:acozy03@gmail.com" className="text-zinc-100 underline decoration-zinc-500 hover:text-white">
+              If you have questions about this policy or how ferm handles your data, please contact us at{" "}
+              <a
+                href="mailto:acozy03@gmail.com"
+                className="text-zinc-100 underline decoration-zinc-500 hover:text-white"
+              >
                 acozy03@gmail.com
               </a>
               .
             </p>
             <p className="mt-4 text-sm text-zinc-500">
-              For general product information, visit our {" "}
+              For general product information, visit our{" "}
               <Link href="/landing" className="text-zinc-300 underline decoration-zinc-600 hover:text-white">
                 landing page
               </Link>

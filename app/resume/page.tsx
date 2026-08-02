@@ -1,14 +1,6 @@
 "use client"
 
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from "react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { FileText, Loader2, UploadCloud, ShieldAlert } from "lucide-react"
@@ -40,14 +32,8 @@ interface ResumeInfo {
   size?: number
 }
 
-async function getLatestResume(
-  client: SupabaseClient,
-  userId: string,
-): Promise<ResumeInfo | null> {
-  const {
-    data: files,
-    error: listError,
-  } = await client.storage.from(RESUME_BUCKET).list(userId, {
+async function getLatestResume(client: SupabaseClient, userId: string): Promise<ResumeInfo | null> {
+  const { data: files, error: listError } = await client.storage.from(RESUME_BUCKET).list(userId, {
     limit: 1,
     sortBy: { column: "updated_at", order: "desc" },
   })
@@ -114,7 +100,8 @@ export default function ResumePage() {
   const fileInputId = useId()
 
   const acceptedTypesDescription = useMemo(
-    () => `Accepted formats: ${ALLOWED_EXTENSIONS.map((ext) => ext.toUpperCase()).join(", ")} • Max size ${Math.round(MAX_FILE_SIZE / (1024 * 1024))} MB`,
+    () =>
+      `Accepted formats: ${ALLOWED_EXTENSIONS.map((ext) => ext.toUpperCase()).join(", ")} • Max size ${Math.round(MAX_FILE_SIZE / (1024 * 1024))} MB`,
     [],
   )
 
@@ -253,13 +240,11 @@ export default function ResumePage() {
         const sanitizedExtension = isAllowedExtension ? (extension as AllowedExtension) : "pdf"
         const path = `${user.id}/resume.${sanitizedExtension}`
 
-        const { error: uploadError } = await supabase.storage
-          .from(RESUME_BUCKET)
-          .upload(path, file, {
-            cacheControl: "3600",
-            upsert: true,
-            contentType: file.type || undefined,
-          })
+        const { error: uploadError } = await supabase.storage.from(RESUME_BUCKET).upload(path, file, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: file.type || undefined,
+        })
 
         if (uploadError) {
           throw uploadError
@@ -450,7 +435,7 @@ export default function ResumePage() {
                         </Button>
                       </div>
                     </div>
-                    
+
                     {resume.name.toLowerCase().endsWith(".pdf") ? (
                       <div className="overflow-hidden rounded-md border bg-muted/20">
                         <iframe
@@ -466,8 +451,8 @@ export default function ResumePage() {
                       <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
                         <p className="font-medium text-foreground">Preview unavailable</p>
                         <p>
-                          Resume previews are currently limited to PDF files. Download the file above to view or upload a PDF to
-                          see it inline.
+                          Resume previews are currently limited to PDF files. Download the file above to view or upload
+                          a PDF to see it inline.
                         </p>
                       </div>
                     )}
@@ -481,30 +466,30 @@ export default function ResumePage() {
                   </div>
                 )}
               </CardContent>
-            <CardFooter className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground text-pretty">{acceptedTypesDescription}</p>
-              <div className="flex items-center gap-3">
-                <Input
-                  ref={fileInputRef}
-                  id={fileInputId}
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  className="sr-only"
-                  onChange={handleUpload}
-                  disabled={isUploading || isRemoving}
-                />
-                <Button
-                  type="button"
-                  variant="default"
-                  onClick={promptForFile}
-                  disabled={isUploading || isRemoving}
-                  className="gap-2"
-                >
-                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-                  {resume ? "Replace resume" : "Upload resume"}
-                </Button>
-              </div>
-            </CardFooter>
+              <CardFooter className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground text-pretty">{acceptedTypesDescription}</p>
+                <div className="flex items-center gap-3">
+                  <Input
+                    ref={fileInputRef}
+                    id={fileInputId}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    className="sr-only"
+                    onChange={handleUpload}
+                    disabled={isUploading || isRemoving}
+                  />
+                  <Button
+                    type="button"
+                    variant="default"
+                    onClick={promptForFile}
+                    disabled={isUploading || isRemoving}
+                    className="gap-2"
+                  >
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                    {resume ? "Replace resume" : "Upload resume"}
+                  </Button>
+                </div>
+              </CardFooter>
             </Card>
           </div>
         </div>

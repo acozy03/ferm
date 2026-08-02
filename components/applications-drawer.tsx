@@ -4,10 +4,7 @@ import { useMemo, useState } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, ArrowDownAZ, ArrowUpAZ, Filter, X } from "lucide-react"
 
-import {
-  Drawer,
-  DrawerContent,
-} from "@/components/ui/drawer"
+import { Drawer, DrawerContent } from "@/components/ui/drawer"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
@@ -116,7 +113,7 @@ export function ApplicationsDrawer({
   const selectedSortField = useMemo(() => {
     return sortFieldOptions.some((option) => option.value === sort.field)
       ? sort.field
-      : sortFieldOptions[0]?.value ?? "created_at"
+      : (sortFieldOptions[0]?.value ?? "created_at")
   }, [sort.field])
 
   const activeFilters = useMemo<FilterChip[]>(() => {
@@ -280,7 +277,11 @@ export function ApplicationsDrawer({
                 <div className="flex flex-wrap gap-2">
                   {activeFilters.map((chip) => (
                     <Badge key={`${chip.type}:${chip.value}`} variant="secondary" asChild>
-                      <button type="button" className="flex items-center gap-1" onClick={() => handleRemoveFilter(chip)}>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1"
+                        onClick={() => handleRemoveFilter(chip)}
+                      >
                         {chip.label}
                         <X className="h-3 w-3" />
                         <span className="sr-only">Remove {chip.label}</span>
@@ -291,9 +292,7 @@ export function ApplicationsDrawer({
               ) : null}
 
               <div className="rounded-lg border bg-background/60 p-3">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Date range
-                </span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Date range</span>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <DateInputField label="From" value={filters.date_from} onChange={handleDateChange("date_from")} />
                   <DateInputField label="To" value={filters.date_to} onChange={handleDateChange("date_to")} />
@@ -329,7 +328,11 @@ export function ApplicationsDrawer({
                         <ArrowUpAZ className="h-4 w-4" />
                         <span className="text-sm">Ascending</span>
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="desc" className="flex items-center gap-2 px-3" aria-label="Sort descending">
+                      <ToggleGroupItem
+                        value="desc"
+                        className="flex items-center gap-2 px-3"
+                        aria-label="Sort descending"
+                      >
                         <ArrowDownAZ className="h-4 w-4" />
                         <span className="text-sm">Descending</span>
                       </ToggleGroupItem>
@@ -387,7 +390,7 @@ export function ApplicationsDrawer({
               </div>
             </ScrollArea>
             <div className="border-t">
-              <Button type="button" variant='secondary' className="w-full" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="secondary" className="w-full" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
             </div>

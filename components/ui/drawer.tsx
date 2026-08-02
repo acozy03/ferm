@@ -20,21 +20,15 @@ function Drawer({
   )
 }
 
-function DrawerTrigger({
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {
+function DrawerTrigger({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {
   return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />
 }
 
-function DrawerPortal({
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Portal>) {
+function DrawerPortal({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Portal>) {
   return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
 }
 
-function DrawerClose({
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Close>) {
+function DrawerClose({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Close>) {
   return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />
 }
 
@@ -60,38 +54,37 @@ type DrawerContentProps = React.ComponentPropsWithoutRef<typeof DrawerPrimitive.
   position?: "bottom" | "right"
 }
 
-const DrawerContent = React.forwardRef<
-  React.ElementRef<typeof DrawerPrimitive.Content>,
-  DrawerContentProps
->(({ className, children, position = "bottom", ...props }, ref) => {
-  const isBottom = position === "bottom"
+const DrawerContent = React.forwardRef<React.ElementRef<typeof DrawerPrimitive.Content>, DrawerContentProps>(
+  ({ className, children, position = "bottom", ...props }, ref) => {
+    const isBottom = position === "bottom"
 
-  return (
-    <DrawerPortal>
-      <DrawerOverlay />
-      <DrawerPrimitive.Content
-        ref={ref}
-        data-slot="drawer-content"
-        className={cn(
-          "z-50 flex bg-background shadow-lg outline-none",
-          "data-[state=open]:animate-in data-[state=closed]:animate-out",
-          "data-[state=closed]:duration-300 data-[state=open]:duration-500",
-          isBottom
-            ? "fixed inset-x-0 bottom-0 max-h-[90vh] flex-col rounded-t-3xl border-x border-t border-border"
-            : "fixed inset-y-0 right-0 h-full w-full max-w-full flex-col border-l border-border sm:max-w-[28rem] lg:max-w-[36rem]",
-          isBottom
-            ? "data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
-            : "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
-          className,
-        )}
-        {...props}
-      >
-        {isBottom ? <div className="mx-auto mb-4 mt-2 h-2 w-12 rounded-full bg-muted" /> : null}
-        {children}
-      </DrawerPrimitive.Content>
-    </DrawerPortal>
-  )
-})
+    return (
+      <DrawerPortal>
+        <DrawerOverlay />
+        <DrawerPrimitive.Content
+          ref={ref}
+          data-slot="drawer-content"
+          className={cn(
+            "z-50 flex bg-background shadow-lg outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:duration-300 data-[state=open]:duration-500",
+            isBottom
+              ? "fixed inset-x-0 bottom-0 max-h-[90vh] flex-col rounded-t-3xl border-x border-t border-border"
+              : "fixed inset-y-0 right-0 h-full w-full max-w-full flex-col border-l border-border sm:max-w-[28rem] lg:max-w-[36rem]",
+            isBottom
+              ? "data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
+              : "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
+            className,
+          )}
+          {...props}
+        >
+          {isBottom ? <div className="mx-auto mb-4 mt-2 h-2 w-12 rounded-full bg-muted" /> : null}
+          {children}
+        </DrawerPrimitive.Content>
+      </DrawerPortal>
+    )
+  },
+)
 DrawerContent.displayName = DrawerPrimitive.Content.displayName
 
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
@@ -105,19 +98,10 @@ function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="drawer-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
-      {...props}
-    />
-  )
+  return <div data-slot="drawer-footer" className={cn("mt-auto flex flex-col gap-2 p-4", className)} {...props} />
 }
 
-function DrawerTitle({
-  className,
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Title>) {
+function DrawerTitle({ className, ...props }: React.ComponentProps<typeof DrawerPrimitive.Title>) {
   return (
     <DrawerPrimitive.Title
       data-slot="drawer-title"
@@ -127,10 +111,7 @@ function DrawerTitle({
   )
 }
 
-function DrawerDescription({
-  className,
-  ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Description>) {
+function DrawerDescription({ className, ...props }: React.ComponentProps<typeof DrawerPrimitive.Description>) {
   return (
     <DrawerPrimitive.Description
       data-slot="drawer-description"

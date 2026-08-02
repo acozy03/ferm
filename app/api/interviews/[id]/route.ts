@@ -52,12 +52,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const parsedRound = Number.isFinite(Number(mergedInterview.interview_round))
       ? Math.max(1, Number(mergedInterview.interview_round))
       : null
-    const scheduledDate = mergedInterview.scheduled_date
-      ? new Date(mergedInterview.scheduled_date)
-      : null
-    const currentScheduledDate = currentInterview.scheduled_date
-      ? new Date(currentInterview.scheduled_date)
-      : null
+    const scheduledDate = mergedInterview.scheduled_date ? new Date(mergedInterview.scheduled_date) : null
+    const currentScheduledDate = currentInterview.scheduled_date ? new Date(currentInterview.scheduled_date) : null
 
     if (!parsedRound) {
       return NextResponse.json({ error: "Invalid interview round" }, { status: 400 })
@@ -73,14 +69,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       currentScheduledDate.getTime() === scheduledDate.getTime()
 
     const shouldValidateScheduledFuture =
-      mergedInterview.status === "Scheduled" &&
-      !(isScheduledDateUnchanged && currentInterview.status === "Scheduled")
+      mergedInterview.status === "Scheduled" && !(isScheduledDateUnchanged && currentInterview.status === "Scheduled")
 
     if (shouldValidateScheduledFuture && scheduledDate.getTime() < Date.now()) {
-      return NextResponse.json(
-        { error: "Scheduled interviews must use a future date and time." },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "Scheduled interviews must use a future date and time." }, { status: 400 })
     }
 
     const { data: relatedInterviews, error: relatedError } = await supabase
@@ -99,9 +91,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const previousInterview = relatedInterviews
-      ?.filter((interview) =>
-        typeof interview.interview_round === "number" && interview.interview_round < parsedRound,
-      )
+      ?.filter((interview) => typeof interview.interview_round === "number" && interview.interview_round < parsedRound)
       .sort((a, b) => (b.interview_round ?? 0) - (a.interview_round ?? 0))[0]
 
     if (previousInterview) {
@@ -121,9 +111,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const nextInterview = relatedInterviews
-      ?.filter((interview) =>
-        typeof interview.interview_round === "number" && interview.interview_round > parsedRound,
-      )
+      ?.filter((interview) => typeof interview.interview_round === "number" && interview.interview_round > parsedRound)
       .sort((a, b) => (a.interview_round ?? 0) - (b.interview_round ?? 0))[0]
 
     if (nextInterview) {
@@ -147,10 +135,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       .update({ ...updates, interview_round: parsedRound, scheduled_date: scheduledDate.toISOString() })
       .eq("id", id)
       .eq("user_id", user.id)
-      .select(`
+      .select(
+        `
         *,
         job_applications(company_name, position_title)
-      `)
+      `,
+      )
       .single()
 
     if (error) {

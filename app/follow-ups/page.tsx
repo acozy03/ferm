@@ -2,28 +2,16 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { format, formatDistanceToNow } from "date-fns"
-import { ArrowDownAZ, ArrowUpAZ, Search, RotateCcw} from "lucide-react"
+import { ArrowDownAZ, ArrowUpAZ, Search, RotateCcw } from "lucide-react"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/components/ui/use-toast"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -120,9 +108,7 @@ export default function FollowUpsPage() {
                 ...application,
                 ai_follow_up_draft_text: update.draft,
                 ai_follow_up_draft_generated_at:
-                  update.generatedAt !== undefined
-                    ? update.generatedAt
-                    : application.ai_follow_up_draft_generated_at,
+                  update.generatedAt !== undefined ? update.generatedAt : application.ai_follow_up_draft_generated_at,
               }
             }),
           }
@@ -157,7 +143,6 @@ export default function FollowUpsPage() {
       }
     })
   }, [applications, followUps])
-
 
   const sortedRows = useMemo(() => {
     const directionMultiplier = sortDirection === "asc" ? 1 : -1
@@ -286,7 +271,6 @@ export default function FollowUpsPage() {
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <CardHeader className="gap-3">
-              
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="relative w-full sm:max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -313,7 +297,11 @@ export default function FollowUpsPage() {
                         <ArrowUpAZ className="h-4 w-4" />
                         <span className="text-sm">Ascending</span>
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="desc" className="flex items-center gap-2 px-3" aria-label="Sort descending">
+                      <ToggleGroupItem
+                        value="desc"
+                        className="flex items-center gap-2 px-3"
+                        aria-label="Sort descending"
+                      >
                         <ArrowDownAZ className="h-4 w-4" />
                         <span className="text-sm">Descending</span>
                       </ToggleGroupItem>
@@ -376,11 +364,12 @@ export default function FollowUpsPage() {
                               const isPending = pending[row.application.id]
                               const appliedDate = getDateOrNull(row.application.application_date)
                               const appliedLabel = appliedDate ? format(appliedDate, "MMM d, yyyy") : "Date unavailable"
-                              const nextReminderLabel = row.enabled && row.nextReminder
-                                ? row.status === "due"
-                                  ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
-                                  : format(row.nextReminder, "MMM d, yyyy")
-                                : "Not scheduled"
+                              const nextReminderLabel =
+                                row.enabled && row.nextReminder
+                                  ? row.status === "due"
+                                    ? `Due ${formatDistanceToNow(row.nextReminder, { addSuffix: true })}`
+                                    : format(row.nextReminder, "MMM d, yyyy")
+                                  : "Not scheduled"
                               const lastReminderLabel = row.lastSent ? format(row.lastSent, "MMM d, yyyy") : "Never"
 
                               return (
@@ -421,7 +410,7 @@ export default function FollowUpsPage() {
                                         disabled={(!row.enabled && !row.lastSent) || isPending}
                                         hasGeneratedDraft={Boolean(
                                           row.application.ai_follow_up_draft_generated_at ||
-                                            row.application.ai_follow_up_draft_text,
+                                          row.application.ai_follow_up_draft_text,
                                         )}
                                         onDraftUpdated={(update) => handleDraftUpdated(row.application.id, update)}
                                       />
@@ -480,7 +469,6 @@ export default function FollowUpsPage() {
               }}
               className="w-full max-w-[360px] rounded-md border p-4"
             />
-            
           </div>
           <DialogFooter className="mx-auto flex w-full max-w-[360px] flex-col gap-2">
             {!reminderDialog?.isEnabling && (
@@ -511,18 +499,9 @@ export default function FollowUpsPage() {
                 onClick={() => {
                   if (!reminderDialog) return
                   const selectedDate = reminderDialog.date
-                  const normalizedSelectedDate =
-                    selectedDate
-                      ? new Date(
-                          selectedDate.getFullYear(),
-                          selectedDate.getMonth(),
-                          selectedDate.getDate(),
-                          0,
-                          0,
-                          0,
-                          0,
-                        )
-                      : null
+                  const normalizedSelectedDate = selectedDate
+                    ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0, 0, 0)
+                    : null
 
                   if (!normalizedSelectedDate || Number.isNaN(normalizedSelectedDate.getTime())) {
                     toast({
@@ -572,8 +551,6 @@ export default function FollowUpsPage() {
               </Button>
             </div>
           </DialogFooter>
-
-
         </DialogContent>
       </Dialog>
     </div>

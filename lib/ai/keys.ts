@@ -7,6 +7,32 @@ const PROVIDER = "openai"
 const ENCRYPTION_ALGORITHM = "aes-256-gcm"
 const AUTH_TAG_LENGTH = 16
 
+type UserAiKeyRow = {
+  user_id: string
+  provider: string
+  encrypted_api_key: string | null
+  encryption_iv: string | null
+}
+
+type AiKeysDatabase = {
+  public: {
+    Tables: {
+      user_ai_keys: {
+        Row: UserAiKeyRow
+        Insert: UserAiKeyRow
+        Update: Partial<UserAiKeyRow>
+        Relationships: []
+      }
+    }
+    Views: Record<never, never>
+    Functions: Record<never, never>
+    Enums: Record<never, never>
+    CompositeTypes: Record<never, never>
+  }
+}
+
+type AiKeysSupabaseClient = SupabaseClient<AiKeysDatabase>
+
 export function normalizeApiKey(raw: string | null): string | null {
   if (!raw) return null
   const value = raw.trim()
@@ -60,10 +86,7 @@ export function decryptApiKey(encryptedApiKey: string, encryptionIv: string): st
   }
 }
 
-async function fetchStoredKey(
-  supabase: SupabaseClient<unknown, "public", unknown> | null,
-  userId: string | null,
-): Promise<string | null> {
+async function fetchStoredKey(supabase: AiKeysSupabaseClient | null, userId: string | null): Promise<string | null> {
   if (!supabase || !userId) return null
 
   const { data, error } = await supabase
@@ -93,7 +116,7 @@ export async function resolveOpenAIKeys({
   userId,
 }: {
   request: Request
-  supabase?: SupabaseClient<unknown, "public", unknown> | null
+  supabase?: AiKeysSupabaseClient | null
   userId?: string | null
 }): Promise<ResolvedKeys> {
   const headerKey = normalizeApiKey(request.headers.get(USER_OPENAI_KEY_HEADER))
@@ -115,7 +138,7 @@ export async function resolveOpenAIApiKey({
   userId,
 }: {
   request: Request
-  supabase?: SupabaseClient<unknown, "public", unknown> | null
+  supabase?: AiKeysSupabaseClient | null
   userId?: string | null
 }): Promise<ResolvedKey | { error: NextResponse }> {
   const { userKey, sharedKey } = await resolveOpenAIKeys({
@@ -133,10 +156,7 @@ export async function resolveOpenAIApiKey({
   }
 
   return {
-    error: NextResponse.json(
-      { error: "The service is not configured with an OpenAI API key." },
-      { status: 500 },
-    ),
+    error: NextResponse.json({ error: "The service is not configured with an OpenAI API key." }, { status: 500 }),
   }
 }
 

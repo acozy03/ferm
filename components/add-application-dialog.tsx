@@ -5,12 +5,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Info } from "lucide-react"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,13 +15,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Loader2, Plus } from "lucide-react"
 import { format } from "date-fns"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { CreateJobApplicationData, Priority, EmploymentType } from "@/lib/types/database"
 import { SequentialStatusSelect } from "@/components/status-select"
 import { useSupabase } from "@/components/supabase-provider"
@@ -37,6 +26,10 @@ interface AddApplicationDialogProps {
   trigger?: React.ReactNode
   onAdd: (application: CreateJobApplicationData) => void
 }
+
+type AddApplicationFormData = {
+  [Field in Exclude<keyof CreateJobApplicationData, "application_date">]-?: NonNullable<CreateJobApplicationData[Field]>
+} & { appliedDate: Date | undefined }
 
 type ParsedJobResponse = {
   is_valid_job_posting?: boolean
@@ -70,7 +63,7 @@ const employmentTypeOptions: { value: EmploymentType; label: string }[] = [
 export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogProps) {
   const { session } = useSupabase()
   const [open, setOpen] = useState(false)
-  const [formData, setFormData] = useState<CreateJobApplicationData & { appliedDate: Date | undefined }>({
+  const [formData, setFormData] = useState<AddApplicationFormData>({
     company_name: "",
     position_title: "",
     status: "Applied",
@@ -253,9 +246,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
       if (!response.ok) {
         setAutofillStatus("error")
         setAutofillMessage(
-          typeof data.error === "string" && data.error.length > 0
-            ? data.error
-            : "Failed to analyze the job posting.",
+          typeof data.error === "string" && data.error.length > 0 ? data.error : "Failed to analyze the job posting.",
         )
         setLastAutofilledUrl(trimmedUrl)
         return
@@ -291,8 +282,8 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
         apply("qualifications", data.qualifications ?? null)
         apply("job_responsibilities", data.job_responsibilities ?? null)
 
-        if (typeof data.employment_type === "string" && data.employment_type.length > 0) {
-          next.employment_type = data.employment_type as (typeof prev)["employment_type"]
+        if (data.employment_type) {
+          next.employment_type = data.employment_type
         }
 
         return next
@@ -346,9 +337,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                   formErrors.company_name && "border-destructive focus-visible:ring-destructive",
                 )}
               />
-              {formErrors.company_name ? (
-                <p className="text-sm text-destructive">{formErrors.company_name}</p>
-              ) : null}
+              {formErrors.company_name ? <p className="text-sm text-destructive">{formErrors.company_name}</p> : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="position">Position *</Label>
@@ -384,7 +373,10 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
               <Label htmlFor="priority" className="whitespace-nowrap">
                 Priority
               </Label>
-              <Select value={formData.priority} onValueChange={(value) => updateFormData("priority", value)}>
+              <Select
+                value={formData.priority}
+                onValueChange={(value) => updateFormData("priority", value as Priority)}
+              >
                 <SelectTrigger id="priority" className="w-full md:w-40">
                   <SelectValue />
                 </SelectTrigger>
@@ -403,7 +395,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
               </Label>
               <Select
                 value={formData.employment_type}
-                onValueChange={(value) => updateFormData("employment_type", value)}
+                onValueChange={(value) => updateFormData("employment_type", value as EmploymentType)}
               >
                 <SelectTrigger id="employment_type" className="w-full md:w-40">
                   <SelectValue />
@@ -445,9 +437,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                   />
                 </PopoverContent>
               </Popover>
-              {formErrors.appliedDate ? (
-                <p className="text-sm text-destructive">{formErrors.appliedDate}</p>
-              ) : null}
+              {formErrors.appliedDate ? <p className="text-sm text-destructive">{formErrors.appliedDate}</p> : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
@@ -474,26 +464,27 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-  <Label htmlFor="jobUrl">Job Posting URL</Label>
+                <Label htmlFor="jobUrl">Job Posting URL</Label>
 
-  <TooltipProvider delayDuration={150}>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Job URL autofill info"
-        >
-          <Info className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs text-xs">
-        Some sites load job details after page load. If Autofill looks incomplete or returns something like &apos;closed job&apos; or &apos;filled position&apos;, you should use the
-        Chrome extension for the most reliable import :)
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-</div>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label="Job URL autofill info"
+                      >
+                        <Info className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-xs">
+                      Some sites load job details after page load. If Autofill looks incomplete or returns something
+                      like &apos;closed job&apos; or &apos;filled position&apos;, you should use the Chrome extension
+                      for the most reliable import :)
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
 
               <div className="flex items-start gap-2">
                 <Input
@@ -610,7 +601,9 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
             <Button type="button" className="flex-1" variant="outline" onClick={() => handleDialogChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="flex-1">Add Application</Button>
+            <Button type="submit" className="flex-1">
+              Add Application
+            </Button>
           </div>
         </form>
       </DialogContent>

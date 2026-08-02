@@ -246,7 +246,7 @@ export function SettingsDialog({ trigger, open, onOpenChange }: SettingsDialogPr
     )
   }
 
-return (
+  return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="gap-0 p-0 sm:max-w-2xl">
@@ -275,15 +275,12 @@ return (
               <div className="space-y-3">
                 <div className="">
                   <h3 className="font-medium">Account</h3>
-                  
                 </div>
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Delete account</p>
-                      <p className="text-xs text-muted-foreground">
-                        Permanently purge your account
-                      </p>
+                      <p className="text-xs text-muted-foreground">Permanently purge your account</p>
                     </div>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -295,7 +292,8 @@ return (
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action cannot be undone. Your account and all associated data will be permanently deleted.
+                            This action cannot be undone. Your account and all associated data will be permanently
+                            deleted.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <div className="gap-2 flex w-full">
@@ -320,15 +318,12 @@ return (
               <div className="space-y-3">
                 <div className="space-y-1">
                   <h3 className="font-medium">Chrome Extension</h3>
-                 
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Get the extension</p>
-                      <p className="text-xs text-muted-foreground">
-                        Available for Chrome on desktop!
-                      </p>
+                      <p className="text-xs text-muted-foreground">Available for Chrome on desktop!</p>
                     </div>
                     <Button asChild variant="outline" size="sm">
                       <a
@@ -348,15 +343,12 @@ return (
               <div className="space-y-3">
                 <div className="space-y-1">
                   <h3 className="font-medium">Support Me</h3>
-                  
                 </div>
                 <div className="rounded-lg border bg-gradient-to-br from-pink-500/5 to-orange-500/5 p-4">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Buy me a coffee</p>
-                      <p className="text-xs text-muted-foreground">
-                        I truly appreciate every fermian
-                      </p>
+                      <p className="text-xs text-muted-foreground">I truly appreciate every fermian</p>
                     </div>
                     <Button asChild size="sm">
                       <a href="https://ko-fi.com/adriancosentino" target="_blank" rel="noreferrer">
@@ -371,7 +363,6 @@ return (
 
             {activeTab === "api-key" && (
               <div className="space-y-6">
-              
                 <AiKeyPanel
                   aiKeyInput={aiKeyInput}
                   onAiKeyInputChange={setAiKeyInput}

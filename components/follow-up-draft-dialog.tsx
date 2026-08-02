@@ -5,11 +5,7 @@ import { differenceInCalendarDays } from "date-fns"
 import { Loader2, Wand2, Copy, Check } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import type { JobApplication } from "@/lib/types/database"
 import { useToast } from "@/components/ui/use-toast"
@@ -81,9 +77,7 @@ export function FollowUpDraftDialog({
     setIsGenerating(true)
     try {
       const appliedAt = application.application_date ? new Date(application.application_date) : null
-      const daysSinceApplication = appliedAt
-        ? Math.max(0, differenceInCalendarDays(new Date(), appliedAt))
-        : 0
+      const daysSinceApplication = appliedAt ? Math.max(0, differenceInCalendarDays(new Date(), appliedAt)) : 0
       const response = await apiFetch("/api/follow-ups/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -199,12 +193,15 @@ export function FollowUpDraftDialog({
   }, [draft, toast])
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => {
-      setOpen(nextOpen)
-      if (!nextOpen) {
-        setIsGenerating(false)
-      }
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (!nextOpen) {
+          setIsGenerating(false)
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="secondary" size="sm" disabled={disabled} className="gap-2 w-[12.5rem]">
           <Wand2 className="h-4 w-4" />
@@ -212,7 +209,6 @@ export function FollowUpDraftDialog({
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl" showCloseButton={false}>
-     
         <div className="space-y-3">
           <div className="relative">
             <Textarea
@@ -239,23 +235,22 @@ export function FollowUpDraftDialog({
               <span className="sr-only">{hasCopied ? "Draft copied" : "Copy draft"}</span>
             </Button>
           </div>
-        
         </div>
-          
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="flex-1" size="sm" onClick={() => setOpen(false)} disabled={isSaving}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => void saveDraft()}
-              disabled={!hasGenerated || !hasUnsavedChanges || isSaving}
-              className="flex-1"
-            >
-              {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isSaving ? "Saving" : "Save changes"}
-            </Button>
-          </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="flex-1" size="sm" onClick={() => setOpen(false)} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => void saveDraft()}
+            disabled={!hasGenerated || !hasUnsavedChanges || isSaving}
+            className="flex-1"
+          >
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isSaving ? "Saving" : "Save changes"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
