@@ -15,33 +15,33 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Create ONE response to mutate
-  const res = NextResponse.next()
+  let authHeaders: Record<string, string> = {}
+  let res = NextResponse.next({ request: req })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name) {
-          return req.cookies.get(name)?.value
+        getAll() {
+          return req.cookies.getAll()
         },
-        set(name, value, options) {
-          res.cookies.set({ name, value, ...options })
-        },
-        remove(name, options) {
-          res.cookies.set({ name, value: "", expires: new Date(0), ...options })
+        setAll(cookiesToSet, headers) {
+          authHeaders = headers
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
+          res = NextResponse.next({ request: req })
+          cookiesToSet.forEach(({ name, value, options }) => res.cookies.set(name, value, options))
+          Object.entries(headers).forEach(([key, value]) => res.headers.set(key, value))
         },
       },
     },
   )
 
   // Touch session (may set/refresh cookies on `res`)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data, error } = await supabase.auth.getClaims()
+  const isAuthenticated = !error && Boolean(data?.claims.sub)
 
-  if (!user) {
+  if (!isAuthenticated) {
     if (req.cookies.get(CSRF_COOKIE_NAME)) {
       res.cookies.delete(CSRF_COOKIE_NAME)
     }
@@ -54,6 +54,7 @@ export async function proxy(req: NextRequest) {
     for (const c of res.cookies.getAll()) {
       redirect.cookies.set(c)
     }
+    Object.entries(authHeaders).forEach(([key, value]) => redirect.headers.set(key, value))
     return redirect
   }
 

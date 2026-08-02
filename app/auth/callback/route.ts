@@ -35,11 +35,12 @@ export async function GET(req: NextRequest) {
         getAll() {
           return req.cookies.getAll()
         },
-        setAll(cookies) {
+        setAll(cookies, headers) {
           cookies.forEach(({ name, value, options }) => {
             const safeOptions = process.env.NODE_ENV === "development" ? { ...options, secure: false } : options
             res.cookies.set(name, value, safeOptions)
           })
+          Object.entries(headers).forEach(([key, value]) => res.headers.set(key, value))
         },
       },
     },
@@ -48,13 +49,16 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get("code")
   if (code) {
     try {
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      const flowId = url.searchParams.get("sb_flow_id")
+      const { error } = await supabase.auth.exchangeCodeForSession(code, flowId ? { flowId } : undefined)
       if (error) {
-        return NextResponse.redirect(new URL("/auth?error=oauth", baseUrl))
+        res.headers.set("Location", new URL("/auth?error=oauth", baseUrl).toString())
+        return res
       }
     } catch (error) {
       console.error("Failed to exchange OAuth code for Supabase session", error)
-      return NextResponse.redirect(new URL("/auth?error=oauth", baseUrl))
+      res.headers.set("Location", new URL("/auth?error=oauth", baseUrl).toString())
+      return res
     }
   }
 
