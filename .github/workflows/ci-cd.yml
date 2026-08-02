@@ -3,7 +3,6 @@ name: CI/CD
 on:
   push:
     branches: [master]
-    tags: ["v*"]
   pull_request:
     branches: [master]
   workflow_dispatch:
@@ -54,58 +53,64 @@ jobs:
       - name: Build
         run: pnpm build
 
-  publish:
-    name: Publish container
-    if: github.event_name != 'pull_request'
+  deploy:
+    name: Deploy to Cloud Run
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/master'
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
     permissions:
       contents: read
-      packages: write
+      id-token: write
     steps:
       - name: Validate deployment configuration
         env:
+          DEPLOY_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+          DEPLOY_REGION: ${{ vars.GCP_REGION }}
+          DEPLOY_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+          DEPLOY_WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+          DEPLOY_WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
           DEPLOY_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
           DEPLOY_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           DEPLOY_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$DEPLOY_SITE_URL" ] || [ -z "$DEPLOY_SUPABASE_URL" ] || [ -z "$DEPLOY_SUPABASE_ANON_KEY" ]; then
-            echo "::error::Configure NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_SUPABASE_URL, and NEXT_PUBLIC_SUPABASE_ANON_KEY as repository variables."
+          if [ -z "$DEPLOY_PROJECT" ] || [ -z "$DEPLOY_REGION" ] || [ -z "$DEPLOY_SERVICE" ] || \
+             [ -z "$DEPLOY_WIF_PROVIDER" ] || [ -z "$DEPLOY_WIF_SERVICE_ACCOUNT" ] || \
+             [ -z "$DEPLOY_SITE_URL" ] || [ -z "$DEPLOY_SUPABASE_URL" ] || [ -z "$DEPLOY_SUPABASE_ANON_KEY" ]; then
+            echo "::error::One or more required Cloud Run deployment variables are missing."
             exit 1
           fi
 
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker authentication
+        run: gcloud auth configure-docker gcr.io --quiet
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate image metadata
-        id: metadata
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and publish image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
+          tags: |
+            gcr.io/${{ vars.GCP_PROJECT_ID }}/${{ vars.CLOUD_RUN_SERVICE }}:${{ github.sha }}
+            gcr.io/${{ vars.GCP_PROJECT_ID }}/${{ vars.CLOUD_RUN_SERVICE }}:latest
           build-args: |
             NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
             SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
@@ -113,3 +118,11 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ vars.CLOUD_RUN_SERVICE }}
+          region: ${{ vars.GCP_REGION }}
+          image: gcr.io/${{ vars.GCP_PROJECT_ID }}/${{ vars.CLOUD_RUN_SERVICE }}:${{ github.sha }}

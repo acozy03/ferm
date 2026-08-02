@@ -33,15 +33,20 @@ Use `pnpm format` to apply Prettier formatting. CI requires formatting, linting,
 
 ## CI/CD
 
-Pull requests and pushes to `master` run formatting, linting, type-checking, and a production build. Successful pushes to `master`, version tags, and manual workflow runs publish a container to `ghcr.io/cosentinode/ferm`.
+Pull requests and pushes to `master` run formatting, linting, type-checking, and a production build. After the checks pass on a push or manual run from `master`, GitHub Actions builds an image, publishes it to `gcr.io/ferm-ferm/ferm`, and deploys it to the `ferm` Cloud Run service in `us-central1`.
 
-Configure these GitHub repository variables so the published client bundle points at the production Supabase project:
+Deployment uses Google Workload Identity Federation, so GitHub does not store a service-account key. It requires these repository variables:
 
+- `GCP_PROJECT_ID`
+- `GCP_REGION`
+- `CLOUD_RUN_SERVICE`
+- `WIF_PROVIDER`
+- `WIF_SERVICE_ACCOUNT`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 
-All non-public values from `.env.example` must be supplied to the container at runtime. They are intentionally not baked into the image.
+The workflow only changes the deployed image. Existing Cloud Run runtime configuration, including non-public values from `.env.example`, remains attached to the service and is not baked into the image.
 
 Build and run the image locally with:
 
