@@ -5,7 +5,7 @@ import { Header } from "@/components/header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip } from "recharts"
+import { ResponsiveContainer, Sankey, Tooltip as RechartsTooltip, type SankeyNodeProps } from "recharts"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toPng } from "html-to-image"
 import { getStatusChartColor, parseStatus } from "@/lib/status"
@@ -31,19 +31,8 @@ type SankeyLink = {
   value: number
 }
 
-const CustomSankeyNode = ({
-  x,
-  y,
-  width,
-  height,
-  payload,
-}: {
-  x: number
-  y: number
-  width: number
-  height: number
-  payload: SankeyNodeWithCount
-}) => {
+const CustomSankeyNode = ({ x, y, width, height, payload: sankeyNode }: SankeyNodeProps) => {
+  const payload = sankeyNode as typeof sankeyNode & SankeyNodeWithCount
   const labelY = y + height / 2
   const isBaseNode = payload.name === SANKEY_BASE_NODE
   const labelX = isBaseNode ? x + width + 12 : x - 12
