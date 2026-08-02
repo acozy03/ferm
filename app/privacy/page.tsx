@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 }
 
 export const dynamic = "force-static"
-export const revalidate = 60 * 60 * 24
+export const revalidate = 86400
 
 export default function PrivacyPolicyPage() {
   return (

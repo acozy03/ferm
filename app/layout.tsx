@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { JetBrains_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import "./globals.css"
 import { MinimalScrollRail } from "@/components/minimal-scroll-rail"
@@ -35,7 +34,6 @@ export default function RootLayout({
           <Toaster />
         </Providers>
         <MinimalScrollRail />
-        <Analytics />
       </body>
     </html>
   )

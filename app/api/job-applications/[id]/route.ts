@@ -39,7 +39,8 @@ function truncateString(value: string | null | undefined, maxLength: number) {
   return value.length > maxLength ? value.slice(0, maxLength) : value
 }
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   try {
     const supabase = await createServerSupabaseClient()
     const {
@@ -100,7 +101,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   const { id } = params
   let sanitizedUpdates: Partial<UpdateJobApplicationData> = {}
   let userId: string | null = null
@@ -295,7 +297,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   try {
     const csrfError = requireCookieCsrf(request)
     if (csrfError) {
