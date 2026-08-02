@@ -7,21 +7,7 @@ import Image from "next/image"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ChevronDown, Heart } from "lucide-react"
-import {
-  ArrowUpRight,
-  Check,
-  Linkedin,
-  Play,
-  Sparkles,
-  Twitter,
-  Youtube,
-  Target,
-  TrendingUp,
-  MessageSquare,
-  Mail,
-  Star,
-  Clock,
-} from "lucide-react"
+import { ArrowUpRight, Check, Play, Sparkles, Target, TrendingUp, MessageSquare, Mail, Star, Clock } from "lucide-react"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog"
@@ -33,6 +19,32 @@ import { motion, useMotionValueEvent, useScroll, useTransform, AnimatePresence }
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+
+type SocialIconProps = React.ComponentProps<"svg">
+
+function LinkedInIcon(props: SocialIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V8.99h3.41v1.57h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.32 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.1 20.45H3.54V8.99H7.1v11.46z" />
+    </svg>
+  )
+}
+
+function YouTubeIcon(props: SocialIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.19C0 8.08 0 12 0 12s0 3.92.5 5.81a3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14C24 15.92 24 12 24 12s0-3.92-.5-5.81zM9.55 15.57V8.43L15.82 12l-6.27 3.57z" />
+    </svg>
+  )
+}
+
+function XIcon(props: SocialIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M18.24 2.25h3.31l-7.23 8.26 8.51 11.24h-6.66l-5.21-6.82-5.97 6.82H1.68l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23zm-1.16 17.52h1.84L7.08 4.13H5.12l11.96 15.64z" />
+    </svg>
+  )
+}
 
 const passwordSchema = z
   .string()
@@ -856,13 +868,13 @@ export default function LandingPage() {
                 className="flex items-center justify-center gap-6 pt-4 text-muted-foreground"
               >
                 <SocialLink href="https://www.linkedin.com/company/111001355" label="LinkedIn">
-                  <Linkedin className="h-5 w-5" aria-hidden />
+                  <LinkedInIcon className="h-5 w-5" aria-hidden />
                 </SocialLink>
                 <SocialLink href="https://www.youtube.com/@ferm-dot-dev" label="Youtube">
-                  <Youtube className="h-5 w-5" aria-hidden />
+                  <YouTubeIcon className="h-5 w-5" aria-hidden />
                 </SocialLink>
                 <SocialLink href="https://x.com/fermdotdev" label="Twitter">
-                  <Twitter className="h-5 w-5" aria-hidden />
+                  <XIcon className="h-5 w-5" aria-hidden />
                 </SocialLink>
               </motion.div>
             </div>
@@ -1269,13 +1281,13 @@ export default function LandingPage() {
 
                 <div className="flex items-center gap-4">
                   <SocialLink href="https://www.linkedin.com/company/111001355" label="LinkedIn">
-                    <Linkedin className="h-5 w-5" aria-hidden />
+                    <LinkedInIcon className="h-5 w-5" aria-hidden />
                   </SocialLink>
                   <SocialLink href="https://www.youtube.com/@ferm-dot-dev" label="Youtube">
-                    <Youtube className="h-5 w-5" aria-hidden />
+                    <YouTubeIcon className="h-5 w-5" aria-hidden />
                   </SocialLink>
                   <SocialLink href="https://x.com/fermdotdev" label="Twitter">
-                    <Twitter className="h-5 w-5" aria-hidden />
+                    <XIcon className="h-5 w-5" aria-hidden />
                   </SocialLink>
                 </div>
               </div>

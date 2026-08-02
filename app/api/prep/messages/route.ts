@@ -7,14 +7,14 @@ const AppendSchema = z.object({
   chatId: z.string().uuid(),
   userContent: z.string().min(1),
   assistantContent: z.string().default(""),
-  userMetadata: z.record(z.any()).nullable().optional(),
-  assistantMetadata: z.record(z.any()).nullable().optional(),
+  userMetadata: z.record(z.string(), z.any()).nullable().optional(),
+  assistantMetadata: z.record(z.string(), z.any()).nullable().optional(),
 })
 
 const UpdateSchema = z.object({
   messageId: z.string().uuid(),
   content: z.string().optional(),
-  metadata: z.record(z.any()).nullable().optional(),
+  metadata: z.record(z.string(), z.any()).nullable().optional(),
 })
 
 export const dynamic = "force-dynamic"

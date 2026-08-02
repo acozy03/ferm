@@ -433,7 +433,7 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                     mode="single"
                     selected={formData.appliedDate}
                     onSelect={(date) => updateFormData("appliedDate", date)}
-                    initialFocus
+                    autoFocus
                   />
                 </PopoverContent>
               </Popover>

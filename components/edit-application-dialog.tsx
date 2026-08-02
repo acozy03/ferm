@@ -232,7 +232,7 @@ export function EditApplicationDialog({
                         application_date: date ? format(date, "yyyy-MM-dd") : "",
                       })
                     }
-                    initialFocus
+                    autoFocus
                   />
                 </PopoverContent>
               </Popover>

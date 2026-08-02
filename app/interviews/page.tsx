@@ -826,7 +826,7 @@ export default function InterviewsPage() {
                                   setScheduledDate(date ?? undefined)
                                   setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
                                 }}
-                                initialFocus
+                                autoFocus
                               />
                             </PopoverContent>
                           </Popover>
