@@ -65,7 +65,7 @@ async function getLatestResume(client: SupabaseClient, userId: string): Promise<
     name: file.name,
     path,
     signedUrl: signedUrlData.signedUrl,
-    updatedAt: file.updated_at ?? file.created_at,
+    updatedAt: file.updated_at ?? file.created_at ?? undefined,
     size: typeof file.metadata?.size === "number" ? file.metadata.size : undefined,
   }
 }

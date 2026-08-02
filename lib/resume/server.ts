@@ -2,24 +2,28 @@ import "server-only"
 import mammoth from "mammoth"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
-type PdfParseFn = (data: Buffer) => Promise<{ text?: string }>
+type PdfParser = {
+  getText(): Promise<{ text?: string }>
+  destroy(): Promise<void>
+}
+type PdfParseConstructor = new (options: { data: Buffer }) => PdfParser
 
-let _pdfParse: PdfParseFn | null = null
+let _PdfParse: PdfParseConstructor | null = null
 
-function isPdfParseFn(value: unknown): value is PdfParseFn {
+function isPdfParseConstructor(value: unknown): value is PdfParseConstructor {
   return typeof value === "function"
 }
 
-async function getPdfParse(): Promise<PdfParseFn> {
-  if (_pdfParse) return _pdfParse
+async function getPdfParse(): Promise<PdfParseConstructor> {
+  if (_PdfParse) return _PdfParse
   // Import our local CJS bridge; this guarantees the CJS build is used.
   const mod: unknown = await import("./pdf-parse.cjs")
   const candidate = typeof mod === "object" && mod !== null && "default" in mod ? mod.default : mod
-  if (!isPdfParseFn(candidate)) {
+  if (!isPdfParseConstructor(candidate)) {
     throw new Error("Failed to load pdf-parse")
   }
-  _pdfParse = candidate
-  return _pdfParse
+  _PdfParse = candidate
+  return _PdfParse
 }
 
 const RESUME_BUCKET = "resumes"
@@ -44,9 +48,14 @@ async function extractResumeText(buffer: Buffer, fileName: string) {
   const extension = fileName.split(".").pop()?.toLowerCase() ?? ""
 
   if (extension === "pdf") {
-    const pdfParse = await getPdfParse()
-    const result = await pdfParse(buffer)
-    return sanitizeText(result.text || "")
+    const PDFParse = await getPdfParse()
+    const parser = new PDFParse({ data: buffer })
+    try {
+      const result = await parser.getText()
+      return sanitizeText(result.text || "")
+    } finally {
+      await parser.destroy()
+    }
   }
 
   if (extension === "docx") {
