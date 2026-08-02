@@ -2,6 +2,10 @@
     "name": "ferm",
     "version": "1.0",
     "private": true,
+    "packageManager": "pnpm@11.18.0",
+    "engines": {
+        "node": ">=22.13 <23"
+    },
     "sideEffects": [
         "./lib/audio/circularWave.ts"
     ],
@@ -9,6 +13,7 @@
         "build": "next build",
         "dev": "next dev",
         "lint": "next lint",
+        "typecheck": "tsc --noEmit",
         "start": "next start",
         "build:extension": "esbuild ferm_extension/src/supabaseClient.ts --bundle --format=esm --platform=browser --target=chrome114 --outfile=ferm_extension/supabaseClient.js"
     },
