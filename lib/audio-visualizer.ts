@@ -27,8 +27,7 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
   canvas.style.width = "100%"
   canvas.style.height = "100%"
   canvas.style.pointerEvents = "none"
-  canvas.style.mixBlendMode = "screen"
-  canvas.style.filter = "drop-shadow(0 0 12px rgba(52,211,153,0.25))"
+  canvas.style.filter = "drop-shadow(0 0 12px color-mix(in oklch, var(--primary) 25%, transparent))"
   canvas.setAttribute("aria-hidden", "true")
 
   container.appendChild(canvas)
@@ -46,6 +45,7 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
     await audioContext.close()
     throw new Error("Canvas context unavailable")
   }
+  const visualizerColor = getComputedStyle(container).getPropertyValue("--primary").trim() || "currentColor"
 
   let animationFrameId: number | null = null
   let sourceNode: MediaElementAudioSourceNode | MediaStreamAudioSourceNode | null = null
@@ -81,10 +81,11 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
       const endY = centerY + (radius + barHeight) * Math.sin(angle)
 
       const gradient = context.createLinearGradient(startX, startY, endX, endY)
-      gradient.addColorStop(0, "rgba(52,211,153,0.05)")
-      gradient.addColorStop(1, "rgba(52,211,153,0.55)")
+      gradient.addColorStop(0, "transparent")
+      gradient.addColorStop(1, visualizerColor)
 
       context.strokeStyle = gradient
+      context.globalAlpha = 0.55
       context.lineWidth = 3
       context.lineCap = "round"
       context.beginPath()

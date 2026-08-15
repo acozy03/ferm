@@ -1,6 +1,7 @@
 "use client"
 
 import { MicVAD, utils } from "@ricky0123/vad-web"
+import Image from "next/image"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Bot,
@@ -9,7 +10,9 @@ import {
   Focus,
   GraduationCap,
   ListChecks,
+  Loader2,
   Mic,
+  Pause,
   Play,
   Plus,
   RotateCcw,
@@ -21,7 +24,9 @@ import {
   Trash2,
   User,
   Volume2,
+  X,
 } from "lucide-react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { type PanelImperativeHandle, useDefaultLayout } from "react-resizable-panels"
 
 import { Header } from "@/components/header"
@@ -35,6 +40,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { useToast } from "@/components/ui/use-toast"
 import { createAudioVisualizer, type AudioVisualizer } from "@/lib/audio-visualizer"
 import { useJobApplications } from "@/lib/hooks/use-job-applications"
 import { cn } from "@/lib/utils"
@@ -60,6 +66,8 @@ interface ChatMessage {
 }
 
 export default function PrepPage() {
+  const prefersReducedMotion = useReducedMotion()
+  const { toast } = useToast()
   const { applications, isLoading } = useJobApplications({ limit: 50, include_interviews: true })
   const { session, user } = useSupabase()
   const [selectedApplicationId, setSelectedApplicationId] = useState<string>("")
@@ -84,6 +92,7 @@ export default function PrepPage() {
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [isVoiceReplyEnabled, setIsVoiceReplyEnabled] = useState(true)
   const [isFocusMode, setIsFocusMode] = useState(false)
+  const [isFocusPaused, setIsFocusPaused] = useState(false)
   const [isCompactLayout, setIsCompactLayout] = useState(false)
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false)
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false)
@@ -107,6 +116,7 @@ export default function PrepPage() {
   const isVoiceProcessingRef = useRef(false)
   const isPlayingVoiceRef = useRef(false)
   const voiceStartInFlightRef = useRef(false)
+  const voiceSegmentSubmittedRef = useRef(false)
   const voiceLifecycleRef = useRef(0)
   const voiceRequestControllerRef = useRef<AbortController | null>(null)
   const textRequestControllerRef = useRef<AbortController | null>(null)
@@ -375,6 +385,27 @@ export default function PrepPage() {
     }
   }, [isFocusMode])
 
+  useEffect(() => {
+    if (!isFocusMode) return
+
+    const exitOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsFocusMode(false)
+    }
+
+    window.addEventListener("keydown", exitOnEscape)
+    return () => window.removeEventListener("keydown", exitOnEscape)
+  }, [isFocusMode])
+
+  useEffect(() => {
+    if (!voiceError) return
+
+    toast({
+      title: "Voice unavailable",
+      description: voiceError,
+      variant: "destructive",
+    })
+  }, [toast, voiceError])
+
   const teardownVisualizer = useCallback(() => {
     visualizerInstanceRef.current?.stop()
     visualizerInstanceRef.current = null
@@ -397,6 +428,7 @@ export default function PrepPage() {
     const vad = vadRef.current
     if (!vad) return
     vadRef.current = null
+    vad.setOptions({ submitUserSpeechOnPause: false })
     void vad.destroy().catch((error) => {
       console.error("Unable to destroy voice activity detector", error)
     })
@@ -475,6 +507,32 @@ export default function PrepPage() {
     [isFocusMode],
   )
 
+  const requestVoiceStream = useCallback(async () => {
+    let permissionState: PermissionState | null = null
+
+    if (navigator.permissions?.query) {
+      try {
+        const permission = await navigator.permissions.query({ name: "microphone" as PermissionName })
+        permissionState = permission.state
+      } catch {
+        // Some browsers support microphone access without exposing it through the Permissions API.
+      }
+    }
+
+    if (permissionState === "denied") {
+      throw new DOMException("Microphone access is blocked in browser settings.", "NotAllowedError")
+    }
+
+    return navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        echoCancellation: true,
+        autoGainControl: true,
+        noiseSuppression: true,
+      },
+    })
+  }, [])
+
   const initializeVisualizer = useCallback(
     async (source: MediaStream | HTMLAudioElement | null) => {
       if (!isFocusMode || !source || !visualizerContainerRef.current) return
@@ -497,18 +555,18 @@ export default function PrepPage() {
   const startMicVisualization = useCallback(async () => {
     if (!isFocusMode) return null
 
+    const stream = await requestVoiceStream()
+    micVisualizationStreamRef.current = stream
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      micVisualizationStreamRef.current = stream
       await initializeVisualizer(stream)
-      return stream
     } catch (error) {
-      stopMicVisualizationStream()
       teardownVisualizer()
       handleVisualizerFailure(error)
-      return null
     }
-  }, [handleVisualizerFailure, initializeVisualizer, isFocusMode, stopMicVisualizationStream, teardownVisualizer])
+
+    return stream
+  }, [handleVisualizerFailure, initializeVisualizer, isFocusMode, requestVoiceStream, teardownVisualizer])
 
   useEffect(
     () => () => {
@@ -1103,6 +1161,30 @@ export default function PrepPage() {
     setVisualizerNotice(null)
   }
 
+  const handlePauseFocusSession = () => {
+    cancelVoiceRequest()
+    stopRecordingTimer()
+    destroyVad()
+    stopVoicePlayback()
+    stopMicVisualizationStream()
+    teardownVisualizer()
+    setIsRecording(false)
+    setIsProcessingVoice(false)
+    setIsPlayingVoice(false)
+    setIsFocusPaused(true)
+  }
+
+  const handleResumeFocusSession = () => {
+    setIsSessionEnded(false)
+    setIsFocusPaused(false)
+    scheduleVoiceRestart(100)
+  }
+
+  const handleStopFocusSession = () => {
+    setIsFocusPaused(false)
+    handleEndSession()
+  }
+
   const toggleLeftSidebar = () => {
     const sidebar = leftSidebarRef.current
     if (!sidebar) return
@@ -1166,6 +1248,7 @@ export default function PrepPage() {
       isProcessingVoice ||
       isPlayingVoiceRef.current ||
       isRecording ||
+      isFocusPaused ||
       isSessionEnded ||
       isGenerating ||
       isCreatingChatRef.current
@@ -1193,6 +1276,15 @@ export default function PrepPage() {
           baseAssetPath: "/vad-assets/",
           onnxWASMBasePath: "/vad-assets/",
           startOnLoad: false,
+          submitUserSpeechOnPause: true,
+          getStream: async () => {
+            const visualizationStream = micVisualizationStreamRef.current
+            return visualizationStream?.active ? visualizationStream : requestVoiceStream()
+          },
+          resumeStream: async () => {
+            const visualizationStream = micVisualizationStreamRef.current
+            return visualizationStream?.active ? visualizationStream : requestVoiceStream()
+          },
           onSpeechStart: () => {
             setIsRecording(true)
             setRecordingSeconds(0)
@@ -1208,6 +1300,7 @@ export default function PrepPage() {
             }, 1000)
           },
           onSpeechEnd: (audio) => {
+            voiceSegmentSubmittedRef.current = true
             vadRef.current?.pause()
             stopRecordingTimer()
             setIsRecording(false)
@@ -1247,21 +1340,53 @@ export default function PrepPage() {
       }
       setIsRecording(true)
       setRecordingSeconds(0)
-    } catch {
+    } catch (error) {
+      destroyVad()
       stopMicVisualizationStream()
       teardownVisualizer()
-      setVoiceError("Microphone access was blocked. Please enable permissions and try again.")
+      const permissionWasBlocked =
+        error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")
+      setVoiceError(
+        permissionWasBlocked
+          ? "Allow microphone access in browser settings, then try again."
+          : "The microphone could not be started. Try again.",
+      )
     } finally {
       voiceStartInFlightRef.current = false
     }
   }
 
   const handleStopRecording = () => {
-    destroyVad()
+    const vad = vadRef.current
+    if (!vad) {
+      stopRecordingTimer()
+      stopMicVisualizationStream()
+      teardownVisualizer()
+      setIsRecording(false)
+      return
+    }
+
+    voiceSegmentSubmittedRef.current = false
     stopRecordingTimer()
-    stopMicVisualizationStream()
-    teardownVisualizer()
     setIsRecording(false)
+    setIsProcessingVoice(true)
+
+    void vad
+      .pause()
+      .then(() => {
+        if (voiceSegmentSubmittedRef.current) return
+        setIsProcessingVoice(false)
+        setVoiceError("We couldn't capture enough audio. Try again.")
+      })
+      .catch(() => {
+        destroyVad()
+        setIsProcessingVoice(false)
+        setVoiceError("The microphone could not be stopped. Try again.")
+      })
+      .finally(() => {
+        stopMicVisualizationStream()
+        teardownVisualizer()
+      })
   }
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
@@ -1653,6 +1778,7 @@ export default function PrepPage() {
                         className="h-7 px-2 text-xs"
                         onClick={() => {
                           setIsVoiceReplyEnabled(true)
+                          setIsFocusPaused(false)
                           setIsFocusMode(true)
                         }}
                         aria-label="Enter focus mode"
@@ -1798,8 +1924,6 @@ export default function PrepPage() {
                             <p className="text-xs text-muted-foreground">
                               Recording will end automatically after a moment of silence.
                             </p>
-
-                            {voiceError && <p className="text-xs text-destructive">{voiceError}</p>}
 
                             {visualizerNotice && (
                               <p className="text-xs text-amber-700 dark:text-amber-400">{visualizerNotice}</p>
@@ -1983,135 +2107,234 @@ export default function PrepPage() {
         </Card>
       </main>
 
-      {isFocusMode && (
-        <div className="fixed inset-0 z-50 isolate bg-gradient-to-b from-black via-zinc-950 to-black text-white transition-opacity duration-500">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.08),transparent_35%),radial-gradient(circle_at_80%_40%,rgba(16,185,129,0.12),transparent_30%)] blur-3xl" />
-
-          <div className="relative flex h-full flex-col">
-            <div className="flex items-center justify-between px-6 py-5 text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-400/80">
-              <span className="text-primary/70">Focus mode</span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsFocusMode(false)}
-                className="border border-white/10 bg-white/10 text-white shadow-[0_10px_40px_rgba(0,0,0,0.45)] backdrop-blur hover:bg-white/20"
-              >
-                Exit focus
-              </Button>
-            </div>
-
-            <div className="flex flex-1 flex-col items-center justify-center gap-10 px-6 pb-12 text-center">
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label={isPlayingVoice ? "Prep is speaking" : isRecording ? "Stop recording" : "Start speaking"}
-                onClick={() => {
-                  if (isProcessingVoice || isPlayingVoice || isCreatingChat) return
-                  if (isRecording) {
-                    handleStopRecording()
-                  } else {
-                    void handleStartRecording()
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    if (isProcessingVoice || isPlayingVoice || isCreatingChat) return
-                    if (isRecording) {
-                      handleStopRecording()
-                    } else {
-                      void handleStartRecording()
-                    }
-                  }
-                }}
-                className="relative flex h-52 w-52 cursor-pointer items-center justify-center rounded-full sm:h-60 sm:w-60"
-              >
-                <div
-                  ref={visualizerContainerRef}
-                  className="pointer-events-none absolute inset-0 overflow-hidden rounded-full"
-                  aria-hidden
-                />
-                <div
-                  className={cn(
-                    "absolute inset-0 rounded-full bg-emerald-400/10 transition-all duration-700",
-                    isRecording || isPlayingVoice ? "animate-[pulse_2s_ease-in-out_infinite]" : "opacity-50",
-                  )}
-                />
-                <div
-                  className={cn(
-                    "absolute inset-3 rounded-full border border-white/10 transition-all duration-700",
-                    isRecording
-                      ? "shadow-[0_0_0_18px_rgba(52,211,153,0.15)]"
-                      : isProcessingVoice || isPlayingVoice
-                        ? "shadow-[0_0_0_12px_rgba(99,102,241,0.12)]"
-                        : "shadow-[0_0_0_8px_rgba(255,255,255,0.04)]",
-                  )}
-                />
-                <div className="relative flex h-36 w-36 items-center justify-center rounded-full bg-white/5 shadow-[0_20px_120px_rgba(0,0,0,0.65)] backdrop-blur">
-                  {isRecording ? (
-                    <Mic className="h-10 w-10 text-emerald-400" />
-                  ) : (
-                    <Volume2 className={cn("h-10 w-10", isProcessingVoice ? "text-primary" : "text-zinc-300")} />
-                  )}
-                </div>
-              </div>
-
-              <div className="max-w-3xl space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70">
-                  {isPlayingVoice
-                    ? "Prep is speaking"
-                    : isProcessingVoice
-                      ? "Prep is thinking"
-                      : isRecording
-                        ? "Prep is listening"
-                        : "Voice session ready"}
-                </p>
-                <div className="rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
-                  <p className="text-lg leading-relaxed text-white/90 whitespace-pre-wrap" aria-live="polite">
-                    {latestAssistantMessage?.content?.trim() ? latestAssistantMessage.content : "Say hello to start."}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-zinc-400">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "h-2 w-2 rounded-full",
-                      isRecording ? "bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.25)]" : "bg-zinc-600",
-                    )}
+      <AnimatePresence>
+        {isFocusMode && (
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Focus mode"
+            initial={prefersReducedMotion ? { opacity: 0 } : { clipPath: "circle(0% at 50% 50%)" }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { clipPath: "circle(150% at 50% 50%)" }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.985 }}
+            transition={{ duration: prefersReducedMotion ? 0.15 : 0.7, ease: [0.76, 0, 0.24, 1] }}
+            className="fixed inset-0 z-50 isolate overflow-y-auto bg-background text-foreground"
+          >
+            <div
+              className="pointer-events-none absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [background-size:4rem_4rem] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
+              aria-hidden="true"
+            />
+            <motion.div
+              initial={prefersReducedMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: prefersReducedMotion ? 0 : 0.3, duration: 0.35 }}
+              className="relative mx-auto flex min-h-full w-full max-w-[90rem] flex-col px-4 sm:px-6 lg:px-10"
+            >
+              <header className="flex h-16 shrink-0 items-center justify-between border-b border-border sm:h-20">
+                <div className="flex items-center gap-3">
+                  <Image
+                    src="/logo_cropped.png"
+                    alt="ferm.dev logo"
+                    width={28}
+                    height={28}
+                    className="size-7 object-contain invert dark:invert-0"
+                    priority
                   />
-                  <span>
-                    {isPlayingVoice
-                      ? "Speaking... listening will resume automatically"
-                      : isProcessingVoice
-                        ? "Preparing your response..."
-                        : isRecording
-                          ? "Listening... tap to end"
-                          : "Tap the circle to start speaking"}
-                  </span>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                      ferm / Prep
+                    </p>
+                    <p className="text-sm font-medium">Focus session</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Volume2 className="h-4 w-4" />
-                  <span>{isVoiceReplyEnabled ? "Voice replies on" : "Voice replies muted"}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    autoFocus
+                    onClick={isFocusPaused ? handleResumeFocusSession : handlePauseFocusSession}
+                    disabled={isSessionEnded}
+                    aria-label={isFocusPaused ? "Resume focus session" : "Pause focus session"}
+                    className="border-chart-3/70 bg-background/80 text-chart-3 backdrop-blur-sm hover:border-chart-3 hover:bg-chart-3/10 hover:text-chart-3"
+                  >
+                    <span className="hidden sm:inline">{isFocusPaused ? "Resume" : "Pause"}</span>
+                    {isFocusPaused ? <Play className="size-4" /> : <Pause className="size-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStopFocusSession}
+                    disabled={isSessionEnded}
+                    aria-label="Stop focus session"
+                    className="border-destructive/70 bg-background/80 text-destructive backdrop-blur-sm hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <span className="hidden sm:inline">Stop</span>
+                    <Square className="size-3.5" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      handlePauseFocusSession()
+                      setIsFocusMode(false)
+                    }}
+                    aria-label="Exit focus mode"
+                    className="border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Exit
+                    <X className="size-4" />
+                  </Button>
                 </div>
-              </div>
+              </header>
 
-              {visualizerNotice && (
-                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-                  {visualizerNotice}
-                </div>
-              )}
+              <main className="grid flex-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)]">
+                <motion.section
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: prefersReducedMotion ? 0 : 0.42, duration: 0.45, ease: "easeOut" }}
+                  className="flex min-h-[34rem] flex-col items-center justify-center border-b border-border px-8 py-12 text-center lg:min-h-0 lg:border-r lg:border-b-0 lg:px-10"
+                >
+                  <div className="flex flex-col items-center gap-8">
+                    <button
+                      type="button"
+                      aria-label={
+                        isFocusPaused || isSessionEnded
+                          ? "Resume and start speaking"
+                          : isProcessingVoice
+                            ? "Processing response"
+                            : isPlayingVoice
+                              ? "Voice response playing"
+                              : isRecording
+                                ? "Submit answer"
+                                : "Start speaking"
+                      }
+                      disabled={isProcessingVoice || isPlayingVoice || isCreatingChat}
+                      onClick={() => {
+                        if (isFocusPaused || isSessionEnded) {
+                          handleResumeFocusSession()
+                        } else if (isRecording) {
+                          handleStopRecording()
+                        } else {
+                          void handleStartRecording()
+                        }
+                      }}
+                      className="group relative flex size-64 items-center justify-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-ring/30 disabled:cursor-default sm:size-72 lg:size-80"
+                    >
+                      {(isRecording || isPlayingVoice) && (
+                        <motion.span
+                          className="absolute inset-0 rounded-full border border-primary/30"
+                          animate={prefersReducedMotion ? undefined : { scale: [1, 1.12], opacity: [0.55, 0] }}
+                          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span className="absolute inset-0 rounded-full border border-border bg-card/60 shadow-sm backdrop-blur-sm transition-colors duration-300 group-hover:border-primary/35 group-hover:bg-muted/50" />
+                      <span className="absolute inset-6 rounded-full border border-border transition-[inset,border-color] duration-300 group-hover:inset-5 group-hover:border-primary/45 sm:inset-7 sm:group-hover:inset-6 lg:inset-8 lg:group-hover:inset-7" />
+                      <span className="absolute inset-16 rounded-full border border-dashed border-border transition-colors duration-300 group-hover:border-primary/50 sm:inset-[4.5rem] lg:inset-20" />
+                      <div
+                        ref={visualizerContainerRef}
+                        className="pointer-events-none absolute inset-2 overflow-hidden rounded-full"
+                        aria-hidden="true"
+                      />
+                      <motion.span
+                        animate={{ scale: prefersReducedMotion ? 1 : isRecording || isPlayingVoice ? 1.025 : 1 }}
+                        whileHover={prefersReducedMotion ? undefined : { scale: 1.025 }}
+                        transition={{ type: "spring", stiffness: 240, damping: 24, mass: 0.8 }}
+                        className="relative flex size-28 items-center justify-center rounded-full border border-primary bg-primary text-primary-foreground shadow-sm sm:size-32 lg:size-36"
+                      >
+                        <AnimatePresence initial={false} mode="wait">
+                          <motion.span
+                            key={isProcessingVoice ? "processing" : isRecording ? "listening" : "voice"}
+                            initial={prefersReducedMotion ? false : { opacity: 0, y: 3 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -3 }}
+                            transition={{ duration: 0.16, ease: "easeOut" }}
+                          >
+                            {isProcessingVoice ? (
+                              <Loader2 className={cn("size-8 lg:size-9", !prefersReducedMotion && "animate-spin")} />
+                            ) : isRecording ? (
+                              <Mic className="size-8 lg:size-9" />
+                            ) : (
+                              <Volume2 className="size-8 lg:size-9" />
+                            )}
+                          </motion.span>
+                        </AnimatePresence>
+                      </motion.span>
+                      <span
+                        className="absolute top-1/2 left-0 h-px w-8 -translate-x-1/2 bg-border"
+                        aria-hidden="true"
+                      />
+                      <span
+                        className="absolute top-1/2 right-0 h-px w-8 translate-x-1/2 bg-border"
+                        aria-hidden="true"
+                      />
+                    </button>
 
-              {voiceError && (
-                <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-100">
-                  {voiceError}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+                    <div className="h-12" aria-live="polite">
+                      <AnimatePresence initial={false}>
+                        {!isRecording && !isProcessingVoice && !isPlayingVoice && (
+                          <motion.div
+                            initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
+                            transition={{ duration: 0.18, ease: "easeOut" }}
+                          >
+                            <p className="text-base font-semibold">Ready when you are</p>
+                            <p className="mt-1.5 text-sm text-muted-foreground">Press the button to begin speaking</p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </motion.section>
+
+                <motion.section
+                  initial={prefersReducedMotion ? false : { opacity: 0, x: 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: prefersReducedMotion ? 0 : 0.52, duration: 0.45, ease: "easeOut" }}
+                  className="flex min-h-[28rem] flex-col px-1 py-8 sm:px-6 sm:py-12 lg:px-10"
+                >
+                  <div className="flex items-center justify-between border-b border-border pb-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                      Messages remaining
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">
+                      {usageRemaining ?? "--"} / {usageLimit ?? 20}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-1 items-center py-10">
+                    <blockquote className="max-h-[48vh] overflow-y-auto text-pretty text-xl leading-relaxed tracking-tight sm:text-2xl lg:text-[1.75rem] lg:leading-relaxed">
+                      {latestAssistantMessage?.content?.trim()
+                        ? latestAssistantMessage.content
+                        : "Whenever you're ready, start speaking and ferm will guide the conversation."}
+                    </blockquote>
+                  </div>
+
+                  <div className="space-y-3 border-t border-border pt-4">
+                    <div className="grid grid-cols-2 gap-4 text-[11px]">
+                      <div>
+                        <p className="text-muted-foreground">Position</p>
+                        <p className="mt-1 text-foreground">
+                          {selectedApplication?.position_title ?? "General interview"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-muted-foreground">Company</p>
+                        <p className="mt-1 text-foreground">{selectedApplication?.company_name ?? "Not specified"}</p>
+                      </div>
+                    </div>
+                    {visualizerNotice && (
+                      <div className="rounded-md border border-border bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                        {visualizerNotice}
+                      </div>
+                    )}
+                  </div>
+                </motion.section>
+              </main>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

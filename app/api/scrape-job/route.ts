@@ -323,7 +323,7 @@ export async function POST(request: NextRequest) {
         signal: controller.signal,
         redirect: "manual",
         headers: {
-          "User-Agent": "FermJobLoader/1.0 (+https://ferm.dev)",
+          "User-Agent": "ferm-job-loader/1.0 (+https://ferm.dev)",
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
       })

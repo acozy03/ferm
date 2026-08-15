@@ -2,9 +2,9 @@ import type { Metadata } from "next"
 import Link from "next/link"
 
 export const metadata: Metadata = {
-  title: "Privacy Policy – Ferm",
+  title: "Privacy Policy – ferm",
   description:
-    "Learn how Ferm handles authentication data, stores user information securely, and responds to privacy requests.",
+    "Learn how ferm handles authentication data, stores user information securely, and responds to privacy requests.",
 }
 
 export const dynamic = "force-static"
