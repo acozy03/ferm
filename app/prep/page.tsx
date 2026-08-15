@@ -832,7 +832,9 @@ export default function PrepPage() {
           applicationId: selectedApplication?.id ?? null,
           chatId,
           assistantMessageId,
-          messages: history.map((message) => ({ role: message.role, content: message.content })),
+          messages: history
+            .filter((message) => message.content.trim().length > 0)
+            .map((message) => ({ role: message.role, content: message.content })),
         }),
       })
 
@@ -1067,7 +1069,7 @@ export default function PrepPage() {
     playProcessingTone()
 
     try {
-      const recentMessages = messages.slice(-6)
+      const recentMessages = messages.filter((message) => message.content.trim().length > 0).slice(-6)
       const formData = new FormData()
       formData.append("audio", audioBlob, "voice-input.wav")
       formData.append("messages", JSON.stringify(recentMessages))
@@ -1495,6 +1497,12 @@ export default function PrepPage() {
                         id="prep-input"
                         value={input}
                         onChange={(event) => setInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault()
+                            event.currentTarget.form?.requestSubmit()
+                          }
+                        }}
                         placeholder={isSessionEnded ? "Session ended. Restart to continue." : "..."}
                         className="h-9 min-h-[2.25rem] flex-1 resize-none"
                         disabled={isGenerating || isSessionEnded}

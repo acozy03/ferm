@@ -40,8 +40,17 @@ const Button = React.forwardRef<
     }
 >(({ className, variant, size, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
+  const persistedStateProps = asChild ? {} : { autoComplete: "off" }
 
-  return <Comp ref={ref} data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />
+  return (
+    <Comp
+      ref={ref}
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...persistedStateProps}
+      {...props}
+    />
+  )
 })
 
 Button.displayName = "Button"

@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans ${jetBrainsMono.variable} antialiased`}>
+      <body className={`font-sans ${jetBrainsMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
           <Suspense fallback={null}>{children}</Suspense>
           <Toaster />

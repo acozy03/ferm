@@ -630,7 +630,7 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
   )
 }
 
-export default function LandingPage() {
+export default function LandingPage({ copyrightYear }: { copyrightYear: number }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectedFrom = searchParams.get("redirectedFrom")
@@ -1338,9 +1338,7 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
-              <p className="text-sm text-muted-foreground">
-                &copy; {new Date().getFullYear()} ferm. All rights reserved.
-              </p>
+              <p className="text-sm text-muted-foreground">&copy; {copyrightYear} ferm. All rights reserved.</p>
               <p className="text-sm text-muted-foreground">Made with care for job seekers everywhere</p>
             </div>
           </div>

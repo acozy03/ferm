@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react"
 import type { Session, SupabaseClient, User } from "@supabase/supabase-js"
 
 import { createClient } from "@/lib/supabase/client"
@@ -13,6 +13,10 @@ interface SupabaseContextValue {
 }
 
 const SupabaseContext = createContext<SupabaseContextValue | undefined>(undefined)
+
+const subscribeToHydration = () => () => {}
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [supabase] = useState(() => createClient())
@@ -57,9 +61,14 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
 
 export function useSupabase() {
   const context = useContext(SupabaseContext)
+  const hasHydrated = useSyncExternalStore(subscribeToHydration, getClientSnapshot, getServerSnapshot)
 
   if (!context) {
     throw new Error("useSupabase must be used within a SupabaseProvider")
+  }
+
+  if (!hasHydrated) {
+    return { ...context, session: null, user: null, isLoading: true }
   }
 
   return context

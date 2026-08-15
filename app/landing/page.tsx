@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 }
 
 export default function LandingPageRoute() {
-  return <LandingPage />
+  return <LandingPage copyrightYear={new Date().getUTCFullYear()} />
 }

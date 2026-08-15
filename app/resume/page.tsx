@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from "react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
-import { FileText, Loader2, UploadCloud, ShieldAlert } from "lucide-react"
+import { FileText, Loader2, UploadCloud, ShieldAlert, Trash, Download } from "lucide-react"
 
 import { Header } from "@/components/header"
 import { useSupabase } from "@/components/supabase-provider"
@@ -418,9 +418,9 @@ export default function ResumePage() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Button asChild variant="outline">
+                            <Button asChild variant="outline">
                           <a href={resume.signedUrl} target="_blank" rel="noopener noreferrer">
-                            Download resume
+                            <Download/> Download resume
                           </a>
                         </Button>
                         <Button
@@ -431,7 +431,7 @@ export default function ResumePage() {
                           disabled={isUploading || isRemoving}
                         >
                           {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                          Remove resume
+                          <Trash/> Remove resume
                         </Button>
                       </div>
                     </div>

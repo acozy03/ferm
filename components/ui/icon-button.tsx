@@ -33,8 +33,16 @@ type IconButtonProps = React.ComponentProps<"button"> &
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    const persistedStateProps = asChild ? {} : { autoComplete: "off" }
 
-    return <Comp ref={ref} className={cn(iconButtonVariants({ variant, size, className }))} {...props} />
+    return (
+      <Comp
+        ref={ref}
+        className={cn(iconButtonVariants({ variant, size, className }))}
+        {...persistedStateProps}
+        {...props}
+      />
+    )
   },
 )
 
