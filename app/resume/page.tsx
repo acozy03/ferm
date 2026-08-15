@@ -418,9 +418,9 @@ export default function ResumePage() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                            <Button asChild variant="outline">
+                        <Button asChild variant="outline">
                           <a href={resume.signedUrl} target="_blank" rel="noopener noreferrer">
-                            <Download/> Download resume
+                            <Download /> Download resume
                           </a>
                         </Button>
                         <Button
@@ -431,7 +431,7 @@ export default function ResumePage() {
                           disabled={isUploading || isRemoving}
                         >
                           {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                          <Trash/> Remove resume
+                          <Trash /> Remove resume
                         </Button>
                       </div>
                     </div>
