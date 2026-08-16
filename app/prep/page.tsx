@@ -363,11 +363,19 @@ function FocusMode(props: FocusModeProps) {
             <header className="flex h-16 shrink-0 items-center justify-between border-b border-border sm:h-20">
               <div className="flex items-center gap-3">
                 <Image
+                  src="/logo_black.png"
+                  alt="ferm.dev logo"
+                  width={28}
+                  height={28}
+                  className="size-7 object-contain dark:hidden"
+                  priority
+                />
+                <Image
                   src="/logo_cropped.png"
                   alt="ferm.dev logo"
                   width={28}
                   height={28}
-                  className="size-7 object-contain invert dark:invert-0"
+                  className="hidden size-7 object-contain dark:block"
                   priority
                 />
                 <div>

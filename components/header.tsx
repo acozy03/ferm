@@ -87,11 +87,19 @@ export function Header() {
                 >
                   <Link href="/">
                     <Image
+                      src="/logo_black.png"
+                      alt="ferm.dev logo"
+                      width={24}
+                      height={24}
+                      className="h-9 w-5 sm:h-6 sm:w-6 transition-transform duration-700 ease-out group-hover:rotate-[360deg] dark:hidden"
+                      priority
+                    />
+                    <Image
                       src="/logo_cropped.png"
                       alt="ferm.dev logo"
                       width={24}
                       height={24}
-                      className="h-9 w-5 sm:h-6 sm:w-6 transition-transform duration-700 ease-out group-hover:rotate-[360deg]"
+                      className="hidden h-9 w-5 sm:h-6 sm:w-6 transition-transform duration-700 ease-out group-hover:rotate-[360deg] dark:block"
                       priority
                     />
                   </Link>
