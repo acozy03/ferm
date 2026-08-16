@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Info } from "lucide-react"
+import { Info, CalendarIcon, Loader2, Plus } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Loader2, Plus } from "lucide-react"
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { CreateJobApplicationData, Priority, EmploymentType } from "@/lib/types/database"
@@ -152,7 +151,6 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
       qualifications: toNullable(formData.qualifications),
       job_responsibilities: toNullable(formData.job_responsibilities),
     }
-    console.log(applicationData)
     onAdd(applicationData)
     setFormData({
       company_name: "",
@@ -433,7 +431,6 @@ export function AddApplicationDialog({ trigger, onAdd }: AddApplicationDialogPro
                     mode="single"
                     selected={formData.appliedDate}
                     onSelect={(date) => updateFormData("appliedDate", date)}
-                    autoFocus
                   />
                 </PopoverContent>
               </Popover>

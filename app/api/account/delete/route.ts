@@ -44,14 +44,22 @@ async function deleteUserData(userId: string) {
     "resume_texts",
   ] as const
 
-  for (const table of tables) {
+  async function deleteTable(index: number): Promise<void> {
+    const table = tables[index]
+    if (!table) {
+      return
+    }
+
     const { error } = await admin.from(table).delete().eq("user_id", userId)
 
     if (error) {
       throw error
     }
+
+    await deleteTable(index + 1)
   }
 
+  await deleteTable(0)
   await deleteUserStorage(userId)
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId)

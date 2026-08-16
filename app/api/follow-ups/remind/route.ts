@@ -4,6 +4,7 @@ import { z } from "zod"
 import { Resend } from "resend"
 
 import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
+import { type createServerSupabaseClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -145,6 +146,80 @@ function buildReminderHtml(message: string, options: { company: string | null })
 </html>`
 }
 
+type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
+
+async function checkReminderRateLimits(options: {
+  supabase: SupabaseClient
+  userId: string
+  jobApplicationId: string
+  recipient: string
+  requestIp: string | null
+  now: Date
+}) {
+  const { supabase, userId, jobApplicationId, recipient, requestIp, now } = options
+  const recentThreshold = new Date(now.getTime() - RECENT_SEND_WINDOW_MS).toISOString()
+  const userWindowThreshold = new Date(now.getTime() - USER_RATE_LIMIT_WINDOW_MS).toISOString()
+  const ipWindowThreshold = new Date(now.getTime() - IP_RATE_LIMIT_WINDOW_MS).toISOString()
+  const { data: recentSend, error: recentSendError } = await supabase
+    .from("follow_up_reminder_sends")
+    .select("id, created_at")
+    .eq("user_id", userId)
+    .eq("job_application_id", jobApplicationId)
+    .eq("recipient", recipient)
+    .gte("created_at", recentThreshold)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (recentSendError) {
+    return NextResponse.json({ error: recentSendError.message }, { status: 500 })
+  }
+
+  if (recentSend) {
+    console.warn("Follow-up reminder suppressed (recent send)", {
+      userId,
+      job_application_id: jobApplicationId,
+      recipient,
+      created_at: recentSend.created_at,
+    })
+    return NextResponse.json({ error: "Reminder already sent recently." }, { status: 429 })
+  }
+
+  const { count: userSendCount, error: userCountError } = await supabase
+    .from("follow_up_reminder_sends")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", userWindowThreshold)
+
+  if (userCountError) {
+    return NextResponse.json({ error: userCountError.message }, { status: 500 })
+  }
+
+  if ((userSendCount ?? 0) >= USER_RATE_LIMIT_MAX) {
+    return NextResponse.json({ error: "Too many reminders sent. Please try later." }, { status: 429 })
+  }
+
+  if (!requestIp) {
+    return null
+  }
+
+  const { count: ipSendCount, error: ipCountError } = await supabase
+    .from("follow_up_reminder_sends")
+    .select("id", { count: "exact", head: true })
+    .eq("ip_address", requestIp)
+    .gte("created_at", ipWindowThreshold)
+
+  if (ipCountError) {
+    return NextResponse.json({ error: ipCountError.message }, { status: 500 })
+  }
+
+  if ((ipSendCount ?? 0) >= IP_RATE_LIMIT_MAX) {
+    return NextResponse.json({ error: "Too many reminders sent from this network. Please try later." }, { status: 429 })
+  }
+
+  return null
+}
+
 export async function POST(request: NextRequest) {
   const csrfError = requireCookieCsrf(request)
   if (csrfError) {
@@ -212,7 +287,7 @@ export async function POST(request: NextRequest) {
   }
 
   const verifiedEmail = user.email && (user.email_confirmed_at || user.confirmed_at) ? user.email : null
-  const allowedEmails = [application.contact_email, verifiedEmail].filter((email): email is string => Boolean(email))
+  const allowedEmails = [application.contact_email, verifiedEmail].filter(Boolean)
   const allowedDomains = getAllowedDomains()
 
   if (!isAllowedRecipient({ recipient, allowedEmails, allowedDomains })) {
@@ -221,66 +296,16 @@ export async function POST(request: NextRequest) {
 
   const requestIp = getRequestIp(request)
   const now = new Date()
-  const recentThreshold = new Date(now.getTime() - RECENT_SEND_WINDOW_MS).toISOString()
-  const userWindowThreshold = new Date(now.getTime() - USER_RATE_LIMIT_WINDOW_MS).toISOString()
-  const ipWindowThreshold = new Date(now.getTime() - IP_RATE_LIMIT_WINDOW_MS).toISOString()
-
-  const { data: recentSend, error: recentSendError } = await supabase
-    .from("follow_up_reminder_sends")
-    .select("id, created_at")
-    .eq("user_id", userId)
-    .eq("job_application_id", job_application_id)
-    .eq("recipient", recipient)
-    .gte("created_at", recentThreshold)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (recentSendError) {
-    return NextResponse.json({ error: recentSendError.message }, { status: 500 })
-  }
-
-  if (recentSend) {
-    console.warn("Follow-up reminder suppressed (recent send)", {
-      userId,
-      job_application_id,
-      recipient,
-      created_at: recentSend.created_at,
-    })
-    return NextResponse.json({ error: "Reminder already sent recently." }, { status: 429 })
-  }
-
-  const { count: userSendCount, error: userCountError } = await supabase
-    .from("follow_up_reminder_sends")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .gte("created_at", userWindowThreshold)
-
-  if (userCountError) {
-    return NextResponse.json({ error: userCountError.message }, { status: 500 })
-  }
-
-  if ((userSendCount ?? 0) >= USER_RATE_LIMIT_MAX) {
-    return NextResponse.json({ error: "Too many reminders sent. Please try later." }, { status: 429 })
-  }
-
-  if (requestIp) {
-    const { count: ipSendCount, error: ipCountError } = await supabase
-      .from("follow_up_reminder_sends")
-      .select("id", { count: "exact", head: true })
-      .eq("ip_address", requestIp)
-      .gte("created_at", ipWindowThreshold)
-
-    if (ipCountError) {
-      return NextResponse.json({ error: ipCountError.message }, { status: 500 })
-    }
-
-    if ((ipSendCount ?? 0) >= IP_RATE_LIMIT_MAX) {
-      return NextResponse.json(
-        { error: "Too many reminders sent from this network. Please try later." },
-        { status: 429 },
-      )
-    }
+  const rateLimitError = await checkReminderRateLimits({
+    supabase,
+    userId,
+    jobApplicationId: job_application_id,
+    recipient,
+    requestIp,
+    now,
+  })
+  if (rateLimitError) {
+    return rateLimitError
   }
 
   const emailSubject = subject ?? `Reminder: Follow up with ${application.company_name}`

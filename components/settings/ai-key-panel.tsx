@@ -40,7 +40,7 @@ export function AiKeyPanel({
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <p className="text-m font-semibold">{title}</p>
+        <p className="text-base font-semibold">{title}</p>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       <Input

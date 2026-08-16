@@ -6,8 +6,20 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ChevronDown, Heart } from "lucide-react"
-import { ArrowUpRight, Check, Play, Sparkles, Target, TrendingUp, MessageSquare, Mail, Star, Clock } from "lucide-react"
+import {
+  ArrowUpRight,
+  Check,
+  ChevronDown,
+  Clock,
+  Heart,
+  Mail,
+  MessageSquare,
+  Play,
+  Sparkles,
+  Star,
+  Target,
+  TrendingUp,
+} from "lucide-react"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog"
@@ -21,6 +33,11 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 type SocialIconProps = React.ComponentProps<"svg">
+
+const FIVE_FROND_OFFSETS = [0, 1, 2, 3, 4] as const
+const SIX_FROND_OFFSETS = [0, 1, 2, 3, 4, 5] as const
+const EIGHT_FROND_OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7] as const
+const NINE_FROND_OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const
 
 function LinkedInIcon(props: SocialIconProps) {
   return (
@@ -111,10 +128,10 @@ function LeafBorderFrame() {
       >
         {/* Frond 1 (Up) */}
         <path d="M0 100 Q40 50 90 30" stroke="rgb(82, 82, 91)" strokeWidth="1" fill="none" />
-        {[...Array(6)].map((_, i) => (
+        {SIX_FROND_OFFSETS.map((offset) => (
           <path
-            key={`f1-${i}`}
-            d={`M${15 + i * 10} ${85 - i * 8} L${25 + i * 10} ${75 - i * 10}`}
+            key={`f1-${offset}`}
+            d={`M${15 + offset * 10} ${85 - offset * 8} L${25 + offset * 10} ${75 - offset * 10}`}
             stroke="rgb(63, 63, 70)"
             strokeWidth="2"
             strokeLinecap="round"
@@ -123,10 +140,10 @@ function LeafBorderFrame() {
 
         {/* Frond 2 (Middle) */}
         <path d="M0 100 Q60 100 130 90" stroke="rgb(82, 82, 91)" strokeWidth="1" fill="none" />
-        {[...Array(8)].map((_, i) => (
+        {EIGHT_FROND_OFFSETS.map((offset) => (
           <path
-            key={`f2-${i}`}
-            d={`M${20 + i * 12} ${100 - i * 1} L${20 + i * 12} ${85 - i * 1}`}
+            key={`f2-${offset}`}
+            d={`M${20 + offset * 12} ${100 - offset} L${20 + offset * 12} ${85 - offset}`}
             stroke="rgb(63, 63, 70)"
             strokeWidth="2"
             strokeLinecap="round"
@@ -135,10 +152,10 @@ function LeafBorderFrame() {
 
         {/* Frond 3 (Down) */}
         <path d="M0 100 Q50 140 110 170" stroke="rgb(82, 82, 91)" strokeWidth="1" fill="none" />
-        {[...Array(6)].map((_, i) => (
+        {SIX_FROND_OFFSETS.map((offset) => (
           <path
-            key={`f3-${i}`}
-            d={`M${20 + i * 12} ${115 + i * 8} L${25 + i * 12} ${130 + i * 8}`}
+            key={`f3-${offset}`}
+            d={`M${20 + offset * 12} ${115 + offset * 8} L${25 + offset * 12} ${130 + offset * 8}`}
             stroke="rgb(52, 52, 59)"
             strokeWidth="2"
             strokeLinecap="round"
@@ -152,12 +169,12 @@ function LeafBorderFrame() {
         viewBox="0 0 100 200"
         style={{ animation: "gentleSway 10s ease-in-out 0.5s infinite" }}
       >
-        {[...Array(5)].map((_, i) => (
+        {FIVE_FROND_OFFSETS.map((offset) => (
           <path
-            key={i}
-            d={`M10 200 Q${20 + i * 10} ${150 - i * 20} ${80} ${100 - i * 15}`}
+            key={`sword-fern-${offset}`}
+            d={`M10 200 Q${20 + offset * 10} ${150 - offset * 20} ${80} ${100 - offset * 15}`}
             stroke="rgb(63, 63, 70)"
-            strokeWidth={3 - i * 0.4}
+            strokeWidth={3 - offset * 0.4}
             strokeLinecap="round"
             fill="none"
           />
@@ -320,20 +337,20 @@ function LeafBorderFrame() {
         <path d="M300 100 Q200 100 100 150" stroke="rgb(82, 82, 91)" strokeWidth="1.5" fill="none" />
 
         {/* Complex Fern Leaflets (Top side of spine) */}
-        {[...Array(9)].map((_, i) => (
+        {NINE_FROND_OFFSETS.map((offset) => (
           <path
-            key={`t-${i}`}
-            d={`M${280 - i * 20} ${100 + i * 2} L${260 - i * 20} ${70 + i * 5}`}
+            key={`top-${offset}`}
+            d={`M${280 - offset * 20} ${100 + offset * 2} L${260 - offset * 20} ${70 + offset * 5}`}
             stroke="rgb(63, 63, 70)"
             strokeWidth="2"
             strokeLinecap="round"
           />
         ))}
         {/* Complex Fern Leaflets (Bottom side of spine) */}
-        {[...Array(9)].map((_, i) => (
+        {NINE_FROND_OFFSETS.map((offset) => (
           <path
-            key={`b-${i}`}
-            d={`M${280 - i * 20} ${100 + i * 2} L${270 - i * 20} ${130 + i * 5}`}
+            key={`bottom-${offset}`}
+            d={`M${280 - offset * 20} ${100 + offset * 2} L${270 - offset * 20} ${130 + offset * 5}`}
             stroke="rgb(52, 52, 59)"
             strokeWidth="2"
             strokeLinecap="round"
@@ -544,6 +561,9 @@ const stats = [
   { value: "2.5x", label: "Consistent follow-ups" },
   { value: "100+", label: "Jobs tracked" },
 ]
+const marqueeStats = ["first", "second", "third", "fourth"].flatMap((copy) =>
+  stats.map((stat) => ({ ...stat, id: `${copy}-${stat.label}` })),
+)
 
 const interactiveWords = ["application", "interview", "follow-up", "opportunity"]
 
@@ -700,7 +720,7 @@ export default function LandingPage({ copyrightYear }: { copyrightYear: number }
       // Move to next word
       setIsDeleting(false)
       setCurrentWordIndex((prev) => (prev + 1) % interactiveWords.length)
-      return
+      return undefined
     }
 
     const timeout = setTimeout(
@@ -716,6 +736,16 @@ export default function LandingPage({ copyrightYear }: { copyrightYear: number }
 
     return () => clearTimeout(timeout)
   }, [displayedText, isDeleting, currentWordIndex])
+
+  useEffect(() => {
+    const root = document.documentElement
+    const hadDarkTheme = root.classList.contains("dark")
+    root.classList.add("dark")
+
+    return () => {
+      if (!hadDarkTheme) root.classList.remove("dark")
+    }
+  }, [])
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -744,7 +774,7 @@ export default function LandingPage({ copyrightYear }: { copyrightYear: number }
   }, [])
 
   return (
-    <div className="dark">
+    <div>
       <div className="min-h-screen bg-background text-foreground">
         {/* Header */}
         <motion.header
@@ -905,8 +935,8 @@ export default function LandingPage({ copyrightYear }: { copyrightYear: number }
                 }}
               >
                 {/* Double the stats for seamless loop */}
-                {[...stats, ...stats, ...stats, ...stats].map((stat, index) => (
-                  <div key={index} className="flex items-center gap-4 whitespace-nowrap">
+                {marqueeStats.map((stat) => (
+                  <div key={stat.id} className="flex items-center gap-4 whitespace-nowrap">
                     <span className="text-3xl font-bold text-foreground sm:text-4xl">{stat.value}</span>
                     <span className="text-sm text-muted-foreground">{stat.label}</span>
                     <span className="text-muted-foreground/30 text-2xl">{"\u2022"}</span>
@@ -1141,7 +1171,7 @@ export default function LandingPage({ copyrightYear }: { copyrightYear: number }
             <div className="flex flex-wrap items-baseline gap-4 mb-2">
               <h2 className="text-5xl sm:text-6xl font-serif font-bold tracking-tight text-foreground">ferm</h2>
               <span className="text-lg text-muted-foreground italic">/f3ːrm/</span>
-              <span className="rounded border border-muted-foreground/50 px-2 py-0.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="rounded-sm border border-muted-foreground/50 px-2 py-0.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 noun
               </span>
             </div>
@@ -1199,10 +1229,10 @@ export default function LandingPage({ copyrightYear }: { copyrightYear: number }
 
               <div className="rounded-2xl border border-border bg-card/50 p-6">
                 <Accordion type="single" collapsible className="space-y-4">
-                  {faqItems.map((item, index) => (
+                  {faqItems.map((item) => (
                     <AccordionItem
-                      key={index}
-                      value={`faq-item-${index}`}
+                      key={item.question}
+                      value={item.question}
                       className="rounded-xl border border-border bg-background px-6 data-[state=open]:border-foreground/30 data-[state=open]:bg-muted/30"
                     >
                       <AccordionTrigger className="py-4 text-left font-medium hover:no-underline">

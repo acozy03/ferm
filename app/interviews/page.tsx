@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { format, formatDistanceToNow } from "date-fns"
 import { CalendarClock, CalendarIcon, ChevronDown, ClipboardPen, NotebookPen, Trash, Plus, Search } from "lucide-react"
 
@@ -53,6 +53,7 @@ const statusClassMap: Record<InterviewStatus, string> = {
 }
 
 const scheduledInPastMessage = "Scheduled interviews must use a future date and time"
+const INTERVIEW_SKELETON_KEYS = ["interview-1", "interview-2", "interview-3", "interview-4"]
 
 type InterviewFormState = {
   job_application_id: string
@@ -73,6 +74,29 @@ type FormSnapshot = {
   scheduledTime: string
 }
 
+type InterviewFormErrors = {
+  job_application_id?: string
+  scheduled_date?: string
+  interview_round?: string
+}
+
+type InterviewErrorDetails = {
+  kind: "past-schedule" | "sequence" | "request"
+  message: string
+}
+
+type InterviewGroup = {
+  id: string
+  company: string
+  position: string
+  interviews: InterviewWithApplication[]
+}
+
+type InterviewSchedule = {
+  formatted: string
+  relative: string
+}
+
 const createDefaultFormState = (): InterviewFormState => ({
   job_application_id: "",
   interview_round: "1",
@@ -85,6 +109,77 @@ const createDefaultFormState = (): InterviewFormState => ({
   post_interview_notes: "",
   status: "Scheduled",
 })
+
+function validateInterviewSubmission(
+  formState: InterviewFormState,
+  scheduledDate: Date | undefined,
+  scheduledTime: string,
+  roundCap: number | null,
+) {
+  const errors: InterviewFormErrors = {}
+
+  if (!formState.job_application_id) {
+    errors.job_application_id = "Select a job"
+  }
+
+  const parsedRound = Number(formState.interview_round)
+  if (!Number.isFinite(parsedRound) || parsedRound < 1) {
+    errors.interview_round = "Enter a valid round"
+  } else if (roundCap && parsedRound > roundCap) {
+    errors.interview_round = `Round must be ${roundCap} or below`
+  }
+
+  if (!scheduledDate || !scheduledTime.trim()) {
+    errors.scheduled_date = "Add a date and time"
+    return { errors, parsedRound, scheduledDateTime: null }
+  }
+
+  const [hours, minutes] = scheduledTime.split(":").map(Number)
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    errors.scheduled_date = "Add a valid date and time"
+    return { errors, parsedRound, scheduledDateTime: null }
+  }
+
+  const scheduledDateTime = new Date(scheduledDate)
+  scheduledDateTime.setHours(hours, minutes, 0, 0)
+  return { errors, parsedRound, scheduledDateTime }
+}
+
+async function sendInterviewRequest(requestUrl: string, requestMethod: "POST" | "PUT", payload: object) {
+  const response = await apiFetch(requestUrl, {
+    method: requestMethod,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+
+  if (response.ok) return
+
+  const data = await response.json().catch(() => null)
+  const message = data?.message || data?.error || `Request failed (${response.status})`
+  const requestError = new Error(message) as Error & { code?: string }
+  requestError.code = data?.code
+  throw requestError
+}
+
+function getInterviewErrorDetails(requestError: unknown, isScheduleEdited: boolean): InterviewErrorDetails {
+  const message = requestError instanceof Error ? requestError.message : String(requestError)
+  const errorCode = (requestError as { code?: string } | null)?.code
+
+  if (message === scheduledInPastMessage && isScheduleEdited) {
+    return { kind: "past-schedule", message }
+  }
+
+  if (errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled")) {
+    return { kind: "sequence", message }
+  }
+
+  return { kind: "request", message }
+}
+
+function getInterviewErrorTitle(kind: InterviewErrorDetails["kind"], isEditing: boolean) {
+  if (kind === "sequence") return "Interview order conflict"
+  return isEditing ? "Unable to update interview" : "Unable to create interview"
+}
 
 interface InterviewNotesCardProps {
   interview: InterviewWithApplication
@@ -149,6 +244,236 @@ function InterviewNotesCard({ interview, onSave, pendingId }: InterviewNotesCard
   )
 }
 
+function InterviewResultsState({
+  isLoading,
+  interviewCount,
+  filteredCount,
+  children,
+}: {
+  isLoading: boolean
+  interviewCount: number
+  filteredCount: number
+  children: ReactNode
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[360px_1fr]">
+        <div className="space-y-3">
+          {INTERVIEW_SKELETON_KEYS.map((key) => (
+            <Skeleton key={key} className="h-24 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-full w-full" />
+      </div>
+    )
+  }
+
+  if (interviewCount === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-center">
+        <div className="space-y-2">
+          <p className="text-lg font-semibold">No interviews yet</p>
+          <p className="text-sm text-muted-foreground">Log your first interview to see details and notes here.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (filteredCount === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-center">
+        <div className="space-y-2">
+          <p className="text-lg font-semibold">No matches found</p>
+          <p className="text-sm text-muted-foreground">Adjust your search to find a saved interview.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return children
+}
+
+function InterviewGroupCard({
+  group,
+  isExpanded,
+  selectedInterviewId,
+  onToggle,
+  onSelect,
+}: {
+  group: InterviewGroup
+  isExpanded: boolean
+  selectedInterviewId: string | null
+  onToggle: () => void
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div className="rounded-lg border bg-card shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-start justify-between gap-3 rounded-lg p-3 text-left"
+      >
+        <div className="space-y-1">
+          <TruncatedText
+            text={group.company}
+            className="text-xs uppercase tracking-wide text-muted-foreground"
+            maxWidthClass="max-w-[17rem]"
+          />
+          <TruncatedText
+            text={group.position}
+            className="text-sm font-semibold leading-tight"
+            maxWidthClass="max-w-[17rem]"
+          />
+          <p className="text-xs text-muted-foreground">
+            {group.interviews.length} interview{group.interviews.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            isExpanded ? "rotate-180" : "rotate-0",
+          )}
+        />
+      </button>
+      {isExpanded ? (
+        <div className="space-y-2 border-t bg-muted/40 p-3">
+          {group.interviews.map((interview) => {
+            const interviewDate = new Date(interview.scheduled_date)
+            const hasValidDate = !Number.isNaN(interviewDate.getTime())
+            const formattedDate = hasValidDate ? format(interviewDate, "MMM d, yyyy") : "Date unavailable"
+            const timeLabel = hasValidDate ? format(interviewDate, "h:mm a") : ""
+
+            return (
+              <button
+                key={interview.id}
+                type="button"
+                onClick={() => onSelect(interview.id)}
+                className={cn(
+                  "w-full rounded-lg border bg-background p-3 text-left transition",
+                  selectedInterviewId === interview.id
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border/70 hover:border-primary/40",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Round {interview.interview_round ?? "—"}
+                    </p>
+                    <p className="text-sm font-semibold leading-tight">{interview.interview_type ?? "Interview"}</p>
+                  </div>
+                  <Badge variant="outline" className={statusClassMap[interview.status]}>
+                    {interview.status}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  <span>{formattedDate}</span>
+                  {timeLabel ? <span>• {timeLabel}</span> : null}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function SelectedInterviewContent({
+  interview,
+  schedule,
+  deletingId,
+  pendingId,
+  onEdit,
+  onRequestDelete,
+  onSaveNotes,
+}: {
+  interview: InterviewWithApplication | null
+  schedule: InterviewSchedule | null
+  deletingId: string | null
+  pendingId: string | null
+  onEdit: (interview: InterviewWithApplication) => void
+  onRequestDelete: () => void
+  onSaveNotes: (id: string, payload: NotesUpdatePayload) => Promise<void>
+}) {
+  if (!interview) {
+    return (
+      <div className="flex h-full items-center justify-center text-center">
+        <div className="space-y-2">
+          <p className="text-lg font-semibold">Select an interview</p>
+          <p className="text-sm text-muted-foreground">
+            Choose a row on the left to view details, notes, and status changes.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-full flex-col gap-4 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <CalendarClock className="h-4 w-4" />
+          {schedule ? (
+            <>
+              <span>{schedule.formatted}</span>
+              <span className="text-xs text-muted-foreground">({schedule.relative})</span>
+            </>
+          ) : (
+            <span>Date unavailable</span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => onEdit(interview)}>
+            <NotebookPen />
+          </Button>
+          <Button variant="destructive" size="sm" onClick={onRequestDelete} disabled={deletingId === interview.id}>
+            <Trash />
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+        <div className="grid gap-3 rounded-lg border bg-muted/50 p-3 sm:grid-cols-4 sm:p-4">
+          <div className="rounded-md border bg-background/60 p-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Round</p>
+            <p className="text-sm font-semibold text-foreground">
+              {interview.interview_round ? `Round ${interview.interview_round}` : "Not set"}
+            </p>
+          </div>
+          <div className="rounded-md border bg-background/60 p-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Duration</p>
+            <p className="text-sm font-semibold text-foreground">
+              {interview.duration_minutes ? `${interview.duration_minutes} minutes` : "Not set"}
+            </p>
+          </div>
+          <div className="rounded-md border bg-background/60 p-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Interviewer</p>
+            <p className="text-sm font-semibold text-foreground">{interview.interviewer_name ?? "Not provided"}</p>
+          </div>
+          <div className="rounded-md border bg-background/60 p-3 shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Interviewer email</p>
+            <p className="text-sm font-semibold text-foreground break-words">
+              {interview.interviewer_email ? (
+                <a href={`mailto:${interview.interviewer_email}`} className="hover:underline">
+                  {interview.interviewer_email}
+                </a>
+              ) : (
+                "Not provided"
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <InterviewNotesCard interview={interview} onSave={onSaveNotes} pendingId={pendingId} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function InterviewsPage() {
   const { toast } = useToast()
   const { interviews, isLoading, mutate } = useInterviews()
@@ -171,11 +496,7 @@ export default function InterviewsPage() {
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined)
   const [scheduledTime, setScheduledTime] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formErrors, setFormErrors] = useState<{
-    job_application_id?: string
-    scheduled_date?: string
-    interview_round?: string
-  }>({})
+  const [formErrors, setFormErrors] = useState<InterviewFormErrors>({})
   const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [initialFormSnapshot, setInitialFormSnapshot] = useState<FormSnapshot | null>(null)
@@ -320,15 +641,7 @@ export default function InterviewsPage() {
 
   const groupedInterviews = useMemo(() => {
     const order: string[] = []
-    const groups = new Map<
-      string,
-      {
-        id: string
-        company: string
-        position: string
-        interviews: InterviewWithApplication[]
-      }
-    >()
+    const groups = new Map<string, InterviewGroup>()
 
     filteredInterviews.forEach((interview) => {
       const groupId = interview.job_application_id || "unknown"
@@ -347,28 +660,18 @@ export default function InterviewsPage() {
         group.interviews.push(interview)
       }
     })
-    return order.map((id) => groups.get(id)!)
+    return order.flatMap((id) => {
+      const group = groups.get(id)
+      return group ? [group] : []
+    })
   }, [filteredInterviews])
 
   useEffect(() => {
     setExpandedGroups((previous) => {
-      const next = { ...previous }
-      let changed = false
-      const validIds = new Set(groupedInterviews.map((group) => group.id))
-
-      groupedInterviews.forEach((group) => {
-        if (next[group.id] === undefined) {
-          next[group.id] = true
-          changed = true
-        }
-      })
-
-      Object.keys(next).forEach((id) => {
-        if (!validIds.has(id)) {
-          delete next[id]
-          changed = true
-        }
-      })
+      const next = Object.fromEntries(groupedInterviews.map((group) => [group.id, previous[group.id] ?? true]))
+      const changed =
+        Object.keys(previous).length !== groupedInterviews.length ||
+        groupedInterviews.some((group) => previous[group.id] !== next[group.id])
 
       return changed ? next : previous
     })
@@ -422,46 +725,20 @@ export default function InterviewsPage() {
       return
     }
 
-    const newErrors: typeof formErrors = {}
+    const { errors, parsedRound, scheduledDateTime } = validateInterviewSubmission(
+      formState,
+      scheduledDate,
+      scheduledTime,
+      selectedApplicationRoundCap,
+    )
+    setFormErrors(errors)
 
-    if (!formState.job_application_id) {
-      newErrors.job_application_id = "Select a job"
-    }
-
-    const parsedRound = Number(formState.interview_round)
-    if (!Number.isFinite(parsedRound) || parsedRound < 1) {
-      newErrors.interview_round = "Enter a valid round"
-    } else if (selectedApplicationRoundCap && parsedRound > selectedApplicationRoundCap) {
-      newErrors.interview_round = `Round must be ${selectedApplicationRoundCap} or below`
-    }
-
-    if (!scheduledDate || !scheduledTime.trim()) {
-      newErrors.scheduled_date = "Add a date and time"
-    }
-
-    setFormErrors(newErrors)
-
-    if (Object.keys(newErrors).length > 0) {
+    if (Object.keys(errors).length > 0 || !scheduledDateTime) {
       setFormErrorMessage("")
       return
     }
 
     setFormErrorMessage(null)
-
-    const [hours, minutes] = scheduledTime.split(":").map(Number)
-    const hasValidTime = Number.isFinite(hours) && Number.isFinite(minutes)
-
-    if (!scheduledDate || !hasValidTime) {
-      setFormErrors((prev) => ({
-        ...prev,
-        scheduled_date: newErrors.scheduled_date ?? "Add a valid date and time",
-      }))
-      setFormErrorMessage("Fill in the required fields before saving.")
-      return
-    }
-
-    const scheduledDateTime = new Date(scheduledDate)
-    scheduledDateTime.setHours(hours ?? 0, minutes ?? 0, 0, 0)
 
     const isEligible = eligibleApplications.some((application) => application.id === formState.job_application_id)
 
@@ -506,19 +783,7 @@ export default function InterviewsPage() {
       const requestUrl = isUpdate ? `/api/interviews/${editingInterviewId}` : "/api/interviews"
       const requestMethod = isUpdate ? "PUT" : "POST"
 
-      const response = await apiFetch(requestUrl, {
-        method: requestMethod,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null)
-        const message = data?.message || data?.error || `Request failed (${response.status})`
-        const error = new Error(message) as Error & { code?: string }
-        error.code = data?.code
-        throw error
-      }
+      await sendInterviewRequest(requestUrl, requestMethod, payload)
 
       toast({
         title: isEditing ? "Interview updated" : "Interview logged",
@@ -529,13 +794,11 @@ export default function InterviewsPage() {
       if (editingInterviewId) {
         setSelectedInterviewId(editingInterviewId)
       }
-    } catch (error) {
-      console.error(error)
-      const message = error instanceof Error ? error.message : String(error)
-      const errorCode = (error as { code?: string } | null)?.code
-      const sequencingConflict = errorCode === "ROUND_SEQUENCE_CONFLICT" || message.includes("must be scheduled")
+    } catch (requestError) {
+      console.error(requestError)
+      const errorDetails = getInterviewErrorDetails(requestError, isScheduleEdited)
 
-      if (message === scheduledInPastMessage && isScheduleEdited) {
+      if (errorDetails.kind === "past-schedule") {
         toast({
           title: "Pick a future time",
           description: scheduledInPastMessage,
@@ -546,18 +809,9 @@ export default function InterviewsPage() {
         return
       }
 
-      if (sequencingConflict) {
-        toast({
-          title: "Interview order conflict",
-          description: message,
-          variant: "destructive",
-        })
-        return
-      }
-
       toast({
-        title: isEditing ? "Unable to update interview" : "Unable to create interview",
-        description: message,
+        title: getInterviewErrorTitle(errorDetails.kind, isEditing),
+        description: errorDetails.message,
         variant: "destructive",
       })
     } finally {
@@ -631,15 +885,15 @@ export default function InterviewsPage() {
       return null
     }
 
-    const scheduledDate = new Date(selectedInterview.scheduled_date)
+    const interviewDate = new Date(selectedInterview.scheduled_date)
 
-    if (Number.isNaN(scheduledDate.getTime())) {
+    if (Number.isNaN(interviewDate.getTime())) {
       return null
     }
 
     return {
-      formatted: format(scheduledDate, "MMM d, yyyy • h:mm a"),
-      relative: formatDistanceToNow(scheduledDate, { addSuffix: true }),
+      formatted: format(interviewDate, "MMM d, yyyy • h:mm a"),
+      relative: formatDistanceToNow(interviewDate, { addSuffix: true }),
     }
   }, [selectedInterview])
 
@@ -826,7 +1080,6 @@ export default function InterviewsPage() {
                                   setScheduledDate(date ?? undefined)
                                   setFormErrors((prev) => ({ ...prev, scheduled_date: undefined }))
                                 }}
-                                autoFocus
                               />
                             </PopoverContent>
                           </Popover>
@@ -933,32 +1186,11 @@ export default function InterviewsPage() {
             </CardHeader>
 
             <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-              {isLoading ? (
-                <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[360px_1fr]">
-                  <div className="space-y-3">
-                    {[...Array(4)].map((_, index) => (
-                      <Skeleton key={index} className="h-24 w-full" />
-                    ))}
-                  </div>
-                  <Skeleton className="h-full w-full" />
-                </div>
-              ) : interviews.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center text-center">
-                  <div className="space-y-2">
-                    <p className="text-lg font-semibold">No interviews yet</p>
-                    <p className="text-sm text-muted-foreground">
-                      Log your first interview to see details and notes here.
-                    </p>
-                  </div>
-                </div>
-              ) : filteredInterviews.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center text-center">
-                  <div className="space-y-2">
-                    <p className="text-lg font-semibold">No matches found</p>
-                    <p className="text-sm text-muted-foreground">Adjust your search to find a saved interview.</p>
-                  </div>
-                </div>
-              ) : (
+              <InterviewResultsState
+                isLoading={isLoading}
+                interviewCount={interviews.length}
+                filteredCount={filteredInterviews.length}
+              >
                 <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[360px_1fr]">
                   <div className="flex min-h-0 flex-col rounded-lg border bg-muted/40">
                     <ScrollArea className="flex-1">
@@ -967,86 +1199,19 @@ export default function InterviewsPage() {
                           const isExpanded = expandedGroups[group.id] ?? true
 
                           return (
-                            <div key={group.id} className="rounded-lg border bg-card shadow-sm">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExpandedGroups((previous) => ({
-                                    ...previous,
-                                    [group.id]: !isExpanded,
-                                  }))
-                                }
-                                className="flex w-full items-start justify-between gap-3 rounded-lg p-3 text-left"
-                              >
-                                <div className="space-y-1">
-                                  <TruncatedText
-                                    text={group.company}
-                                    className="text-xs uppercase tracking-wide text-muted-foreground"
-                                    maxWidthClass="max-w-[17rem]"
-                                  />
-                                  <TruncatedText
-                                    text={group.position}
-                                    className="text-sm font-semibold leading-tight"
-                                    maxWidthClass="max-w-[17rem]"
-                                  />
-                                  <p className="text-xs text-muted-foreground">
-                                    {group.interviews.length} interview{group.interviews.length === 1 ? "" : "s"}
-                                  </p>
-                                </div>
-                                <ChevronDown
-                                  className={cn(
-                                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                                    isExpanded ? "rotate-180" : "rotate-0",
-                                  )}
-                                />
-                              </button>
-                              {isExpanded ? (
-                                <div className="space-y-2 border-t bg-muted/40 p-3">
-                                  {group.interviews.map((interview) => {
-                                    const scheduledDate = new Date(interview.scheduled_date)
-                                    const formattedDate = Number.isNaN(scheduledDate.getTime())
-                                      ? "Date unavailable"
-                                      : format(scheduledDate, "MMM d, yyyy")
-                                    const timeLabel = Number.isNaN(scheduledDate.getTime())
-                                      ? ""
-                                      : format(scheduledDate, "h:mm a")
-
-                                    return (
-                                      <button
-                                        key={interview.id}
-                                        type="button"
-                                        onClick={() => setSelectedInterviewId(interview.id)}
-                                        className={cn(
-                                          "w-full rounded-lg border bg-background p-3 text-left transition",
-                                          selectedInterviewId === interview.id
-                                            ? "border-primary bg-primary/5 shadow-sm"
-                                            : "border-border/70 hover:border-primary/40",
-                                        )}
-                                      >
-                                        <div className="flex items-start justify-between gap-3">
-                                          <div className="space-y-1">
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                              Round {interview.interview_round ?? "—"}
-                                            </p>
-                                            <p className="text-sm font-semibold leading-tight">
-                                              {interview.interview_type ?? "Interview"}
-                                            </p>
-                                          </div>
-                                          <Badge variant="outline" className={statusClassMap[interview.status]}>
-                                            {interview.status}
-                                          </Badge>
-                                        </div>
-                                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                          <CalendarClock className="h-3.5 w-3.5" />
-                                          <span>{formattedDate}</span>
-                                          {timeLabel ? <span>• {timeLabel}</span> : null}
-                                        </div>
-                                      </button>
-                                    )
-                                  })}
-                                </div>
-                              ) : null}
-                            </div>
+                            <InterviewGroupCard
+                              key={group.id}
+                              group={group}
+                              isExpanded={isExpanded}
+                              selectedInterviewId={selectedInterviewId}
+                              onToggle={() =>
+                                setExpandedGroups((previous) => ({
+                                  ...previous,
+                                  [group.id]: !isExpanded,
+                                }))
+                              }
+                              onSelect={setSelectedInterviewId}
+                            />
                           )
                         })}
                       </div>
@@ -1054,119 +1219,18 @@ export default function InterviewsPage() {
                   </div>
 
                   <div className="min-h-0 rounded-lg border bg-card p-4 shadow-sm">
-                    {selectedInterview ? (
-                      <div className="flex h-full flex-col gap-4 overflow-hidden">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <CalendarClock className="h-4 w-4" />
-                            {selectedInterviewSchedule ? (
-                              <>
-                                <span>{selectedInterviewSchedule.formatted}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  ({selectedInterviewSchedule.relative})
-                                </span>
-                              </>
-                            ) : (
-                              <span>Date unavailable</span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {/* {selectedInterview.interview_type ? (
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "h-9 items-center rounded-md px-3 text-sm",
-                                  statusClassMap[selectedInterview.status],
-                                )}
-                              >
-                                {selectedInterview.interview_type}
-                              </Badge>
-                            ) : null} */}
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleEditInterview(selectedInterview)}
-                            >
-                              <NotebookPen />
-                            </Button>
-
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => setIsDeleteDialogOpen(true)}
-                              disabled={deletingId === selectedInterview.id}
-                            >
-                              <Trash />
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-                          <div className="grid gap-3 rounded-lg border bg-muted/50 p-3 sm:grid-cols-4 sm:p-4">
-                            <div className="rounded-md border bg-background/60 p-3 shadow-sm">
-                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Round</p>
-                              <p className="text-sm font-semibold text-foreground">
-                                {selectedInterview.interview_round
-                                  ? `Round ${selectedInterview.interview_round}`
-                                  : "Not set"}
-                              </p>
-                            </div>
-                            <div className="rounded-md border bg-background/60 p-3 shadow-sm">
-                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Duration
-                              </p>
-                              <p className="text-sm font-semibold text-foreground">
-                                {selectedInterview.duration_minutes
-                                  ? `${selectedInterview.duration_minutes} minutes`
-                                  : "Not set"}
-                              </p>
-                            </div>
-                            <div className="rounded-md border bg-background/60 p-3 shadow-sm">
-                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Interviewer
-                              </p>
-                              <p className="text-sm font-semibold text-foreground">
-                                {selectedInterview.interviewer_name ?? "Not provided"}
-                              </p>
-                            </div>
-                            <div className="rounded-md border bg-background/60 p-3 shadow-sm">
-                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Interviewer email
-                              </p>
-                              <p className="text-sm font-semibold text-foreground break-words">
-                                {selectedInterview.interviewer_email ? (
-                                  <a href={`mailto:${selectedInterview.interviewer_email}`} className="hover:underline">
-                                    {selectedInterview.interviewer_email}
-                                  </a>
-                                ) : (
-                                  "Not provided"
-                                )}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="min-h-0 flex-1 overflow-y-auto">
-                            <InterviewNotesCard
-                              interview={selectedInterview}
-                              onSave={handleSaveNotes}
-                              pendingId={pendingId}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-center">
-                        <div className="space-y-2">
-                          <p className="text-lg font-semibold">Select an interview</p>
-                          <p className="text-sm text-muted-foreground">
-                            Choose a row on the left to view details, notes, and status changes.
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                    <SelectedInterviewContent
+                      interview={selectedInterview}
+                      schedule={selectedInterviewSchedule}
+                      deletingId={deletingId}
+                      pendingId={pendingId}
+                      onEdit={handleEditInterview}
+                      onRequestDelete={() => setIsDeleteDialogOpen(true)}
+                      onSaveNotes={handleSaveNotes}
+                    />
                   </div>
                 </div>
-              )}
+              </InterviewResultsState>
             </CardContent>
           </Card>
           <DeleteConfirmationDialog

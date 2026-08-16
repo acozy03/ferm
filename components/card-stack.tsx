@@ -25,7 +25,10 @@ export const CardStack = ({
     const interval = window.setInterval(() => {
       setCards((prevCards) => {
         const newArray = [...prevCards]
-        newArray.unshift(newArray.pop()!)
+        const lastCard = newArray.pop()
+        if (lastCard) {
+          newArray.unshift(lastCard)
+        }
         return newArray
       })
     }, 5000)

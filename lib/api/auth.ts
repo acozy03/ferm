@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
+import { getSupabaseConfig } from "@/lib/supabase/config"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 type SupabaseClientInstance = Awaited<ReturnType<typeof createServerSupabaseClient>>
@@ -46,9 +47,10 @@ export async function getAuthedClient(request: NextRequest): Promise<AuthedClien
   const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
 
   if (bearer) {
-    const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
+    const { url, anonKey } = getSupabaseConfig()
+    const userResp = await fetch(`${url}/auth/v1/user`, {
       headers: {
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        apikey: anonKey,
         Authorization: `Bearer ${bearer}`,
       },
       cache: "no-store",
@@ -63,7 +65,7 @@ export async function getAuthedClient(request: NextRequest): Promise<AuthedClien
       return { error: { status: 401, message: "Unauthorized (no user id)" } }
     }
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    const supabase = createClient(url, anonKey, {
       global: { headers: { Authorization: `Bearer ${bearer}` } },
     }) as unknown as SupabaseClientInstance
 

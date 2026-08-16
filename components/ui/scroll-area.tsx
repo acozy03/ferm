@@ -39,7 +39,7 @@ const ScrollArea = React.forwardRef<
     updateScrollIndicators()
 
     const viewport = viewportRef.current
-    if (!viewport) return
+    if (!viewport) return undefined
 
     const handleScroll = () => updateScrollIndicators()
     viewport.addEventListener("scroll", handleScroll, { passive: true })

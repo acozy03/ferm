@@ -86,7 +86,6 @@ function DateInputField({ label, value, onChange }: DateInputFieldProps) {
             selected={selectedDate ?? undefined}
             defaultMonth={selectedDate ?? undefined}
             onSelect={handleSelect}
-            autoFocus
           />
           {value ? (
             <div className="border-t p-2">

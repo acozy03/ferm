@@ -102,8 +102,8 @@ export async function GET(request: NextRequest) {
     const nextCursor =
       activities.length === limit
         ? makeCursor({
-            created_at: activities[activities.length - 1].created_at,
-            id: activities[activities.length - 1].id,
+            created_at: activities.at(-1).created_at,
+            id: activities.at(-1).id,
           })
         : null
 

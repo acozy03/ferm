@@ -40,7 +40,7 @@ export function ActivityDetailsDialog({ activity, trigger }: ActivityDetailsDial
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="space-y-0. text-left">
+        <DialogHeader className="space-y-0.5 text-left">
           <DialogTitle className="text-lg">{activityLabels[activity.action_type]}</DialogTitle>
           {hasJobInfo ? (
             <div className="space-y-0.5 text-sm font-medium text-pretty">

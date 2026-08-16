@@ -1,9 +1,9 @@
 // app/auth/callback/route.ts
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
-
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
+
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 function getBaseUrl(req: NextRequest) {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
@@ -27,24 +27,30 @@ export async function GET(req: NextRequest) {
 
   const res = NextResponse.redirect(target)
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll()
-        },
-        setAll(cookies, headers) {
-          cookies.forEach(({ name, value, options }) => {
-            const safeOptions = process.env.NODE_ENV === "development" ? { ...options, secure: false } : options
-            res.cookies.set(name, value, safeOptions)
-          })
-          Object.entries(headers).forEach(([key, value]) => res.headers.set(key, value))
-        },
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("Supabase configuration missing during OAuth callback")
+    res.headers.set("Location", new URL("/auth?error=oauth", baseUrl).toString())
+    return res
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll()
+      },
+      setAll(cookies, headers) {
+        cookies.forEach(({ name, value, options }) => {
+          const safeOptions = process.env.NODE_ENV === "development" ? { ...options, secure: false } : options
+          res.cookies.set(name, value, safeOptions)
+        })
+        Object.entries(headers).forEach(([key, value]) => {
+          res.headers.set(key, value)
+        })
       },
     },
-  )
+  })
 
   const code = url.searchParams.get("code")
   if (code) {

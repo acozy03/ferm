@@ -1,4 +1,4 @@
-import { createHash } from "crypto"
+import { createHash } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
 import { Ratelimit } from "@upstash/ratelimit"
 import { Redis } from "@upstash/redis"
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 })
   }
 
-  let rawBody = ""
+  let rawBody: string
 
   try {
     rawBody = await request.text()

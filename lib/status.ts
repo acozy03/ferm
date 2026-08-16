@@ -286,7 +286,9 @@ export function generateStatusOptions(
   register("Accepted")
   register("Withdrawn")
 
-  ensureStatuses.forEach((status) => register(status))
+  ensureStatuses.forEach((status) => {
+    register(status)
+  })
 
   return Array.from(options.values()).sort((left, right) => {
     if (left.order === right.order) {
@@ -456,7 +458,7 @@ export function formatStatusFilterLabel(value: string | null | undefined) {
 export function getMaxRoundFromHistory(history: Pick<JobApplicationStatusHistory, "status">[] = []) {
   return history.reduce((max, entry) => {
     const round = parseStatus(entry.status).round ?? 0
-    return round > max ? round : max
+    return Math.max(round, max)
   }, 0)
 }
 
@@ -478,7 +480,9 @@ export function expandStatusFilters(
     }
 
     if (isPipelineStage(value)) {
-      getStatusesByStage(value, maxRound).forEach((status) => statuses.add(status))
+      getStatusesByStage(value, maxRound).forEach((status) => {
+        statuses.add(status)
+      })
       return
     }
 

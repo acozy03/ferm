@@ -3,27 +3,27 @@ import mammoth from "mammoth"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
 type PdfParser = {
-  getText(): Promise<{ text?: string }>
-  destroy(): Promise<void>
+  getText: () => Promise<{ text?: string }>
+  destroy: () => Promise<void>
 }
 type PdfParseConstructor = new (options: { data: Buffer }) => PdfParser
 
-let _PdfParse: PdfParseConstructor | null = null
+let pdfParsePromise: Promise<PdfParseConstructor> | null = null
 
 function isPdfParseConstructor(value: unknown): value is PdfParseConstructor {
   return typeof value === "function"
 }
 
-async function getPdfParse(): Promise<PdfParseConstructor> {
-  if (_PdfParse) return _PdfParse
+function getPdfParse(): Promise<PdfParseConstructor> {
   // Import our local CJS bridge; this guarantees the CJS build is used.
-  const mod: unknown = await import("./pdf-parse.cjs")
-  const candidate = typeof mod === "object" && mod !== null && "default" in mod ? mod.default : mod
-  if (!isPdfParseConstructor(candidate)) {
-    throw new Error("Failed to load pdf-parse")
-  }
-  _PdfParse = candidate
-  return _PdfParse
+  pdfParsePromise ||= import("./pdf-parse.cjs").then((mod: unknown) => {
+    const candidate = typeof mod === "object" && mod !== null && "default" in mod ? mod.default : mod
+    if (!isPdfParseConstructor(candidate)) {
+      throw new Error("Failed to load pdf-parse")
+    }
+    return candidate
+  })
+  return pdfParsePromise
 }
 
 const RESUME_BUCKET = "resumes"
@@ -37,7 +37,7 @@ export interface ResumeTextResult {
 }
 
 function sanitizeText(input: string) {
-  return input.replace(/\u0000/g, "").trim()
+  return input.replaceAll("\0", "").trim()
 }
 function truncateText(input: string, maxLength: number) {
   if (input.length <= maxLength) return input
@@ -64,7 +64,7 @@ async function extractResumeText(buffer: Buffer, fileName: string) {
   }
 
   try {
-    return sanitizeText(buffer.toString("utf-8"))
+    return sanitizeText(buffer.toString("utf8"))
   } catch (error) {
     console.warn(`Failed to decode resume ${fileName} as UTF-8`, error)
     return ""
@@ -133,7 +133,7 @@ async function downloadLatestResume({
   const adminClient = createAdminSupabaseClient()
 
   let targetPath = path ?? null
-  let fileName: string | null = null
+  let fileName: string
 
   if (!targetPath) {
     const { data: files, error: listError } = await adminClient.storage

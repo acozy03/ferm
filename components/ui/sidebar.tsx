@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { cva, VariantProps } from "class-variance-authority"
+import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -20,6 +20,7 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+const SIDEBAR_COLLAPSED_HIDDEN_CLASS = "group-data-[collapsible=icon]:hidden"
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -71,15 +72,23 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      void cookieStore
+        .set({
+          name: SIDEBAR_COOKIE_NAME,
+          value: String(openState),
+          path: "/",
+          expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
+        })
+        .catch((error: unknown) => {
+          console.warn("Failed to persist sidebar state", error)
+        })
     },
     [setOpenProp, open],
   )
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+    return isMobile ? setOpenMobile((currentOpen) => !currentOpen) : setOpen((currentOpen) => !currentOpen)
   }, [isMobile, setOpen, setOpenMobile])
 
   // Adds a keyboard shortcut to toggle the sidebar.
@@ -260,6 +269,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
 
   return (
     <button
+      type="button"
       data-sidebar="rail"
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
@@ -399,7 +409,7 @@ function SidebarGroupAction({
         "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 md:after:hidden",
-        "group-data-[collapsible=icon]:hidden",
+        SIDEBAR_COLLAPSED_HIDDEN_CLASS,
         className,
       )}
       {...props}
@@ -529,7 +539,7 @@ function SidebarMenuAction({
         "peer-data-[size=sm]/menu-button:top-1",
         "peer-data-[size=default]/menu-button:top-1.5",
         "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
+        SIDEBAR_COLLAPSED_HIDDEN_CLASS,
         showOnHover &&
           "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
         className,
@@ -550,7 +560,7 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">) 
         "peer-data-[size=sm]/menu-button:top-1",
         "peer-data-[size=default]/menu-button:top-1.5",
         "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
+        SIDEBAR_COLLAPSED_HIDDEN_CLASS,
         className,
       )}
       {...props}
@@ -566,7 +576,8 @@ function SidebarMenuSkeleton({
   showIcon?: boolean
 }) {
   const id = React.useId()
-  const width = `${50 + (Array.from(id).reduce((total, character) => total + character.charCodeAt(0), 0) % 40)}%`
+  const characterTotal = Array.from(id).reduce((total, character) => total + (character.codePointAt(0) ?? 0), 0)
+  const width = `${50 + (characterTotal % 40)}%`
 
   return (
     <div
@@ -596,7 +607,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-sidebar="menu-sub"
       className={cn(
         "border-sidebar-border mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l px-2.5 py-0.5",
-        "group-data-[collapsible=icon]:hidden",
+        SIDEBAR_COLLAPSED_HIDDEN_CLASS,
         className,
       )}
       {...props}
@@ -639,7 +650,7 @@ function SidebarMenuSubButton({
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
-        "group-data-[collapsible=icon]:hidden",
+        SIDEBAR_COLLAPSED_HIDDEN_CLASS,
         className,
       )}
       {...props}

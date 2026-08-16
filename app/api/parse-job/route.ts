@@ -1,5 +1,5 @@
 // app/api/parse-job/route.ts
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { headers } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
@@ -48,6 +48,152 @@ const LLMResponseSchema = z.object({
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+function getSupabaseConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  return url && anonKey ? { url, anonKey } : null
+}
+
+type SupabaseConfig = NonNullable<ReturnType<typeof getSupabaseConfig>>
+type ParseAuthentication =
+  { response: NextResponse } | { token: string; supabaseConfig: SupabaseConfig; user: { id: string } }
+
+async function authenticateParseRequest(): Promise<ParseAuthentication> {
+  const authHeader = (await headers()).get("authorization") || ""
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
+  if (!token) {
+    return { response: NextResponse.json({ error: "Missing token" }, { status: 401 }) }
+  }
+
+  const supabaseConfig = getSupabaseConfig()
+  if (!supabaseConfig) {
+    return { response: NextResponse.json({ error: "Supabase configuration missing" }, { status: 500 }) }
+  }
+
+  const userResponse = await fetch(`${supabaseConfig.url}/auth/v1/user`, {
+    headers: {
+      apikey: supabaseConfig.anonKey,
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  })
+  if (!userResponse.ok) {
+    return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) }
+  }
+
+  const user = (await userResponse.json()) as { id?: string }
+  if (!user.id) {
+    return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) }
+  }
+
+  return { token, supabaseConfig, user: { id: user.id } }
+}
+
+type ParseApiKeySelection =
+  { response: NextResponse } | { apiKey: string; isUserProvided: boolean; isSharedKey: boolean }
+
+function selectParseApiKey(options: {
+  userKey: string | null
+  sharedKey: string | null
+  usedToday: number
+}): ParseApiKeySelection {
+  const { userKey, sharedKey, usedToday } = options
+
+  if (sharedKey && usedToday < DAILY_LIMIT) {
+    return { apiKey: sharedKey, isUserProvided: false, isSharedKey: true }
+  }
+
+  if (userKey) {
+    return { apiKey: userKey, isUserProvided: true, isSharedKey: false }
+  }
+
+  const response = NextResponse.json({ error: "Daily usage limit reached." }, { status: 429 })
+  response.headers.set("Cache-Control", "no-store")
+  response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+  response.headers.set("X-Usage-Limit", String(DAILY_LIMIT))
+  response.headers.set("X-Usage-Remaining", "0")
+  return { response }
+}
+
+type ParsedJobResult = { response: NextResponse } | { data: z.infer<typeof LLMResponseSchema>; usage: unknown }
+
+async function requestParsedJob(apiKey: string, prompt: string, requestId: string): Promise<ParsedJobResult> {
+  const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    }),
+  })
+
+  if (!openaiResponse.ok) {
+    const errorText = await openaiResponse.text()
+    console.error("LLM API call failed", { requestId, status: openaiResponse.status, errorText })
+    return { response: NextResponse.json({ error: "LLM request failed" }, { status: openaiResponse.status }) }
+  }
+
+  const llmJson = await openaiResponse.json()
+  const messageContent = llmJson?.choices?.[0]?.message?.content
+  const usage = llmJson?.usage ?? null
+  if (!messageContent) {
+    return { response: NextResponse.json({ error: "LLM response format is invalid" }, { status: 500 }) }
+  }
+
+  let raw: unknown
+  try {
+    raw = JSON.parse(messageContent)
+  } catch {
+    return { response: NextResponse.json({ error: "LLM did not return valid JSON" }, { status: 500 }) }
+  }
+
+  const validated = LLMResponseSchema.safeParse(raw)
+  if (!validated.success) {
+    const response = NextResponse.json(
+      { is_valid_job_posting: false, reason: "LLM returned malformed data", usage, validated },
+      { status: 200 },
+    )
+    response.headers.set("Cache-Control", "no-store")
+    response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+    return { response }
+  }
+
+  return { data: validated.data, usage }
+}
+
+function createAuthenticatedSupabaseClient(config: SupabaseConfig, token: string) {
+  return createClient(config.url, config.anonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+}
+
+type SupabaseClient = ReturnType<typeof createAuthenticatedSupabaseClient>
+
+async function incrementSharedUsage(supabase: SupabaseClient, userId: string, usageDate: string) {
+  const { data: incrementedCount, error } = await supabase.rpc("increment_job_scrapes_usage")
+  if (error) {
+    return { error }
+  }
+
+  if (typeof incrementedCount === "number") {
+    return { remaining: Math.max(0, DAILY_LIMIT - incrementedCount) }
+  }
+
+  const { data: usageRow } = await supabase
+    .from("llm_usage")
+    .select("job_scrapes_count")
+    .eq("user_id", userId)
+    .eq("date", usageDate)
+    .maybeSingle()
+  const usedNow = usageRow?.job_scrapes_count ?? null
+  return { remaining: usedNow == null ? null : Math.max(0, DAILY_LIMIT - usedNow) }
+}
+
 export async function POST(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID()
   const withRequestId = (response: NextResponse) => {
@@ -60,28 +206,11 @@ export async function POST(request: NextRequest) {
     return withRequestId(NextResponse.json({ error: csrfError.error.message }, { status: csrfError.error.status }))
   }
 
-  // --- Auth (Supabase) ---
-  const hdrs = await headers()
-  const authHeader = hdrs.get("authorization") || ""
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : ""
-  if (!token) {
-    return withRequestId(NextResponse.json({ error: "Missing token" }, { status: 401 }))
+  const authentication = await authenticateParseRequest()
+  if ("response" in authentication) {
+    return withRequestId(authentication.response)
   }
-
-  const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
-    headers: {
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store",
-  })
-  if (!userResp.ok) {
-    return withRequestId(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
-  }
-  const user = (await userResp.json()) as { id: string }
-  if (!user?.id) {
-    return withRequestId(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
-  }
+  const { token, supabaseConfig, user } = authentication
 
   const rateLimitResponse = await enforceRateLimit({
     request,
@@ -93,9 +222,7 @@ export async function POST(request: NextRequest) {
     return withRequestId(rateLimitResponse)
   }
 
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  })
+  const supabase = createAuthenticatedSupabaseClient(supabaseConfig, token)
 
   const { userKey, sharedKey } = await resolveOpenAIKeys({ request, supabase, userId: user.id })
   if (!userKey && !sharedKey) {
@@ -119,29 +246,11 @@ export async function POST(request: NextRequest) {
   }
 
   const usedToday = usageRow?.job_scrapes_count ?? 0
-  let apiKey = userKey ?? sharedKey ?? ""
-  let isUserProvided = false
-  let isSharedKey = false
-
-  if (sharedKey) {
-    if (usedToday < DAILY_LIMIT) {
-      apiKey = sharedKey
-      isSharedKey = true
-    } else if (userKey) {
-      apiKey = userKey
-      isUserProvided = true
-    } else {
-      const res = withRequestId(NextResponse.json({ error: "Daily usage limit reached." }, { status: 429 }))
-      res.headers.set("Cache-Control", "no-store")
-      res.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
-      res.headers.set("X-Usage-Limit", String(DAILY_LIMIT))
-      res.headers.set("X-Usage-Remaining", "0")
-      return res
-    }
-  } else if (userKey) {
-    apiKey = userKey
-    isUserProvided = true
+  const keySelection = selectParseApiKey({ userKey, sharedKey, usedToday })
+  if ("response" in keySelection) {
+    return withRequestId(keySelection.response)
   }
+  const { apiKey, isUserProvided, isSharedKey } = keySelection
 
   // --- Parse input ---
   let bodyUnknown: unknown
@@ -215,88 +324,28 @@ Here is the raw text to analyze:
 ---
 ${safeRawText}
 ---
-URL: ${job_url}
+  URL: ${job_url}
 `
 
   try {
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.3,
-      }),
-    })
-
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text()
-      console.error("LLM API call failed", { requestId, status: openaiResponse.status, errorText })
-      return withRequestId(NextResponse.json({ error: "LLM request failed" }, { status: openaiResponse.status }))
+    const parseResult = await requestParsedJob(apiKey, prompt, requestId)
+    if ("response" in parseResult) {
+      return withRequestId(parseResult.response)
     }
 
-    const llmJson = await openaiResponse.json()
-    const messageContent = llmJson?.choices?.[0]?.message?.content
-    const usage = llmJson?.usage ?? null
-    if (!messageContent) {
-      return withRequestId(NextResponse.json({ error: "LLM response format is invalid" }, { status: 500 }))
-    }
-
-    let raw
-    try {
-      raw = JSON.parse(messageContent)
-    } catch {
-      return withRequestId(NextResponse.json({ error: "LLM did not return valid JSON" }, { status: 500 }))
-    }
-    const validated = LLMResponseSchema.safeParse(raw)
-    if (!validated.success) {
-      // If LLM messed up the shape, treat as invalid posting with reason
-      const resMalformed = withRequestId(
-        NextResponse.json(
-          { is_valid_job_posting: false, reason: "LLM returned malformed data", usage, validated },
-          { status: 200 },
-        ),
-      )
-      resMalformed.headers.set("Cache-Control", "no-store")
-      resMalformed.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
-      return resMalformed
-    }
-    // --- Supabase client bound to user token (for RPC/RLS) ---
-    // ✅ Increment usage AFTER successful parse when using the hosted key
+    const { data: parsedJob, usage } = parseResult
     let remainingNow: number | null = null
     if (isSharedKey) {
-      // Recommended SQL (in your function):
-      // ... DO UPDATE SET job_scrapes_count = least(llm_usage.job_scrapes_count + 1, 20) RETURNING job_scrapes_count;
-      const { data: incCount, error: incErr } = await supabase.rpc("increment_job_scrapes_usage")
-      if (incErr) {
-        console.error("increment_job_scrapes_usage error:", { requestId, incErr })
+      const incrementResult = await incrementSharedUsage(supabase, user.id, today)
+      if ("error" in incrementResult) {
+        console.error("increment_job_scrapes_usage error:", { requestId, incErr: incrementResult.error })
         return withRequestId(NextResponse.json({ error: "Usage update failed" }, { status: 500 }))
       }
-
-      // Determine new count/remaining
-      let usedNow: number | null = typeof incCount === "number" ? incCount : null
-
-      if (usedNow === null) {
-        // fallback: read today's count if function didn't RETURNING count
-        const today = new Date().toISOString().split("T")[0]
-        const { data: afterRow } = await supabase
-          .from("llm_usage")
-          .select("job_scrapes_count")
-          .eq("user_id", user.id)
-          .eq("date", today)
-          .maybeSingle()
-        usedNow = afterRow?.job_scrapes_count ?? null
-      }
-
-      remainingNow = usedNow == null ? null : Math.max(0, DAILY_LIMIT - usedNow)
+      remainingNow = incrementResult.remaining
     }
 
     // Respond with parsed data + usage headers for instant UI update
-    const res = withRequestId(NextResponse.json({ ...validated.data, usage }, { status: 200 }))
+    const res = withRequestId(NextResponse.json({ ...parsedJob, usage }, { status: 200 }))
     res.headers.set("Cache-Control", "no-store")
     res.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
     if (remainingNow != null) {

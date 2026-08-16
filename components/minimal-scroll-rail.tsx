@@ -157,18 +157,30 @@ export function MinimalScrollRail() {
           role="slider"
           tabIndex={0}
           onKeyDown={(event) => {
-            if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-              event.preventDefault()
-              bumpProgress(SCROLL_STEP)
-            } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-              event.preventDefault()
-              bumpProgress(-SCROLL_STEP)
-            } else if (event.key === "Home") {
-              event.preventDefault()
-              scrollToProgress(0, { smooth: true })
-            } else if (event.key === "End") {
-              event.preventDefault()
-              scrollToProgress(1, { smooth: true })
+            switch (event.key) {
+              case "ArrowDown":
+              case "ArrowRight": {
+                event.preventDefault()
+                bumpProgress(SCROLL_STEP)
+                break
+              }
+              case "ArrowUp":
+              case "ArrowLeft": {
+                event.preventDefault()
+                bumpProgress(-SCROLL_STEP)
+                break
+              }
+              case "Home": {
+                event.preventDefault()
+                scrollToProgress(0, { smooth: true })
+                break
+              }
+              case "End": {
+                event.preventDefault()
+                scrollToProgress(1, { smooth: true })
+                break
+              }
+              // No default
             }
           }}
         >

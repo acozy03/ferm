@@ -188,8 +188,8 @@ export function JobDetailsDialog({ application, trigger, open: controlledOpen, o
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-foreground">Qualifications</h3>
                     <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                      {qualificationLines.map((line, index) => (
-                        <li key={`${line}-${index}`}>{line}</li>
+                      {qualificationLines.map((line) => (
+                        <li key={line}>{line}</li>
                       ))}
                     </ul>
                   </div>
@@ -198,8 +198,8 @@ export function JobDetailsDialog({ application, trigger, open: controlledOpen, o
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-foreground">Responsibilities</h3>
                     <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                      {responsibilityLines.map((line, index) => (
-                        <li key={`${line}-${index}`}>{line}</li>
+                      {responsibilityLines.map((line) => (
+                        <li key={line}>{line}</li>
                       ))}
                     </ul>
                   </div>

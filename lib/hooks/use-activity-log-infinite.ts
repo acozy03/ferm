@@ -30,7 +30,7 @@ export function useActivityLogInfinite(jobApplicationId?: string, limit = 100) {
   const pages = data ?? []
   const activities = pages.flatMap((p) => p.activities)
   const totalCount = pages[0]?.totalCount ?? 0
-  const hasMore = Boolean(pages[pages.length - 1]?.nextCursor)
+  const hasMore = Boolean(pages.at(-1)?.nextCursor)
   const isLoadingMore = isLoading || (size > 0 && !data?.[size - 1])
 
   const loadMore = () => {

@@ -176,12 +176,12 @@ export async function POST(request: NextRequest) {
 
   if (draftRecordError) {
     if (draftRecordError.code === "23505") {
-      const response = NextResponse.json(
+      const conflictResponse = NextResponse.json(
         { error: "An AI follow-up draft has already been generated for this application." },
         { status: 409 },
       )
-      response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
-      return response
+      conflictResponse.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+      return conflictResponse
     }
 
     return NextResponse.json({ error: draftRecordError.message }, { status: 500 })

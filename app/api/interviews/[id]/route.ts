@@ -7,6 +7,96 @@ import { requireCookieCsrf } from "@/lib/api/auth"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+interface InterviewSchedule {
+  interview_round: number | null
+  scheduled_date: string | null
+  status?: string | null
+}
+
+interface RelatedInterview {
+  interview_round: number | null
+  scheduled_date: string
+}
+
+function parseInterviewSchedule(current: InterviewSchedule, merged: InterviewSchedule) {
+  const parsedRound = Number.isFinite(Number(merged.interview_round))
+    ? Math.max(1, Number(merged.interview_round))
+    : null
+  const scheduledDate = merged.scheduled_date ? new Date(merged.scheduled_date) : null
+
+  if (!parsedRound) {
+    return { response: NextResponse.json({ error: "Invalid interview round" }, { status: 400 }) }
+  }
+
+  if (!scheduledDate || Number.isNaN(scheduledDate.getTime())) {
+    return { response: NextResponse.json({ error: "Invalid scheduled date" }, { status: 400 }) }
+  }
+
+  const currentScheduledDate = current.scheduled_date ? new Date(current.scheduled_date) : null
+  const isScheduledDateUnchanged =
+    currentScheduledDate &&
+    !Number.isNaN(currentScheduledDate.getTime()) &&
+    currentScheduledDate.getTime() === scheduledDate.getTime()
+  const shouldValidateScheduledFuture =
+    merged.status === "Scheduled" && !(isScheduledDateUnchanged && current.status === "Scheduled")
+
+  if (shouldValidateScheduledFuture && scheduledDate.getTime() < Date.now()) {
+    return {
+      response: NextResponse.json({ error: "Scheduled interviews must use a future date and time." }, { status: 400 }),
+    }
+  }
+
+  return { parsedRound, scheduledDate }
+}
+
+function validateInterviewSequence(relatedInterviews: RelatedInterview[], parsedRound: number, scheduledDate: Date) {
+  if (relatedInterviews.some((interview) => interview.interview_round === parsedRound)) {
+    return NextResponse.json({ error: `Interview round ${parsedRound} already exists` }, { status: 400 })
+  }
+
+  const previousInterview = relatedInterviews
+    .filter((interview) => typeof interview.interview_round === "number" && interview.interview_round < parsedRound)
+    .sort((a, b) => (b.interview_round ?? 0) - (a.interview_round ?? 0))[0]
+
+  if (previousInterview) {
+    const previousDate = new Date(previousInterview.scheduled_date)
+    if (!Number.isNaN(previousDate.getTime()) && scheduledDate <= previousDate) {
+      return NextResponse.json(
+        {
+          error: `Interview round ${parsedRound} must be scheduled after round ${previousInterview.interview_round}`,
+          code: "ROUND_SEQUENCE_CONFLICT",
+          blocked_round: parsedRound,
+          latest_completed_round: previousInterview.interview_round,
+          latest_completed_date: previousInterview.scheduled_date,
+        },
+        { status: 400 },
+      )
+    }
+  }
+
+  const nextInterview = relatedInterviews
+    .filter((interview) => typeof interview.interview_round === "number" && interview.interview_round > parsedRound)
+    .sort((a, b) => (a.interview_round ?? 0) - (b.interview_round ?? 0))[0]
+
+  if (nextInterview) {
+    const nextDate = new Date(nextInterview.scheduled_date)
+    if (!Number.isNaN(nextDate.getTime()) && scheduledDate >= nextDate) {
+      return NextResponse.json(
+        {
+          error: `Interview round ${parsedRound} must be scheduled before round ${nextInterview.interview_round}`,
+          code: "ROUND_SEQUENCE_CONFLICT",
+          blocked_round: parsedRound,
+          earliest_scheduled_round: nextInterview.interview_round,
+          earliest_scheduled_date: nextInterview.scheduled_date,
+        },
+        { status: 400 },
+      )
+    }
+  }
+
+  return null
+}
+
 export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params
   const { id } = params
@@ -50,31 +140,12 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
     }
 
     const mergedInterview = { ...currentInterview, ...updates }
-    const parsedRound = Number.isFinite(Number(mergedInterview.interview_round))
-      ? Math.max(1, Number(mergedInterview.interview_round))
-      : null
-    const scheduledDate = mergedInterview.scheduled_date ? new Date(mergedInterview.scheduled_date) : null
-    const currentScheduledDate = currentInterview.scheduled_date ? new Date(currentInterview.scheduled_date) : null
-
-    if (!parsedRound) {
-      return NextResponse.json({ error: "Invalid interview round" }, { status: 400 })
+    const schedule = parseInterviewSchedule(currentInterview, mergedInterview)
+    if ("response" in schedule) {
+      return schedule.response
     }
 
-    if (!scheduledDate || Number.isNaN(scheduledDate.getTime())) {
-      return NextResponse.json({ error: "Invalid scheduled date" }, { status: 400 })
-    }
-
-    const isScheduledDateUnchanged =
-      currentScheduledDate &&
-      !Number.isNaN(currentScheduledDate.getTime()) &&
-      currentScheduledDate.getTime() === scheduledDate.getTime()
-
-    const shouldValidateScheduledFuture =
-      mergedInterview.status === "Scheduled" && !(isScheduledDateUnchanged && currentInterview.status === "Scheduled")
-
-    if (shouldValidateScheduledFuture && scheduledDate.getTime() < Date.now()) {
-      return NextResponse.json({ error: "Scheduled interviews must use a future date and time." }, { status: 400 })
-    }
+    const { parsedRound, scheduledDate } = schedule
 
     const { data: relatedInterviews, error: relatedError } = await supabase
       .from("interviews")
@@ -87,48 +158,9 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
       return NextResponse.json({ error: relatedError.message }, { status: 500 })
     }
 
-    if (relatedInterviews?.some((interview) => interview.interview_round === parsedRound)) {
-      return NextResponse.json({ error: `Interview round ${parsedRound} already exists` }, { status: 400 })
-    }
-
-    const previousInterview = relatedInterviews
-      ?.filter((interview) => typeof interview.interview_round === "number" && interview.interview_round < parsedRound)
-      .sort((a, b) => (b.interview_round ?? 0) - (a.interview_round ?? 0))[0]
-
-    if (previousInterview) {
-      const previousDate = new Date(previousInterview.scheduled_date)
-      if (!Number.isNaN(previousDate.getTime()) && scheduledDate <= previousDate) {
-        return NextResponse.json(
-          {
-            error: `Interview round ${parsedRound} must be scheduled after round ${previousInterview.interview_round}`,
-            code: "ROUND_SEQUENCE_CONFLICT",
-            blocked_round: parsedRound,
-            latest_completed_round: previousInterview.interview_round,
-            latest_completed_date: previousInterview.scheduled_date,
-          },
-          { status: 400 },
-        )
-      }
-    }
-
-    const nextInterview = relatedInterviews
-      ?.filter((interview) => typeof interview.interview_round === "number" && interview.interview_round > parsedRound)
-      .sort((a, b) => (a.interview_round ?? 0) - (b.interview_round ?? 0))[0]
-
-    if (nextInterview) {
-      const nextDate = new Date(nextInterview.scheduled_date)
-      if (!Number.isNaN(nextDate.getTime()) && scheduledDate >= nextDate) {
-        return NextResponse.json(
-          {
-            error: `Interview round ${parsedRound} must be scheduled before round ${nextInterview.interview_round}`,
-            code: "ROUND_SEQUENCE_CONFLICT",
-            blocked_round: parsedRound,
-            earliest_scheduled_round: nextInterview.interview_round,
-            earliest_scheduled_date: nextInterview.scheduled_date,
-          },
-          { status: 400 },
-        )
-      }
+    const sequenceError = validateInterviewSequence(relatedInterviews ?? [], parsedRound, scheduledDate)
+    if (sequenceError) {
+      return sequenceError
     }
 
     const { data, error } = await supabase

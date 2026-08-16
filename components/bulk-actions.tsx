@@ -33,7 +33,7 @@ export function BulkActions({ selectedCount, onBulkStatusUpdate, onBulkDelete, o
   }, [selectedCount])
 
   useEffect(() => {
-    if (selectedCount === 0) return
+    if (selectedCount === 0) return undefined
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -56,7 +56,7 @@ export function BulkActions({ selectedCount, onBulkStatusUpdate, onBulkDelete, o
 
   const content = (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
-      <div className="pointer-events-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-4 shadow-lg backdrop-blur">
+      <div className="pointer-events-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 p-4 shadow-lg backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Badge variant="secondary">{selectedCount} selected</Badge>
         </div>

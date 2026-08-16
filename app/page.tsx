@@ -1,6 +1,6 @@
 "use client"
 import dynamic from "next/dynamic"
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react"
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { CalendarClock, Filter, LayoutPanelLeft, Plus, Search, Table2, X } from "lucide-react"
 
@@ -52,6 +52,9 @@ const sortPreferenceMap: Record<string, JobApplicationSort> = {
   priority: { field: "priority", direction: "asc" },
 }
 const DEFAULT_DASHBOARD_LIMIT = 25
+const FULL_VIEW_SKELETON_KEYS = ["full-1", "full-2", "full-3"]
+const TABLE_VIEW_SKELETON_KEYS = ["table-1", "table-2", "table-3", "table-4"]
+const CONDENSED_VIEW_SKELETON_KEYS = ["condensed-1", "condensed-2", "condensed-3", "condensed-4"]
 
 type DashboardView = (typeof defaultViewOptions)[number]["value"]
 
@@ -322,8 +325,8 @@ export default function Dashboard() {
       }
 
       handleApplicationUpdate()
-    } catch (error) {
-      console.error("Failed to add application:", error)
+    } catch (requestError) {
+      console.error("Failed to add application:", requestError)
     }
   }
 
@@ -360,8 +363,8 @@ export default function Dashboard() {
         setSelectedApplications([])
         mutate()
       }
-    } catch (error) {
-      console.error("Failed to bulk update applications:", error)
+    } catch (requestError) {
+      console.error("Failed to bulk update applications:", requestError)
     }
   }
 
@@ -381,9 +384,9 @@ export default function Dashboard() {
 
       setSelectedApplications([])
       mutate()
-    } catch (error) {
-      console.error("Failed to bulk delete applications:", error)
-      throw error
+    } catch (requestError) {
+      console.error("Failed to bulk delete applications:", requestError)
+      throw requestError
     }
   }
 
@@ -403,8 +406,8 @@ export default function Dashboard() {
       }
 
       mutate()
-    } catch (error) {
-      console.error("Failed to update application status:", error)
+    } catch (requestError) {
+      console.error("Failed to update application status:", requestError)
     }
   }
 
@@ -533,8 +536,8 @@ export default function Dashboard() {
                         <div className="space-y-4 p-4">
                           {isLoading ? (
                             <div className="grid gap-4">
-                              {[...Array(3)].map((_, i) => (
-                                <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />
+                              {FULL_VIEW_SKELETON_KEYS.map((key) => (
+                                <div key={key} className="h-48 rounded-lg bg-muted animate-pulse" />
                               ))}
                             </div>
                           ) : applications.length === 0 ? (
@@ -572,8 +575,8 @@ export default function Dashboard() {
                         <div className="min-w-full p-4">
                           {isLoading ? (
                             <div className="space-y-2">
-                              {[...Array(4)].map((_, index) => (
-                                <div key={index} className="h-12 rounded-md border bg-muted animate-pulse" />
+                              {TABLE_VIEW_SKELETON_KEYS.map((key) => (
+                                <div key={key} className="h-12 rounded-md border bg-muted animate-pulse" />
                               ))}
                             </div>
                           ) : applications.length === 0 ? (
@@ -704,8 +707,8 @@ export default function Dashboard() {
                         <div className="relative mx-auto w-full max-w-4xl space-y-6 p-6">
                           {isLoading ? (
                             <div className="space-y-4">
-                              {[...Array(4)].map((_, index) => (
-                                <div key={index} className="h-20 rounded-md border bg-muted animate-pulse" />
+                              {CONDENSED_VIEW_SKELETON_KEYS.map((key) => (
+                                <div key={key} className="h-20 rounded-md border bg-muted animate-pulse" />
                               ))}
                             </div>
                           ) : applications.length === 0 ? (
@@ -724,6 +727,9 @@ export default function Dashboard() {
                                   <div key={application.id} className="relative pl-6">
                                     <span className="absolute left-0 top-2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-primary" />
                                     <div
+                                      role="button"
+                                      tabIndex={0}
+                                      aria-pressed={isSelected}
                                       className={cn(
                                         "flex flex-col gap-2 rounded-lg border bg-card/50 p-4 transition-colors hover:bg-accent/50",
                                         isSelected && "border-primary/40 bg-muted",
@@ -736,6 +742,15 @@ export default function Dashboard() {
                                           return
                                         }
 
+                                        handleSelectApplication(application.id, !isSelected)
+                                      }}
+                                      onKeyDown={(event) => {
+                                        if (event.key !== "Enter" && event.key !== " ") return
+
+                                        const target = event.target as HTMLElement
+                                        if (target.closest(INTERACTIVE_ELEMENT_SELECTOR) !== event.currentTarget) return
+
+                                        event.preventDefault()
                                         handleSelectApplication(application.id, !isSelected)
                                       }}
                                     >

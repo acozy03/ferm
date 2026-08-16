@@ -14,7 +14,7 @@ interface SupabaseContextValue {
 
 const SupabaseContext = createContext<SupabaseContextValue | undefined>(undefined)
 
-const subscribeToHydration = () => () => {}
+const subscribeToHydration = () => () => undefined
 const getClientSnapshot = () => true
 const getServerSnapshot = () => false
 
@@ -26,12 +26,22 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) {
-        setSession(data.session ?? null)
-        setIsLoading(false)
+    const loadSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (mounted) {
+          setSession(data.session ?? null)
+          setIsLoading(false)
+        }
+      } catch {
+        if (mounted) {
+          setSession(null)
+          setIsLoading(false)
+        }
       }
-    })
+    }
+
+    void loadSession()
 
     const {
       data: { subscription },

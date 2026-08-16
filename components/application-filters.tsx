@@ -75,23 +75,31 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
   }
 
   const removeFilter = (type: string, value: string) => {
-    if (type === "status") {
-      const newStatuses = (filters.status || []).filter((s) => s !== value)
-      onFiltersChange({
-        ...filters,
-        status: newStatuses.length > 0 ? newStatuses : undefined,
-      })
-    } else if (type === "priority") {
-      const newPriorities = (filters.priority || []).filter((p) => p !== value)
-      onFiltersChange({
-        ...filters,
-        priority: newPriorities.length > 0 ? newPriorities : undefined,
-      })
-    } else if (type === "company") {
-      onFiltersChange({
-        ...filters,
-        company_name: undefined,
-      })
+    switch (type) {
+      case "status": {
+        const newStatuses = (filters.status || []).filter((s) => s !== value)
+        onFiltersChange({
+          ...filters,
+          status: newStatuses.length > 0 ? newStatuses : undefined,
+        })
+        break
+      }
+      case "priority": {
+        const newPriorities = (filters.priority || []).filter((p) => p !== value)
+        onFiltersChange({
+          ...filters,
+          priority: newPriorities.length > 0 ? newPriorities : undefined,
+        })
+        break
+      }
+      case "company": {
+        onFiltersChange({
+          ...filters,
+          company_name: undefined,
+        })
+        break
+      }
+      // No default
     }
   }
 
@@ -204,10 +212,17 @@ export function ApplicationFilters({ filters, onFiltersChange }: ApplicationFilt
             <div>
               <h4 className="text-sm font-medium mb-3">Active Filters</h4>
               <div className="flex flex-wrap gap-2">
-                {activeFilters.map((filter, index) => (
-                  <Badge key={index} variant="secondary" className="gap-1">
+                {activeFilters.map((filter) => (
+                  <Badge key={`${filter.type}-${filter.value}`} variant="secondary" className="gap-1">
                     {filter.label}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => removeFilter(filter.type, filter.value)} />
+                    <button
+                      type="button"
+                      onClick={() => removeFilter(filter.type, filter.value)}
+                      className="rounded-full p-0.5 hover:bg-muted"
+                      aria-label={`Remove ${filter.label}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 ))}
               </div>

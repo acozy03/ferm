@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode, useMemo } from "react"
+import { type ReactNode, useMemo } from "react"
 
 import { useAnimatedNumber } from "@/hooks/use-animated-number"
 import { cn } from "@/lib/utils"

@@ -23,6 +23,27 @@ function hasTrustedSecret(request: NextRequest) {
   return request.headers.get("x-check-email-secret") === secret
 }
 
+async function emailExists(email: string, page = 1): Promise<boolean> {
+  const perPage = 200
+  const maxPages = 50
+  const supabase = createAdminSupabaseClient()
+  const { data, error } = await supabase.auth.admin.listUsers({ page, perPage })
+
+  if (error) {
+    throw error
+  }
+
+  if (data.users.some((user) => (user.email ?? "").toLowerCase() === email)) {
+    return true
+  }
+
+  if (!data.nextPage || page >= data.lastPage || page >= maxPages) {
+    return false
+  }
+
+  return emailExists(email, data.nextPage)
+}
+
 export async function POST(request: NextRequest) {
   const hasSecret = hasTrustedSecret(request)
 
@@ -62,38 +83,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const perPage = 200
-  const maxPages = 50
-
   try {
-    const supabase = createAdminSupabaseClient()
-
-    let page = 1
-    let exists = false
-
-    for (let i = 0; i < maxPages; i++) {
-      const { data, error } = await supabase.auth.admin.listUsers({
-        page,
-        perPage,
-      })
-
-      if (error) {
-        throw error
-      }
-
-      const found = data.users.find((user) => (user.email ?? "").toLowerCase() === emailLower)
-      if (found) {
-        exists = true
-        break
-      }
-
-      if (!data.nextPage || page >= data.lastPage) {
-        break
-      }
-
-      page = data.nextPage
-    }
-
+    const exists = await emailExists(emailLower)
     void exists
     return NextResponse.json({ ok: true })
   } catch {

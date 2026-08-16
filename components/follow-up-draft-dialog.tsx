@@ -57,7 +57,7 @@ export function FollowUpDraftDialog({
   }, [application.ai_follow_up_draft_text, hasGeneratedDraft, open, savedDraft])
 
   useEffect(() => {
-    if (!hasCopied) return
+    if (!hasCopied) return undefined
     const timeout = window.setTimeout(() => setHasCopied(false), 2000)
     return () => window.clearTimeout(timeout)
   }, [hasCopied])
@@ -175,21 +175,19 @@ export function FollowUpDraftDialog({
     }
   }, [application.id, draft, hasGenerated, hasUnsavedChanges, onDraftUpdated, toast])
 
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback(async () => {
     if (!draft) return
-    navigator.clipboard
-      .writeText(draft)
-      .then(() => {
-        setHasCopied(true)
-        toast({ title: "Draft copied" })
+    try {
+      await navigator.clipboard.writeText(draft)
+      setHasCopied(true)
+      toast({ title: "Draft copied" })
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "We couldn't copy your draft. Please try again.",
+        variant: "destructive",
       })
-      .catch(() => {
-        toast({
-          title: "Copy failed",
-          description: "We couldn't copy your draft. Please try again.",
-          variant: "destructive",
-        })
-      })
+    }
   }, [draft, toast])
 
   return (
@@ -227,7 +225,7 @@ export function FollowUpDraftDialog({
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleCopy}
+              onClick={() => void handleCopy()}
               disabled={!draft}
               className="absolute right-2 top-2"
             >

@@ -12,15 +12,15 @@ import { Upload, FileText, AlertCircle } from "lucide-react"
 import { normalizeStatusValue, parseStatus } from "@/lib/status"
 import type { CreateJobApplicationData, EmploymentType, Priority } from "@/lib/types/database"
 
-const EMPLOYMENT_TYPES: EmploymentType[] = ["Full-time", "Part-time", "Contract", "Internship"]
-const PRIORITIES: Priority[] = ["Low", "Medium", "High"]
+const EMPLOYMENT_TYPES = new Set<string>(["Full-time", "Part-time", "Contract", "Internship"])
+const PRIORITIES = new Set<string>(["Low", "Medium", "High"])
 
 function isEmploymentType(value: string): value is EmploymentType {
-  return EMPLOYMENT_TYPES.some((type) => type === value)
+  return EMPLOYMENT_TYPES.has(value)
 }
 
 function isPriority(value: string): value is Priority {
-  return PRIORITIES.some((priority) => priority === value)
+  return PRIORITIES.has(value)
 }
 
 interface ImportApplicationsDialogProps {
@@ -53,7 +53,7 @@ Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,
         throw new Error(`Missing required columns: ${missingHeaders.join(", ")}`)
       }
 
-      const applications = lines.slice(1).map((line, index) => {
+      return lines.slice(1).map((line, index) => {
         const values = line.split(",").map((v) => v.trim())
         const record: Record<string, string> = {}
 
@@ -69,7 +69,7 @@ Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,
 
         const toNullable = (value: string | undefined) => {
           const trimmed = value?.trim()
-          return trimmed ? trimmed : null
+          return trimmed || null
         }
 
         const status = normalizeStatusValue(record.status || "Applied")
@@ -107,8 +107,6 @@ Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,
 
         return applicationData
       })
-
-      return applications
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : "Failed to parse CSV")
     }
@@ -191,8 +189,11 @@ Linear,Full Stack Developer,Interview,2024-01-10,San Francisco CA,$140k - $180k,
             <div className="space-y-3">
               <h4 className="font-medium">Preview (showing first 3 applications):</h4>
               <div className="space-y-2">
-                {preview.map((app, index) => (
-                  <div key={index} className="p-3 border rounded-lg bg-muted/50">
+                {preview.map((app) => (
+                  <div
+                    key={`${app.company_name}-${app.position_title}-${app.application_date}`}
+                    className="p-3 border rounded-lg bg-muted/50"
+                  >
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <strong>{app.company_name}</strong> - {app.position_title}

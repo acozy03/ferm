@@ -65,6 +65,593 @@ interface ChatMessage {
   metadata?: Record<string, unknown> | null
 }
 
+interface VoiceResponseData {
+  transcript?: string
+  reply?: string
+  audioBase64?: string
+  audioMimeType?: string
+  voiceError?: string
+}
+
+interface KeyedLine {
+  key: string
+  value: string
+}
+
+function getKeyedLines(value: string): KeyedLine[] {
+  const occurrences = new Map<string, number>()
+
+  return value.split("\n").map((line) => {
+    const occurrence = (occurrences.get(line) ?? 0) + 1
+    occurrences.set(line, occurrence)
+    return { key: `${line}-${occurrence}`, value: line }
+  })
+}
+
+function omitRecordKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([entryKey]) => entryKey !== key))
+}
+
+async function readTextStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  onChunk: (accumulated: string) => void,
+  decoder = new TextDecoder(),
+  accumulated = "",
+): Promise<string> {
+  const { done, value } = await reader.read()
+  if (done) return accumulated + decoder.decode()
+
+  const next = accumulated + decoder.decode(value, { stream: true })
+  onChunk(next)
+  return readTextStream(reader, onChunk, decoder, next)
+}
+
+interface FocusVoiceControlProps {
+  prefersReducedMotion: boolean | null
+  isFocusPaused: boolean
+  isSessionEnded: boolean
+  isProcessingVoice: boolean
+  isPlayingVoice: boolean
+  isRecording: boolean
+  isCreatingChat: boolean
+  visualizerContainerRef: React.RefObject<HTMLDivElement | null>
+  onResume: () => void
+  onStopRecording: () => void
+  onStartRecording: () => Promise<void>
+}
+
+function getFocusVoiceLabel({
+  isFocusPaused,
+  isSessionEnded,
+  isProcessingVoice,
+  isPlayingVoice,
+  isRecording,
+}: Pick<
+  FocusVoiceControlProps,
+  "isFocusPaused" | "isSessionEnded" | "isProcessingVoice" | "isPlayingVoice" | "isRecording"
+>): string {
+  if (isFocusPaused || isSessionEnded) return "Resume and start speaking"
+  if (isProcessingVoice) return "Processing response"
+  if (isPlayingVoice) return "Voice response playing"
+  if (isRecording) return "Submit answer"
+  return "Start speaking"
+}
+
+function FocusVoiceControl(props: FocusVoiceControlProps) {
+  const {
+    prefersReducedMotion,
+    isFocusPaused,
+    isSessionEnded,
+    isProcessingVoice,
+    isPlayingVoice,
+    isRecording,
+    isCreatingChat,
+    visualizerContainerRef,
+    onResume,
+    onStopRecording,
+    onStartRecording,
+  } = props
+
+  const handleClick = () => {
+    if (isFocusPaused || isSessionEnded) {
+      onResume()
+    } else if (isRecording) {
+      onStopRecording()
+    } else {
+      void onStartRecording()
+    }
+  }
+
+  return (
+    <motion.section
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: prefersReducedMotion ? 0 : 0.42, duration: 0.45, ease: "easeOut" }}
+      className="flex min-h-[34rem] flex-col items-center justify-center border-b border-border px-8 py-12 text-center lg:min-h-0 lg:border-r lg:border-b-0 lg:px-10"
+    >
+      <div className="flex flex-col items-center gap-8">
+        <button
+          type="button"
+          aria-label={getFocusVoiceLabel(props)}
+          disabled={isProcessingVoice || isPlayingVoice || isCreatingChat}
+          onClick={handleClick}
+          className="group relative flex size-64 items-center justify-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-ring/30 disabled:cursor-default sm:size-72 lg:size-80"
+        >
+          {(isRecording || isPlayingVoice) && (
+            <motion.span
+              className="absolute inset-0 rounded-full border border-primary/30"
+              animate={prefersReducedMotion ? undefined : { scale: [1, 1.12], opacity: [0.55, 0] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+              aria-hidden="true"
+            />
+          )}
+          <span className="absolute inset-0 rounded-full border border-border bg-card/60 shadow-sm backdrop-blur-sm transition-colors duration-300 group-hover:border-primary/35 group-hover:bg-muted/50" />
+          <span className="absolute inset-6 rounded-full border border-border transition-[inset,border-color] duration-300 group-hover:inset-5 group-hover:border-primary/45 sm:inset-7 sm:group-hover:inset-6 lg:inset-8 lg:group-hover:inset-7" />
+          <span className="absolute inset-16 rounded-full border border-dashed border-border transition-colors duration-300 group-hover:border-primary/50 sm:inset-[4.5rem] lg:inset-20" />
+          <div
+            ref={visualizerContainerRef}
+            className="pointer-events-none absolute inset-2 overflow-hidden rounded-full"
+            aria-hidden="true"
+          />
+          <motion.span
+            animate={{ scale: prefersReducedMotion ? 1 : isRecording || isPlayingVoice ? 1.025 : 1 }}
+            whileHover={prefersReducedMotion ? undefined : { scale: 1.025 }}
+            transition={{ type: "spring", stiffness: 240, damping: 24, mass: 0.8 }}
+            className="relative flex size-28 items-center justify-center rounded-full border border-primary bg-primary text-primary-foreground shadow-sm sm:size-32 lg:size-36"
+          >
+            <AnimatePresence initial={false} mode="wait">
+              <motion.span
+                key={isProcessingVoice ? "processing" : isRecording ? "listening" : "voice"}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 3 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -3 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+              >
+                {isProcessingVoice ? (
+                  <Loader2 className={cn("size-8 lg:size-9", !prefersReducedMotion && "animate-spin")} />
+                ) : isRecording ? (
+                  <Mic className="size-8 lg:size-9" />
+                ) : (
+                  <Volume2 className="size-8 lg:size-9" />
+                )}
+              </motion.span>
+            </AnimatePresence>
+          </motion.span>
+          <span className="absolute top-1/2 left-0 h-px w-8 -translate-x-1/2 bg-border" aria-hidden="true" />
+          <span className="absolute top-1/2 right-0 h-px w-8 translate-x-1/2 bg-border" aria-hidden="true" />
+        </button>
+
+        <div className="h-12" aria-live="polite">
+          <AnimatePresence initial={false}>
+            {!isRecording && !isProcessingVoice && !isPlayingVoice && (
+              <motion.div
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                <p className="text-base font-semibold">Ready when you are</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">Press the button to begin speaking</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </motion.section>
+  )
+}
+
+interface FocusSummaryProps {
+  prefersReducedMotion: boolean | null
+  usageRemaining: number | null
+  usageLimit: number | null
+  latestAssistantMessage: ChatMessage | null
+  selectedApplication?: JobApplicationWithInterviews
+  visualizerNotice: string | null
+}
+
+function FocusSummary({
+  prefersReducedMotion,
+  usageRemaining,
+  usageLimit,
+  latestAssistantMessage,
+  selectedApplication,
+  visualizerNotice,
+}: FocusSummaryProps) {
+  const assistantReply = latestAssistantMessage?.content?.trim()
+
+  return (
+    <motion.section
+      initial={prefersReducedMotion ? false : { opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: prefersReducedMotion ? 0 : 0.52, duration: 0.45, ease: "easeOut" }}
+      className="flex min-h-[28rem] flex-col px-1 py-8 sm:px-6 sm:py-12 lg:px-10"
+    >
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+          Messages remaining
+        </p>
+        <span className="text-[10px] text-muted-foreground">
+          {usageRemaining ?? "--"} / {usageLimit ?? 20}
+        </span>
+      </div>
+
+      <div className="flex flex-1 items-center py-10">
+        <blockquote className="max-h-[48vh] overflow-y-auto text-pretty text-xl leading-relaxed tracking-tight sm:text-2xl lg:text-[1.75rem] lg:leading-relaxed">
+          {assistantReply || "Whenever you're ready, start speaking and ferm will guide the conversation."}
+        </blockquote>
+      </div>
+
+      <div className="space-y-3 border-t border-border pt-4">
+        <div className="grid grid-cols-2 gap-4 text-[11px]">
+          <div>
+            <p className="text-muted-foreground">Position</p>
+            <p className="mt-1 text-foreground">{selectedApplication?.position_title ?? "General interview"}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-muted-foreground">Company</p>
+            <p className="mt-1 text-foreground">{selectedApplication?.company_name ?? "Not specified"}</p>
+          </div>
+        </div>
+        {visualizerNotice && (
+          <div className="rounded-md border border-border bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+            {visualizerNotice}
+          </div>
+        )}
+      </div>
+    </motion.section>
+  )
+}
+
+interface FocusModeProps extends Omit<FocusVoiceControlProps, "onResume" | "onStopRecording" | "onStartRecording"> {
+  isOpen: boolean
+  focusPauseButtonRef: React.RefObject<HTMLButtonElement | null>
+  usageRemaining: number | null
+  usageLimit: number | null
+  latestAssistantMessage: ChatMessage | null
+  selectedApplication?: JobApplicationWithInterviews
+  visualizerNotice: string | null
+  onPause: () => void
+  onResume: () => void
+  onStop: () => void
+  onExit: () => void
+  onStopRecording: () => void
+  onStartRecording: () => Promise<void>
+}
+
+function FocusMode(props: FocusModeProps) {
+  const {
+    isOpen,
+    prefersReducedMotion,
+    isFocusPaused,
+    isSessionEnded,
+    focusPauseButtonRef,
+    usageRemaining,
+    usageLimit,
+    latestAssistantMessage,
+    selectedApplication,
+    visualizerNotice,
+    onPause,
+    onResume,
+    onStop,
+    onExit,
+  } = props
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Focus mode"
+          initial={prefersReducedMotion ? { opacity: 0 } : { clipPath: "circle(0% at 50% 50%)" }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { clipPath: "circle(150% at 50% 50%)" }}
+          exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.985 }}
+          transition={{ duration: prefersReducedMotion ? 0.15 : 0.7, ease: [0.76, 0, 0.24, 1] }}
+          className="fixed inset-0 z-50 isolate overflow-y-auto bg-background text-foreground"
+        >
+          <div
+            className="pointer-events-none absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [background-size:4rem_4rem] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
+            aria-hidden="true"
+          />
+          <motion.div
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: prefersReducedMotion ? 0 : 0.3, duration: 0.35 }}
+            className="relative mx-auto flex min-h-full w-full max-w-[90rem] flex-col px-4 sm:px-6 lg:px-10"
+          >
+            <header className="flex h-16 shrink-0 items-center justify-between border-b border-border sm:h-20">
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/logo_cropped.png"
+                  alt="ferm.dev logo"
+                  width={28}
+                  height={28}
+                  className="size-7 object-contain invert dark:invert-0"
+                  priority
+                />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                    ferm / Prep
+                  </p>
+                  <p className="text-sm font-medium">Focus session</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  ref={focusPauseButtonRef}
+                  variant="outline"
+                  size="sm"
+                  onClick={isFocusPaused ? onResume : onPause}
+                  disabled={isSessionEnded}
+                  aria-label={isFocusPaused ? "Resume focus session" : "Pause focus session"}
+                  className="border-chart-3/70 bg-background/80 text-chart-3 backdrop-blur-sm hover:border-chart-3 hover:bg-chart-3/10 hover:text-chart-3"
+                >
+                  <span className="hidden sm:inline">{isFocusPaused ? "Resume" : "Pause"}</span>
+                  {isFocusPaused ? <Play className="size-4" /> : <Pause className="size-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onStop}
+                  disabled={isSessionEnded}
+                  aria-label="Stop focus session"
+                  className="border-destructive/70 bg-background/80 text-destructive backdrop-blur-sm hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <span className="hidden sm:inline">Stop</span>
+                  <Square className="size-3.5" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={onExit}
+                  aria-label="Exit focus mode"
+                  className="border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Exit
+                  <X className="size-4" />
+                </Button>
+              </div>
+            </header>
+
+            <main className="grid flex-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)]">
+              <FocusVoiceControl {...props} />
+              <FocusSummary
+                prefersReducedMotion={prefersReducedMotion}
+                usageRemaining={usageRemaining}
+                usageLimit={usageLimit}
+                latestAssistantMessage={latestAssistantMessage}
+                selectedApplication={selectedApplication}
+                visualizerNotice={visualizerNotice}
+              />
+            </main>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+interface ChatSessionHeaderProps {
+  activeChatTitle: string | null
+  isSessionEnded: boolean
+  usageRemaining: number | null
+  usageLimit: number | null
+  isCreatingChat: boolean
+  isGenerating: boolean
+  isRecording: boolean
+  isProcessingVoice: boolean
+  onCreateChat: () => Promise<void>
+  onResumeSession: () => void
+  onEndSession: () => void
+  onEnterFocus: () => void
+}
+
+function ChatSessionHeader({
+  activeChatTitle,
+  isSessionEnded,
+  usageRemaining,
+  usageLimit,
+  isCreatingChat,
+  isGenerating,
+  isRecording,
+  isProcessingVoice,
+  onCreateChat,
+  onResumeSession,
+  onEndSession,
+  onEnterFocus,
+}: ChatSessionHeaderProps) {
+  const usageLabel = usageLimit === null ? `${usageRemaining ?? "--"}` : `${usageRemaining ?? "--"} / ${usageLimit}`
+
+  return (
+    <div className="flex min-h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-2 sm:px-3">
+      <div className="hidden min-w-0 sm:block">
+        <p className="truncate text-sm font-medium text-foreground">{activeChatTitle || "Interview prep"}</p>
+        <p className="text-[11px] text-muted-foreground">
+          {isSessionEnded ? "Session paused" : `${usageLabel} messages left`}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center rounded-md border border-border/60 bg-muted/30 p-0.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={onCreateChat}
+          disabled={isCreatingChat || isGenerating || isRecording || isProcessingVoice}
+          title="Start a fresh session"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          <span className="hidden xl:inline">New session</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={isSessionEnded ? onResumeSession : onEndSession}
+          aria-label={isSessionEnded ? "Resume session" : "End session"}
+          title={isSessionEnded ? "Resume session" : "End session"}
+        >
+          {isSessionEnded ? <Play className="h-3.5 w-3.5" /> : <StopCircle className="h-3.5 w-3.5" />}
+          <span className="hidden xl:inline">{isSessionEnded ? "Resume" : "End"}</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={onEnterFocus}
+          aria-label="Enter focus mode"
+          title="Enter focus mode"
+        >
+          <Focus className="h-3.5 w-3.5" />
+          <span className="hidden xl:inline">Focus</span>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+interface VoiceControlsProps {
+  isVoiceReplyEnabled: boolean
+  isRecording: boolean
+  recordingSeconds: number
+  isProcessingVoice: boolean
+  isSessionEnded: boolean
+  isCreatingChat: boolean
+  isPlayingVoice: boolean
+  voiceReplyUrl: string | null
+  visualizerNotice: string | null
+  onVoiceReplyEnabledChange: (enabled: boolean) => void
+  onStartRecording: () => Promise<void>
+  onStopRecording: () => void
+  onReplayVoice: () => Promise<void>
+}
+
+function VoiceControls({
+  isVoiceReplyEnabled,
+  isRecording,
+  recordingSeconds,
+  isProcessingVoice,
+  isSessionEnded,
+  isCreatingChat,
+  isPlayingVoice,
+  voiceReplyUrl,
+  visualizerNotice,
+  onVoiceReplyEnabledChange,
+  onStartRecording,
+  onStopRecording,
+  onReplayVoice,
+}: VoiceControlsProps) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0 h-9 w-9"
+          aria-label="Open voice and session controls"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 space-y-4" align="start">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Volume2 className="h-4 w-4" />
+            Voice replies
+          </div>
+          <Switch
+            checked={isVoiceReplyEnabled}
+            onCheckedChange={onVoiceReplyEnabledChange}
+            aria-label="Toggle voice replies"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {isRecording && <span className="text-destructive font-semibold">Recording</span>}
+          {isRecording && <span>• {recordingSeconds}s</span>}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={isRecording ? "destructive" : "default"}
+            onClick={isRecording ? onStopRecording : onStartRecording}
+            disabled={isProcessingVoice || isSessionEnded || isCreatingChat}
+          >
+            {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
+            {isRecording ? "Stop recording" : "Start speaking"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void onReplayVoice()}
+            disabled={!voiceReplyUrl || isProcessingVoice || isRecording || isPlayingVoice}
+          >
+            <Volume2 className="mr-2 h-4 w-4" />
+            Replay
+          </Button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">Recording will end automatically after a moment of silence.</p>
+        {visualizerNotice && <p className="text-xs text-amber-700 dark:text-amber-400">{visualizerNotice}</p>}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+interface ChatComposerProps extends VoiceControlsProps {
+  input: string
+  isGenerating: boolean
+  onInputChange: (value: string) => void
+  onSend: () => Promise<void>
+}
+
+function ChatComposer({
+  input,
+  isGenerating,
+  isSessionEnded,
+  isCreatingChat,
+  onInputChange,
+  onSend,
+  ...voiceProps
+}: ChatComposerProps) {
+  return (
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void onSend()
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <VoiceControls isSessionEnded={isSessionEnded} isCreatingChat={isCreatingChat} {...voiceProps} />
+        <Textarea
+          id="prep-input"
+          value={input}
+          onChange={(event) => onInputChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault()
+              event.currentTarget.form?.requestSubmit()
+            }
+          }}
+          placeholder={isSessionEnded ? "Session paused. Resume to continue." : "..."}
+          className="h-9 min-h-[2.25rem] flex-1 resize-none"
+          disabled={isGenerating || isSessionEnded || isCreatingChat}
+        />
+        <Button type="submit" disabled={!input.trim() || isGenerating || isSessionEnded || isCreatingChat}>
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 export default function PrepPage() {
   const prefersReducedMotion = useReducedMotion()
   const { toast } = useToast()
@@ -121,12 +708,13 @@ export default function PrepPage() {
   const voiceRequestControllerRef = useRef<AbortController | null>(null)
   const textRequestControllerRef = useRef<AbortController | null>(null)
   const voiceRestartTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const titleStreamControllersRef = useRef<Record<string, AbortController>>({})
+  const titleStreamControllersRef = useRef(new Map<string, AbortController>())
   const visualizerContainerRef = useRef<HTMLDivElement | null>(null)
-  const visualizerInstanceRef = useRef<AudioVisualizer | null>(null)
+  const visualizerInstanceRef = useRef<Promise<AudioVisualizer> | null>(null)
   const micVisualizationStreamRef = useRef<MediaStream | null>(null)
   const leftSidebarRef = useRef<PanelImperativeHandle | null>(null)
   const rightSidebarRef = useRef<PanelImperativeHandle | null>(null)
+  const focusPauseButtonRef = useRef<HTMLButtonElement | null>(null)
   const leftResizeInteractionRef = useRef({ active: false, resized: false })
   const rightResizeInteractionRef = useRef({ active: false, resized: false })
 
@@ -370,15 +958,11 @@ export default function PrepPage() {
   }, [isGenerating, messages])
 
   useEffect(() => {
-    if (typeof document === "undefined") return
+    if (typeof document === "undefined") return undefined
 
     const previousOverflow = document.body.style.overflow
 
-    if (isFocusMode) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = previousOverflow
-    }
+    document.body.style.overflow = isFocusMode ? "hidden" : previousOverflow
 
     return () => {
       document.body.style.overflow = previousOverflow
@@ -386,7 +970,7 @@ export default function PrepPage() {
   }, [isFocusMode])
 
   useEffect(() => {
-    if (!isFocusMode) return
+    if (!isFocusMode) return undefined
 
     const exitOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsFocusMode(false)
@@ -394,6 +978,14 @@ export default function PrepPage() {
 
     window.addEventListener("keydown", exitOnEscape)
     return () => window.removeEventListener("keydown", exitOnEscape)
+  }, [isFocusMode])
+
+  useEffect(() => {
+    const focusFrame = isFocusMode ? window.requestAnimationFrame(() => focusPauseButtonRef.current?.focus()) : null
+
+    return () => {
+      if (focusFrame !== null) window.cancelAnimationFrame(focusFrame)
+    }
   }, [isFocusMode])
 
   useEffect(() => {
@@ -407,13 +999,16 @@ export default function PrepPage() {
   }, [toast, voiceError])
 
   const teardownVisualizer = useCallback(() => {
-    visualizerInstanceRef.current?.stop()
+    const visualizer = visualizerInstanceRef.current
     visualizerInstanceRef.current = null
+    void visualizer?.then((instance) => instance.stop()).catch(() => undefined)
   }, [])
 
   const stopMicVisualizationStream = useCallback(() => {
     if (micVisualizationStreamRef.current) {
-      micVisualizationStreamRef.current.getTracks().forEach((track) => track.stop())
+      micVisualizationStreamRef.current.getTracks().forEach((track) => {
+        track.stop()
+      })
       micVisualizationStreamRef.current = null
     }
   }, [])
@@ -538,11 +1133,9 @@ export default function PrepPage() {
       if (!isFocusMode || !source || !visualizerContainerRef.current) return
 
       try {
-        if (!visualizerInstanceRef.current) {
-          visualizerInstanceRef.current = await createAudioVisualizer(visualizerContainerRef.current)
-        }
-
-        await visualizerInstanceRef.current.connectSource(source)
+        const visualizer = visualizerInstanceRef.current ?? createAudioVisualizer(visualizerContainerRef.current)
+        visualizerInstanceRef.current = visualizer
+        await (await visualizer).connectSource(source)
         setVisualizerNotice(null)
       } catch (error) {
         teardownVisualizer()
@@ -677,10 +1270,10 @@ export default function PrepPage() {
           render: (current) => (
             <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">
               {current.job_responsibilities ? (
-                current.job_responsibilities.split("\n").map((item, index) => (
-                  <div key={index} className="flex items-start gap-2">
+                getKeyedLines(current.job_responsibilities).map((item) => (
+                  <div key={item.key} className="flex items-start gap-2">
                     <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/70" />
-                    <p className="leading-relaxed">{item || "Responsibility"}</p>
+                    <p className="leading-relaxed">{item.value || "Responsibility"}</p>
                   </div>
                 ))
               ) : (
@@ -803,12 +1396,10 @@ export default function PrepPage() {
   const streamChatTitle = useCallback(
     async (chatId: string, context: ChatMessage[] = []) => {
       setChatError(null)
-      if (titleStreamControllersRef.current[chatId]) {
-        titleStreamControllersRef.current[chatId]?.abort()
-      }
+      titleStreamControllersRef.current.get(chatId)?.abort()
 
       const controller = new AbortController()
-      titleStreamControllersRef.current[chatId] = controller
+      titleStreamControllersRef.current.set(chatId, controller)
       setTitleDrafts((previous) => ({ ...previous, [chatId]: previous[chatId] ?? "New chat" }))
 
       try {
@@ -831,30 +1422,19 @@ export default function PrepPage() {
           throw new Error(errorPayload.error || "Unable to generate title.")
         }
 
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let accumulated = ""
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          accumulated += decoder.decode(value, { stream: true })
-          setTitleDrafts((previous) => ({ ...previous, [chatId]: accumulated.trim() || "New chat" }))
-        }
+        const accumulated = await readTextStream(response.body.getReader(), (title) => {
+          setTitleDrafts((previous) => ({ ...previous, [chatId]: title.trim() || "New chat" }))
+        })
 
         const finalizedTitle = accumulated.trim() || "Prep chat"
         setChats((previous) => previous.map((chat) => (chat.id === chatId ? { ...chat, title: finalizedTitle } : chat)))
-        setTitleDrafts((previous) => {
-          const next = { ...previous }
-          delete next[chatId]
-          return next
-        })
+        setTitleDrafts((previous) => omitRecordKey(previous, chatId))
         await persistChatTitle(chatId, finalizedTitle)
       } catch (error) {
         if (controller.signal.aborted) return
         setChatError(error instanceof Error ? error.message : "Unable to generate title.")
       } finally {
-        delete titleStreamControllersRef.current[chatId]
+        titleStreamControllersRef.current.delete(chatId)
       }
     },
     [persistChatTitle, selectedApplication?.company_name, selectedApplication?.position_title],
@@ -864,7 +1444,7 @@ export default function PrepPage() {
     async (chatId: string) => {
       setChatError(null)
       setDeletingChatId(chatId)
-      titleStreamControllersRef.current[chatId]?.abort()
+      titleStreamControllersRef.current.get(chatId)?.abort()
       if (selectedChatId === chatId) cancelTextGeneration()
 
       try {
@@ -877,11 +1457,7 @@ export default function PrepPage() {
           throw new Error(errorPayload.error || "Unable to delete chat.")
         }
 
-        setTitleDrafts((previous) => {
-          const next = { ...previous }
-          delete next[chatId]
-          return next
-        })
+        setTitleDrafts((previous) => omitRecordKey(previous, chatId))
         setChats((previous) => {
           const remaining = previous.filter((chat) => chat.id !== chatId)
           if (selectedChatId === chatId) {
@@ -903,6 +1479,11 @@ export default function PrepPage() {
     },
     [cancelTextGeneration, fetchMessages, selectedChatId],
   )
+
+  const finishCreatingChat = useCallback(() => {
+    isCreatingChatRef.current = false
+    setIsCreatingChat(false)
+  }, [])
 
   const createChatRecord = useCallback(async () => {
     if (isCreatingChatRef.current) return null
@@ -929,10 +1510,9 @@ export default function PrepPage() {
       setChatError(error instanceof Error ? error.message : "Unable to create chat.")
       return null
     } finally {
-      isCreatingChatRef.current = false
-      setIsCreatingChat(false)
+      finishCreatingChat()
     }
-  }, [selectedInterviewId])
+  }, [finishCreatingChat, selectedInterviewId])
 
   const handleCreateChat = useCallback(async () => {
     cancelTextGeneration()
@@ -985,49 +1565,45 @@ export default function PrepPage() {
     ],
   )
 
-  const handleSend = async () => {
-    if (!input.trim() || isGenerating || isSessionEnded || isMessagesLoading || isCreatingChatRef.current) return
+  const updateStreamingMessage = useCallback((content: string, tone?: ChatMessage["tone"]) => {
+    const messageIndex = streamingMessageIndexRef.current
+    if (messageIndex === null) return
 
-    const trimmed = input.trim()
-    const userMessage: ChatMessage = { role: "user", content: trimmed }
-    const history = [...messages, userMessage]
-    let chatId = selectedChatId
-    let isNewChat = false
-    let didAppendMessages = false
+    setMessages((previous) => {
+      const target = previous[messageIndex]
+      if (!target) return previous
 
-    setInput("")
-    setIsSessionEnded(false)
-    setIsGenerating(true)
-    streamingMessageIndexRef.current = null
-    setChatError(null)
-    const requestController = new AbortController()
-    textRequestControllerRef.current?.abort()
-    textRequestControllerRef.current = requestController
+      const next = [...previous]
+      next[messageIndex] = { ...target, content, tone: tone ?? target.tone }
+      return next
+    })
+  }, [])
 
-    let assistantMessageId: string | null = null
+  const resolveChatForSend = useCallback(
+    async (requestController: AbortController): Promise<{ chatId: string; isNewChat: boolean } | null> => {
+      if (selectedChatId) return { chatId: selectedChatId, isNewChat: false }
 
-    try {
-      if (!chatId) {
-        const createdChat = await createChatRecord()
-        if (!createdChat) return
-        if (requestController.signal.aborted) return
-        chatId = createdChat.id
-        isNewChat = true
-        const placeholderTitle = titleDrafts[createdChat.id] ?? "New chat"
-        setTitleDrafts((previous) => ({ ...previous, [createdChat.id]: placeholderTitle }))
-        setChats((previous) => [{ ...createdChat, title: placeholderTitle }, ...previous])
-        setSelectedChatId(createdChat.id)
-        setMessages([])
-      }
+      const createdChat = await createChatRecord()
+      if (!createdChat || requestController.signal.aborted) return null
 
-      const appendResponse = await apiFetch("/api/prep/messages", {
+      const placeholderTitle = titleDrafts[createdChat.id] ?? "New chat"
+      setTitleDrafts((previous) => ({ ...previous, [createdChat.id]: placeholderTitle }))
+      setChats((previous) => [{ ...createdChat, title: placeholderTitle }, ...previous])
+      setSelectedChatId(createdChat.id)
+      setMessages([])
+      return { chatId: createdChat.id, isNewChat: true }
+    },
+    [createChatRecord, selectedChatId, titleDrafts],
+  )
+
+  const appendTextMessages = useCallback(
+    async (chatId: string, content: string, requestController: AbortController): Promise<string> => {
+      const response = await apiFetch("/api/prep/messages", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chatId,
-          userContent: trimmed,
+          userContent: content,
           assistantContent: "",
           userMetadata: { mode: "text" },
           assistantMetadata: { mode: "text" },
@@ -1035,44 +1611,35 @@ export default function PrepPage() {
         signal: requestController.signal,
       })
 
-      if (!appendResponse.ok) {
-        const errorPayload = await appendResponse.json().catch(() => ({ error: "Unable to start chat." }))
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to start chat." }))
         throw new Error(errorPayload.error || "Unable to start chat.")
       }
 
-      const appendPayload = (await appendResponse.json()) as { data?: PrepMessage[] }
-      const assistantRecord = appendPayload.data?.find((message) => message.role === "assistant")
-      assistantMessageId = assistantRecord?.id ?? null
-      const appendedMessages = (appendPayload.data ?? []).map(mapPrepMessage)
-      didAppendMessages = true
+      const payload = (await response.json()) as { data?: PrepMessage[] }
+      const assistantMessageId = payload.data?.find((message) => message.role === "assistant")?.id
+      if (!assistantMessageId) throw new Error("Unable to track the assistant reply.")
 
-      if (assistantMessageId) {
-        pendingResponseScrollRef.current = assistantMessageId
-        shouldFollowResponseRef.current = true
-      }
-
+      pendingResponseScrollRef.current = assistantMessageId
+      shouldFollowResponseRef.current = true
+      const appendedMessages = (payload.data ?? []).map(mapPrepMessage)
       setMessages((previous) => {
         const next = [...previous, ...appendedMessages]
-        const assistantIndex = assistantMessageId
-          ? next.findIndex((message) => message.id === assistantMessageId)
-          : next.length - 1
-        streamingMessageIndexRef.current = assistantIndex >= 0 ? assistantIndex : null
+        const assistantIndex = next.findIndex((message) => message.id === assistantMessageId)
+        streamingMessageIndexRef.current = assistantIndex !== -1 ? assistantIndex : null
         return next
       })
 
-      if (!assistantMessageId) {
-        throw new Error("Unable to track the assistant reply.")
-      }
+      return assistantMessageId
+    },
+    [mapPrepMessage],
+  )
 
-      if (isNewChat && chatId) {
-        void streamChatTitle(chatId, history)
-      }
-
+  const requestTextResponse = useCallback(
+    async (chatId: string, assistantMessageId: string, history: ChatMessage[], requestController: AbortController) => {
       const response = await apiFetch("/api/prep", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           applicationId: selectedApplication?.id ?? null,
           chatId,
@@ -1089,52 +1656,58 @@ export default function PrepPage() {
         throw new Error(errorPayload.error || "The assistant couldn't respond right now.")
       }
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ""
+      await readTextStream(response.body.getReader(), updateStreamingMessage)
+      return response
+    },
+    [selectedApplication?.id, updateStreamingMessage],
+  )
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
+  const removeFailedNewChat = useCallback((chatId: string) => {
+    setChats((previous) => previous.filter((chat) => chat.id !== chatId))
+    setSelectedChatId(null)
+    setTitleDrafts((previous) => omitRecordKey(previous, chatId))
+    void apiFetch(`/api/prep/chats?chatId=${encodeURIComponent(chatId)}`, { method: "DELETE" })
+  }, [])
 
-        if (streamingMessageIndexRef.current !== null) {
-          setMessages((previous) => {
-            const next = [...previous]
-            const target = next[streamingMessageIndexRef.current!]
-            if (target) {
-              next[streamingMessageIndexRef.current!] = { ...target, content: accumulated }
-            }
-            return next
-          })
-        }
+  const handleSend = async () => {
+    if (!input.trim() || isGenerating || isSessionEnded || isMessagesLoading || isCreatingChatRef.current) return
+
+    const trimmed = input.trim()
+    const userMessage: ChatMessage = { role: "user", content: trimmed }
+    const history = [...messages, userMessage]
+    let resolvedChat: { chatId: string; isNewChat: boolean } | null = null
+    let didAppendMessages = false
+
+    setInput("")
+    setIsSessionEnded(false)
+    setIsGenerating(true)
+    streamingMessageIndexRef.current = null
+    setChatError(null)
+    const requestController = new AbortController()
+    textRequestControllerRef.current?.abort()
+    textRequestControllerRef.current = requestController
+
+    try {
+      resolvedChat = await resolveChatForSend(requestController)
+      if (!resolvedChat) return
+
+      const assistantMessageId = await appendTextMessages(resolvedChat.chatId, trimmed, requestController)
+      didAppendMessages = true
+
+      if (resolvedChat.isNewChat) {
+        void streamChatTitle(resolvedChat.chatId, history)
       }
 
+      const response = await requestTextResponse(resolvedChat.chatId, assistantMessageId, history, requestController)
       void updateUsageFromResponse(response)
     } catch (error) {
       if (requestController.signal.aborted) return
       const fallbackMessage =
         error instanceof Error ? error.message : "We hit a snag fetching a response. Please try again."
-      if (streamingMessageIndexRef.current !== null) {
-        setMessages((previous) => {
-          const next = [...previous]
-          const target = next[streamingMessageIndexRef.current!]
-          if (target) {
-            next[streamingMessageIndexRef.current!] = { ...target, content: fallbackMessage, tone: "coach" }
-          }
-          return next
-        })
-      }
+      updateStreamingMessage(fallbackMessage, "coach")
       setChatError(error instanceof Error ? error.message : "We hit a snag fetching a response.")
-      if (isNewChat && chatId && !didAppendMessages) {
-        setChats((previous) => previous.filter((chat) => chat.id !== chatId))
-        setSelectedChatId(null)
-        setTitleDrafts((previous) => {
-          const next = { ...previous }
-          delete next[chatId!]
-          return next
-        })
-        void apiFetch(`/api/prep/chats?chatId=${encodeURIComponent(chatId)}`, { method: "DELETE" })
+      if (resolvedChat?.isNewChat && !didAppendMessages) {
+        removeFailedNewChat(resolvedChat.chatId)
       }
     } finally {
       if (textRequestControllerRef.current === requestController) {
@@ -1234,13 +1807,21 @@ export default function PrepPage() {
       oscillator.start(now)
       gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.25)
       oscillator.stop(now + 0.25)
-      oscillator.onended = () => {
+      oscillator.addEventListener("ended", () => {
         audioContext.close().catch(() => undefined)
-      }
+      })
     } catch {
       // Best-effort UX enhancement; ignore audio errors
     }
   }
+
+  const setCurrentVad = useCallback((vad: MicVAD) => {
+    vadRef.current = vad
+  }, [])
+
+  const finishVoiceStart = useCallback(() => {
+    voiceStartInFlightRef.current = false
+  }, [])
 
   const handleStartRecording = async () => {
     if (
@@ -1327,7 +1908,7 @@ export default function PrepPage() {
           await vad.destroy()
           return
         }
-        vadRef.current = vad
+        setCurrentVad(vad)
       }
 
       const vad = vadRef.current
@@ -1352,7 +1933,7 @@ export default function PrepPage() {
           : "The microphone could not be started. Try again.",
       )
     } finally {
-      voiceStartInFlightRef.current = false
+      finishVoiceStart()
     }
   }
 
@@ -1371,23 +1952,137 @@ export default function PrepPage() {
     setIsRecording(false)
     setIsProcessingVoice(true)
 
-    void vad
-      .pause()
-      .then(() => {
+    void (async () => {
+      try {
+        await vad.pause()
         if (voiceSegmentSubmittedRef.current) return
         setIsProcessingVoice(false)
         setVoiceError("We couldn't capture enough audio. Try again.")
-      })
-      .catch(() => {
+      } catch {
         destroyVad()
         setIsProcessingVoice(false)
         setVoiceError("The microphone could not be stopped. Try again.")
-      })
-      .finally(() => {
+      } finally {
         stopMicVisualizationStream()
         teardownVisualizer()
-      })
+      }
+    })()
   }
+
+  const finishVoiceRequest = useCallback((requestController: AbortController) => {
+    if (voiceRequestControllerRef.current !== requestController) return
+
+    voiceRequestControllerRef.current = null
+    setIsProcessingVoice(false)
+    isVoiceProcessingRef.current = false
+    setRecordingSeconds(0)
+  }, [])
+
+  const requestVoiceResponse = useCallback(
+    async (audioBlob: Blob, chatId: string, requestController: AbortController) => {
+      const formData = new FormData()
+      formData.append("audio", audioBlob, "voice-input.wav")
+      formData.append("voiceReplies", isVoiceReplyEnabled ? "true" : "false")
+      formData.append("chatId", chatId)
+      if (selectedApplication?.id) formData.append("applicationId", selectedApplication.id)
+
+      const response = await apiFetch("/api/prep/voice", {
+        method: "POST",
+        headers: undefined,
+        body: formData,
+        signal: requestController.signal,
+      })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "Unable to process voice input." }))
+        throw new Error(errorPayload.error)
+      }
+
+      return { response, data: (await response.json()) as VoiceResponseData }
+    },
+    [isVoiceReplyEnabled, selectedApplication?.id],
+  )
+
+  const appendVoiceMessages = useCallback(
+    (data: VoiceResponseData) => {
+      setMessages((previous) => {
+        const nextMessages = [...previous]
+
+        if (data.transcript) {
+          nextMessages.push({ role: "user", content: data.transcript })
+          setVoiceTranscript(data.transcript)
+        }
+
+        if (data.reply) {
+          nextMessages.push({ role: "assistant", tone: "technical", content: "" })
+          const messageIndex = nextMessages.length - 1
+          streamingMessageIndexRef.current = messageIndex
+          setTimeout(() => startTypewriterStream(messageIndex, data.reply ?? "", "technical"), 0)
+        }
+
+        return nextMessages
+      })
+    },
+    [startTypewriterStream],
+  )
+
+  const playVoiceResponse = useCallback(
+    async (audioBase64: string, audioMimeType?: string) => {
+      const byteCharacters = atob(audioBase64)
+      const byteNumbers = Uint8Array.from(byteCharacters, (character) => character.codePointAt(0) ?? 0)
+      const audioResponse = new Blob([byteNumbers], { type: audioMimeType ?? "audio/mpeg" })
+      const objectUrl = URL.createObjectURL(audioResponse)
+      setVoiceReplyUrl(objectUrl)
+      if (!isVoiceReplyEnabled) return true
+
+      const audioElement = new Audio(objectUrl)
+      voicePlaybackRef.current = audioElement
+      isPlayingVoiceRef.current = true
+      setIsPlayingVoice(true)
+      audioElement.addEventListener("ended", () => {
+        voicePlaybackRef.current = null
+        isPlayingVoiceRef.current = false
+        setIsPlayingVoice(false)
+        teardownVisualizer()
+        void startRecordingRef.current()
+      })
+      audioElement.addEventListener("pause", () => {
+        if (voicePlaybackRef.current === audioElement) voicePlaybackRef.current = null
+        isPlayingVoiceRef.current = false
+        setIsPlayingVoice(false)
+      })
+
+      try {
+        await audioElement.play()
+      } catch (playbackError) {
+        isPlayingVoiceRef.current = false
+        setIsPlayingVoice(false)
+        setVoiceError(playbackError instanceof Error ? playbackError.message : "Unable to play the audio reply.")
+        scheduleVoiceRestart(1200)
+        return false
+      }
+
+      try {
+        await initializeVisualizer(audioElement)
+      } catch (error) {
+        handleVisualizerFailure(error)
+      }
+
+      return true
+    },
+    [handleVisualizerFailure, initializeVisualizer, isVoiceReplyEnabled, scheduleVoiceRestart, teardownVisualizer],
+  )
+
+  const handleMissingVoiceAudio = useCallback(
+    (responseVoiceError?: string) => {
+      setVoiceReplyUrl(null)
+      if (isVoiceReplyEnabled && !responseVoiceError) {
+        setVoiceError("The reply was generated, but no voice audio was returned.")
+      }
+      if (isVoiceReplyEnabled) scheduleVoiceRestart(1200)
+    },
+    [isVoiceReplyEnabled, scheduleVoiceRestart],
+  )
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
     if (isSessionEnded) return
@@ -1413,122 +2108,24 @@ export default function PrepPage() {
     voiceRequestControllerRef.current = requestController
 
     try {
-      const formData = new FormData()
-      formData.append("audio", audioBlob, "voice-input.wav")
-      formData.append("voiceReplies", isVoiceReplyEnabled ? "true" : "false")
-      formData.append("chatId", selectedChatId)
-
-      if (selectedApplication?.id) {
-        formData.append("applicationId", selectedApplication.id)
-      }
-
-      const response = await apiFetch("/api/prep/voice", {
-        method: "POST",
-        headers: undefined,
-        body: formData,
-        signal: requestController.signal,
-      })
-
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => ({ error: "Unable to process voice input." }))
-        throw new Error(errorPayload.error)
-      }
-
-      const data = (await response.json()) as {
-        transcript?: string
-        reply?: string
-        audioBase64?: string
-        audioMimeType?: string
-        voiceError?: string
-      }
+      const { response, data } = await requestVoiceResponse(audioBlob, selectedChatId, requestController)
 
       if (requestController.signal.aborted) return
-
-      if (data.voiceError) {
-        setVoiceError(data.voiceError)
-      }
+      if (data.voiceError) setVoiceError(data.voiceError)
 
       if (!data.transcript && !data.reply) {
         scheduleVoiceRestart()
         return
       }
 
-      setMessages((previous) => {
-        const nextMessages = [...previous]
-
-        if (data.transcript) {
-          nextMessages.push({ role: "user", content: data.transcript })
-          setVoiceTranscript(data.transcript)
-        }
-
-        if (data.reply) {
-          nextMessages.push({ role: "assistant", tone: "technical", content: "" })
-          streamingMessageIndexRef.current = nextMessages.length - 1
-          const messageIndex = streamingMessageIndexRef.current
-          if (messageIndex !== null) {
-            setTimeout(() => startTypewriterStream(messageIndex, data.reply ?? "", "technical"), 0)
-          }
-        }
-
-        return nextMessages
-      })
-
-      if (voiceReplyUrl) {
-        URL.revokeObjectURL(voiceReplyUrl)
-      }
+      appendVoiceMessages(data)
+      if (voiceReplyUrl) URL.revokeObjectURL(voiceReplyUrl)
 
       if (data.audioBase64) {
-        const byteCharacters = atob(data.audioBase64)
-        const byteNumbers = new Array(byteCharacters.length)
-        for (let index = 0; index < byteCharacters.length; index += 1) {
-          byteNumbers[index] = byteCharacters.charCodeAt(index)
-        }
-        const audioResponse = new Blob([new Uint8Array(byteNumbers)], { type: data.audioMimeType ?? "audio/mpeg" })
-        const objectUrl = URL.createObjectURL(audioResponse)
-        setVoiceReplyUrl(objectUrl)
-
-        if (isVoiceReplyEnabled) {
-          const audioElement = new Audio(objectUrl)
-          voicePlaybackRef.current = audioElement
-          isPlayingVoiceRef.current = true
-          setIsPlayingVoice(true)
-          audioElement.addEventListener("ended", () => {
-            voicePlaybackRef.current = null
-            isPlayingVoiceRef.current = false
-            setIsPlayingVoice(false)
-            teardownVisualizer()
-            void startRecordingRef.current()
-          })
-          audioElement.addEventListener("pause", () => {
-            if (voicePlaybackRef.current === audioElement) {
-              voicePlaybackRef.current = null
-            }
-            isPlayingVoiceRef.current = false
-            setIsPlayingVoice(false)
-          })
-
-          try {
-            await audioElement.play()
-          } catch (playbackError) {
-            isPlayingVoiceRef.current = false
-            setIsPlayingVoice(false)
-            setVoiceError(playbackError instanceof Error ? playbackError.message : "Unable to play the audio reply.")
-            scheduleVoiceRestart(1200)
-            return
-          }
-
-          try {
-            await initializeVisualizer(audioElement)
-          } catch (error) {
-            handleVisualizerFailure(error)
-          }
-        }
+        const playbackStarted = await playVoiceResponse(data.audioBase64, data.audioMimeType)
+        if (!playbackStarted) return
       } else {
-        setVoiceReplyUrl(null)
-        if (isVoiceReplyEnabled && !data.voiceError) {
-          setVoiceError("The reply was generated, but no voice audio was returned.")
-        }
-        if (isVoiceReplyEnabled) scheduleVoiceRestart(1200)
+        handleMissingVoiceAudio(data.voiceError)
       }
 
       void updateUsageFromResponse(response)
@@ -1536,12 +2133,7 @@ export default function PrepPage() {
       if (requestController.signal.aborted) return
       setVoiceError(error instanceof Error ? error.message : "Voice mode is unavailable right now.")
     } finally {
-      if (voiceRequestControllerRef.current === requestController) {
-        voiceRequestControllerRef.current = null
-        setIsProcessingVoice(false)
-        isVoiceProcessingRef.current = false
-        setRecordingSeconds(0)
-      }
+      finishVoiceRequest(requestController)
     }
   }
 
@@ -1732,63 +2324,27 @@ export default function PrepPage() {
                 <div
                   className={cn(
                     "flex h-full min-h-0 flex-col overflow-hidden bg-background",
-                    isFocusMode && "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70",
+                    isFocusMode && "bg-background/80 backdrop-blur-sm supports-[backdrop-filter]:bg-background/70",
                   )}
                 >
-                  <div className="flex min-h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-2 sm:px-3">
-                    <div className="hidden min-w-0 sm:block">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {activeChatTitle || "Interview prep"}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {isSessionEnded
-                          ? "Session paused"
-                          : `${usageRemaining ?? "--"}${usageLimit !== null ? ` / ${usageLimit}` : ""} messages left`}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center rounded-md border border-border/60 bg-muted/30 p-0.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={handleCreateChat}
-                        disabled={isCreatingChat || isGenerating || isRecording || isProcessingVoice}
-                        title="Start a fresh session"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        <span className="hidden xl:inline">New session</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={isSessionEnded ? () => setIsSessionEnded(false) : handleEndSession}
-                        aria-label={isSessionEnded ? "Resume session" : "End session"}
-                        title={isSessionEnded ? "Resume session" : "End session"}
-                      >
-                        {isSessionEnded ? <Play className="h-3.5 w-3.5" /> : <StopCircle className="h-3.5 w-3.5" />}
-                        <span className="hidden xl:inline">{isSessionEnded ? "Resume" : "End"}</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => {
-                          setIsVoiceReplyEnabled(true)
-                          setIsFocusPaused(false)
-                          setIsFocusMode(true)
-                        }}
-                        aria-label="Enter focus mode"
-                        title="Enter focus mode"
-                      >
-                        <Focus className="h-3.5 w-3.5" />
-                        <span className="hidden xl:inline">Focus</span>
-                      </Button>
-                    </div>
-                  </div>
+                  <ChatSessionHeader
+                    activeChatTitle={activeChatTitle}
+                    isSessionEnded={isSessionEnded}
+                    usageRemaining={usageRemaining}
+                    usageLimit={usageLimit}
+                    isCreatingChat={isCreatingChat}
+                    isGenerating={isGenerating}
+                    isRecording={isRecording}
+                    isProcessingVoice={isProcessingVoice}
+                    onCreateChat={handleCreateChat}
+                    onResumeSession={() => setIsSessionEnded(false)}
+                    onEndSession={handleEndSession}
+                    onEnterFocus={() => {
+                      setIsVoiceReplyEnabled(true)
+                      setIsFocusPaused(false)
+                      setIsFocusMode(true)
+                    }}
+                  />
                   <div className="flex-1 flex min-h-0 min-w-0 flex-col gap-4 p-4 sm:p-6 overflow-hidden">
                     {chatError && (
                       <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
@@ -1861,97 +2417,25 @@ export default function PrepPage() {
                       </div>
                       {isGenerating && <span ref={responseEndRef} aria-hidden="true" className="block h-px" />}
                     </ScrollArea>
-                    <form
-                      className="flex flex-col gap-3"
-                      onSubmit={(event) => {
-                        event.preventDefault()
-                        handleSend()
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="shrink-0 h-9 w-9"
-                              aria-label="Open voice and session controls"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 space-y-4" align="start">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                                <Volume2 className="h-4 w-4" />
-                                Voice replies
-                              </div>
-                              <Switch
-                                checked={isVoiceReplyEnabled}
-                                onCheckedChange={setIsVoiceReplyEnabled}
-                                aria-label="Toggle voice replies"
-                              />
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              {isRecording && <span className="text-destructive font-semibold">Recording</span>}
-                              {isRecording && <span>• {recordingSeconds}s</span>}
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button
-                                type="button"
-                                variant={isRecording ? "destructive" : "default"}
-                                onClick={isRecording ? handleStopRecording : handleStartRecording}
-                                disabled={isProcessingVoice || isSessionEnded || isCreatingChat}
-                              >
-                                {isRecording ? <Square className="mr-2 h-4 w-4" /> : <Mic className="mr-2 h-4 w-4" />}
-                                {isRecording ? "Stop recording" : "Start speaking"}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => void handleReplayVoice()}
-                                disabled={!voiceReplyUrl || isProcessingVoice || isRecording || isPlayingVoice}
-                              >
-                                <Volume2 className="mr-2 h-4 w-4" />
-                                Replay
-                              </Button>
-                            </div>
-
-                            <p className="text-xs text-muted-foreground">
-                              Recording will end automatically after a moment of silence.
-                            </p>
-
-                            {visualizerNotice && (
-                              <p className="text-xs text-amber-700 dark:text-amber-400">{visualizerNotice}</p>
-                            )}
-                          </PopoverContent>
-                        </Popover>
-                        <Textarea
-                          id="prep-input"
-                          value={input}
-                          onChange={(event) => setInput(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" && !event.shiftKey) {
-                              event.preventDefault()
-                              event.currentTarget.form?.requestSubmit()
-                            }
-                          }}
-                          placeholder={isSessionEnded ? "Session paused. Resume to continue." : "..."}
-                          className="h-9 min-h-[2.25rem] flex-1 resize-none"
-                          disabled={isGenerating || isSessionEnded || isCreatingChat}
-                        />
-                        <Button
-                          type="submit"
-                          disabled={!input.trim() || isGenerating || isSessionEnded || isCreatingChat}
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </form>
+                    <ChatComposer
+                      input={input}
+                      isGenerating={isGenerating}
+                      isSessionEnded={isSessionEnded}
+                      isCreatingChat={isCreatingChat}
+                      isVoiceReplyEnabled={isVoiceReplyEnabled}
+                      isRecording={isRecording}
+                      recordingSeconds={recordingSeconds}
+                      isProcessingVoice={isProcessingVoice}
+                      isPlayingVoice={isPlayingVoice}
+                      voiceReplyUrl={voiceReplyUrl}
+                      visualizerNotice={visualizerNotice}
+                      onInputChange={setInput}
+                      onSend={handleSend}
+                      onVoiceReplyEnabledChange={setIsVoiceReplyEnabled}
+                      onStartRecording={handleStartRecording}
+                      onStopRecording={handleStopRecording}
+                      onReplayVoice={handleReplayVoice}
+                    />
                   </div>
                 </div>
               </ResizablePanel>
@@ -2107,234 +2591,32 @@ export default function PrepPage() {
         </Card>
       </main>
 
-      <AnimatePresence>
-        {isFocusMode && (
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Focus mode"
-            initial={prefersReducedMotion ? { opacity: 0 } : { clipPath: "circle(0% at 50% 50%)" }}
-            animate={prefersReducedMotion ? { opacity: 1 } : { clipPath: "circle(150% at 50% 50%)" }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.985 }}
-            transition={{ duration: prefersReducedMotion ? 0.15 : 0.7, ease: [0.76, 0, 0.24, 1] }}
-            className="fixed inset-0 z-50 isolate overflow-y-auto bg-background text-foreground"
-          >
-            <div
-              className="pointer-events-none absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [background-size:4rem_4rem] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
-              aria-hidden="true"
-            />
-            <motion.div
-              initial={prefersReducedMotion ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: prefersReducedMotion ? 0 : 0.3, duration: 0.35 }}
-              className="relative mx-auto flex min-h-full w-full max-w-[90rem] flex-col px-4 sm:px-6 lg:px-10"
-            >
-              <header className="flex h-16 shrink-0 items-center justify-between border-b border-border sm:h-20">
-                <div className="flex items-center gap-3">
-                  <Image
-                    src="/logo_cropped.png"
-                    alt="ferm.dev logo"
-                    width={28}
-                    height={28}
-                    className="size-7 object-contain invert dark:invert-0"
-                    priority
-                  />
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                      ferm / Prep
-                    </p>
-                    <p className="text-sm font-medium">Focus session</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    autoFocus
-                    onClick={isFocusPaused ? handleResumeFocusSession : handlePauseFocusSession}
-                    disabled={isSessionEnded}
-                    aria-label={isFocusPaused ? "Resume focus session" : "Pause focus session"}
-                    className="border-chart-3/70 bg-background/80 text-chart-3 backdrop-blur-sm hover:border-chart-3 hover:bg-chart-3/10 hover:text-chart-3"
-                  >
-                    <span className="hidden sm:inline">{isFocusPaused ? "Resume" : "Pause"}</span>
-                    {isFocusPaused ? <Play className="size-4" /> : <Pause className="size-4" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleStopFocusSession}
-                    disabled={isSessionEnded}
-                    aria-label="Stop focus session"
-                    className="border-destructive/70 bg-background/80 text-destructive backdrop-blur-sm hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <span className="hidden sm:inline">Stop</span>
-                    <Square className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      handlePauseFocusSession()
-                      setIsFocusMode(false)
-                    }}
-                    aria-label="Exit focus mode"
-                    className="border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Exit
-                    <X className="size-4" />
-                  </Button>
-                </div>
-              </header>
-
-              <main className="grid flex-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)]">
-                <motion.section
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: prefersReducedMotion ? 0 : 0.42, duration: 0.45, ease: "easeOut" }}
-                  className="flex min-h-[34rem] flex-col items-center justify-center border-b border-border px-8 py-12 text-center lg:min-h-0 lg:border-r lg:border-b-0 lg:px-10"
-                >
-                  <div className="flex flex-col items-center gap-8">
-                    <button
-                      type="button"
-                      aria-label={
-                        isFocusPaused || isSessionEnded
-                          ? "Resume and start speaking"
-                          : isProcessingVoice
-                            ? "Processing response"
-                            : isPlayingVoice
-                              ? "Voice response playing"
-                              : isRecording
-                                ? "Submit answer"
-                                : "Start speaking"
-                      }
-                      disabled={isProcessingVoice || isPlayingVoice || isCreatingChat}
-                      onClick={() => {
-                        if (isFocusPaused || isSessionEnded) {
-                          handleResumeFocusSession()
-                        } else if (isRecording) {
-                          handleStopRecording()
-                        } else {
-                          void handleStartRecording()
-                        }
-                      }}
-                      className="group relative flex size-64 items-center justify-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-ring/30 disabled:cursor-default sm:size-72 lg:size-80"
-                    >
-                      {(isRecording || isPlayingVoice) && (
-                        <motion.span
-                          className="absolute inset-0 rounded-full border border-primary/30"
-                          animate={prefersReducedMotion ? undefined : { scale: [1, 1.12], opacity: [0.55, 0] }}
-                          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
-                          aria-hidden="true"
-                        />
-                      )}
-                      <span className="absolute inset-0 rounded-full border border-border bg-card/60 shadow-sm backdrop-blur-sm transition-colors duration-300 group-hover:border-primary/35 group-hover:bg-muted/50" />
-                      <span className="absolute inset-6 rounded-full border border-border transition-[inset,border-color] duration-300 group-hover:inset-5 group-hover:border-primary/45 sm:inset-7 sm:group-hover:inset-6 lg:inset-8 lg:group-hover:inset-7" />
-                      <span className="absolute inset-16 rounded-full border border-dashed border-border transition-colors duration-300 group-hover:border-primary/50 sm:inset-[4.5rem] lg:inset-20" />
-                      <div
-                        ref={visualizerContainerRef}
-                        className="pointer-events-none absolute inset-2 overflow-hidden rounded-full"
-                        aria-hidden="true"
-                      />
-                      <motion.span
-                        animate={{ scale: prefersReducedMotion ? 1 : isRecording || isPlayingVoice ? 1.025 : 1 }}
-                        whileHover={prefersReducedMotion ? undefined : { scale: 1.025 }}
-                        transition={{ type: "spring", stiffness: 240, damping: 24, mass: 0.8 }}
-                        className="relative flex size-28 items-center justify-center rounded-full border border-primary bg-primary text-primary-foreground shadow-sm sm:size-32 lg:size-36"
-                      >
-                        <AnimatePresence initial={false} mode="wait">
-                          <motion.span
-                            key={isProcessingVoice ? "processing" : isRecording ? "listening" : "voice"}
-                            initial={prefersReducedMotion ? false : { opacity: 0, y: 3 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -3 }}
-                            transition={{ duration: 0.16, ease: "easeOut" }}
-                          >
-                            {isProcessingVoice ? (
-                              <Loader2 className={cn("size-8 lg:size-9", !prefersReducedMotion && "animate-spin")} />
-                            ) : isRecording ? (
-                              <Mic className="size-8 lg:size-9" />
-                            ) : (
-                              <Volume2 className="size-8 lg:size-9" />
-                            )}
-                          </motion.span>
-                        </AnimatePresence>
-                      </motion.span>
-                      <span
-                        className="absolute top-1/2 left-0 h-px w-8 -translate-x-1/2 bg-border"
-                        aria-hidden="true"
-                      />
-                      <span
-                        className="absolute top-1/2 right-0 h-px w-8 translate-x-1/2 bg-border"
-                        aria-hidden="true"
-                      />
-                    </button>
-
-                    <div className="h-12" aria-live="polite">
-                      <AnimatePresence initial={false}>
-                        {!isRecording && !isProcessingVoice && !isPlayingVoice && (
-                          <motion.div
-                            initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
-                            transition={{ duration: 0.18, ease: "easeOut" }}
-                          >
-                            <p className="text-base font-semibold">Ready when you are</p>
-                            <p className="mt-1.5 text-sm text-muted-foreground">Press the button to begin speaking</p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </motion.section>
-
-                <motion.section
-                  initial={prefersReducedMotion ? false : { opacity: 0, x: 24 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: prefersReducedMotion ? 0 : 0.52, duration: 0.45, ease: "easeOut" }}
-                  className="flex min-h-[28rem] flex-col px-1 py-8 sm:px-6 sm:py-12 lg:px-10"
-                >
-                  <div className="flex items-center justify-between border-b border-border pb-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                      Messages remaining
-                    </p>
-                    <span className="text-[10px] text-muted-foreground">
-                      {usageRemaining ?? "--"} / {usageLimit ?? 20}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-1 items-center py-10">
-                    <blockquote className="max-h-[48vh] overflow-y-auto text-pretty text-xl leading-relaxed tracking-tight sm:text-2xl lg:text-[1.75rem] lg:leading-relaxed">
-                      {latestAssistantMessage?.content?.trim()
-                        ? latestAssistantMessage.content
-                        : "Whenever you're ready, start speaking and ferm will guide the conversation."}
-                    </blockquote>
-                  </div>
-
-                  <div className="space-y-3 border-t border-border pt-4">
-                    <div className="grid grid-cols-2 gap-4 text-[11px]">
-                      <div>
-                        <p className="text-muted-foreground">Position</p>
-                        <p className="mt-1 text-foreground">
-                          {selectedApplication?.position_title ?? "General interview"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-muted-foreground">Company</p>
-                        <p className="mt-1 text-foreground">{selectedApplication?.company_name ?? "Not specified"}</p>
-                      </div>
-                    </div>
-                    {visualizerNotice && (
-                      <div className="rounded-md border border-border bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-                        {visualizerNotice}
-                      </div>
-                    )}
-                  </div>
-                </motion.section>
-              </main>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <FocusMode
+        isOpen={isFocusMode}
+        prefersReducedMotion={prefersReducedMotion}
+        isFocusPaused={isFocusPaused}
+        isSessionEnded={isSessionEnded}
+        isProcessingVoice={isProcessingVoice}
+        isPlayingVoice={isPlayingVoice}
+        isRecording={isRecording}
+        isCreatingChat={isCreatingChat}
+        visualizerContainerRef={visualizerContainerRef}
+        focusPauseButtonRef={focusPauseButtonRef}
+        usageRemaining={usageRemaining}
+        usageLimit={usageLimit}
+        latestAssistantMessage={latestAssistantMessage}
+        selectedApplication={selectedApplication}
+        visualizerNotice={visualizerNotice}
+        onPause={handlePauseFocusSession}
+        onResume={handleResumeFocusSession}
+        onStop={handleStopFocusSession}
+        onExit={() => {
+          handlePauseFocusSession()
+          setIsFocusMode(false)
+        }}
+        onStopRecording={handleStopRecording}
+        onStartRecording={handleStartRecording}
+      />
     </div>
   )
 }

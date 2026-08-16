@@ -25,6 +25,7 @@ import type { ApplicationFollowUp, JobApplication } from "@/lib/types/database"
 import { getDateOrNull } from "@/lib/date"
 
 import { FollowUpDraftDialog } from "@/components/follow-up-draft-dialog"
+
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
@@ -59,6 +60,7 @@ const sortDirectionDefaults: Record<SortValue, SortDirection> = {
   applied: "desc",
   company: "asc",
 }
+const FOLLOW_UP_SKELETON_KEYS = ["follow-up-1", "follow-up-2", "follow-up-3", "follow-up-4", "follow-up-5"]
 
 function computeNextReminder(followUp: ApplicationFollowUp | undefined): Date | null {
   if (!followUp?.enabled) {
@@ -230,8 +232,8 @@ export default function FollowUpsPage() {
 
         toast({ title: "Follow-up reminder updated" })
         await mutateFollowUps()
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to update follow-up preferences"
+      } catch (requestError) {
+        const message = requestError instanceof Error ? requestError.message : "Unable to update follow-up preferences"
         toast({ title: "Update failed", description: message, variant: "destructive" })
       } finally {
         setPendingState(applicationId, false)
@@ -331,8 +333,8 @@ export default function FollowUpsPage() {
               <CardContent className="flex min-h-0 flex-1 flex-col space-y-4 overflow-hidden">
                 {isLoading ? (
                   <div className="space-y-3">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <div key={index} className="rounded-md border border-dashed p-4">
+                    {FOLLOW_UP_SKELETON_KEYS.map((key) => (
+                      <div key={key} className="rounded-md border border-dashed p-4">
                         <Skeleton className="h-5 w-40" />
                         <Skeleton className="mt-2 h-4 w-64" />
                       </div>

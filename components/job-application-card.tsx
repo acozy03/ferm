@@ -29,6 +29,7 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const handleUpdate = () => onUpdate?.()
 
   const formatDate = (dateString: string) => {
     const parsed = getDateOrNull(dateString)
@@ -221,13 +222,13 @@ export function JobApplicationCard({ application, isSelected, onSelect, onUpdate
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete application"
-        description={`Are you sure you want to delete this application? This action cannot be undone.`}
+        description="Are you sure you want to delete this application? This action cannot be undone."
         confirmLabel="Delete"
         onConfirm={deleteApplication}
       />
       <EditApplicationDialog
         application={application}
-        onUpdate={onUpdate || (() => {})}
+        onUpdate={handleUpdate}
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
       />

@@ -6,7 +6,7 @@ export function useIsTruncated<T extends HTMLElement>() {
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
+    if (!el) return undefined
 
     const check = () => {
       setIsTruncated(el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight)

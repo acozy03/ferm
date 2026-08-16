@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
@@ -106,9 +106,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Interview not found." }, { status: 404 })
     }
 
-    if (!derivedTitle) {
-      derivedTitle = buildInterviewSeedTitle(interview)
-    }
+    derivedTitle ||= buildInterviewSeedTitle(interview)
   }
 
   if (!derivedTitle) {

@@ -5,6 +5,7 @@ import { requireCookieCsrf } from "@/lib/api/auth"
 import type { UpdateJobApplicationData } from "@/lib/types/database"
 import { toNullableString } from "@/lib/utils"
 import { isStatusProgressionAllowed, normalizeStatusValue, parseStatus } from "@/lib/status"
+
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
@@ -37,6 +38,146 @@ const UpdateJobApplicationSchema = z
 function truncateString(value: string | null | undefined, maxLength: number) {
   if (value == null) return value
   return value.length > maxLength ? value.slice(0, maxLength) : value
+}
+
+type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
+
+async function parseJobApplicationUpdates(request: NextRequest) {
+  const rawBody = await request.text()
+  if (rawBody.length > MAX_BODY_CHARS || Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+    return { response: NextResponse.json({ error: "Payload too large" }, { status: 413 }) }
+  }
+
+  let parsedBody: unknown
+  try {
+    parsedBody = JSON.parse(rawBody)
+  } catch (error) {
+    console.error("Job application update JSON parse failed", error)
+    return { response: NextResponse.json({ error: "Invalid input" }, { status: 400 }) }
+  }
+
+  const validation = UpdateJobApplicationSchema.safeParse(parsedBody)
+  if (!validation.success) {
+    console.error("Job application update validation failed", validation.error)
+    return { response: NextResponse.json({ error: "Invalid input" }, { status: 400 }) }
+  }
+
+  const updates: Partial<UpdateJobApplicationData> = { ...validation.data }
+  delete (updates as { id?: string }).id
+  delete (updates as { user_id?: string }).user_id
+  delete (updates as { resume_match_score?: number | null }).resume_match_score
+  delete (updates as { resume_match_summary?: string | null }).resume_match_summary
+
+  const nullableFields: (keyof UpdateJobApplicationData)[] = [
+    "location",
+    "salary_range",
+    "job_url",
+    "contact_person",
+    "contact_email",
+    "notes",
+    "job_description",
+    "qualifications",
+    "job_responsibilities",
+  ]
+  const mutableUpdates = updates as Record<string, string | null | undefined>
+  for (const field of nullableFields) {
+    if (field in mutableUpdates) {
+      mutableUpdates[field as string] = truncateString(
+        toNullableString(mutableUpdates[field as string]),
+        MAX_LONG_TEXT_LENGTH,
+      )
+    }
+  }
+
+  return { updates }
+}
+
+async function validateStatusUpdate(
+  supabase: SupabaseClient,
+  id: string,
+  userId: string,
+  updates: Partial<UpdateJobApplicationData>,
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("job_applications")
+    .select("status")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .single()
+
+  if (existingError) {
+    if (existingError.code === "PGRST116") {
+      return { response: NextResponse.json({ error: "Job application not found" }, { status: 404 }) }
+    }
+
+    console.error("Failed to load current status before update", existingError)
+    return { response: NextResponse.json({ error: existingError.message }, { status: 500 }) }
+  }
+
+  const previousStatus = existing?.status ?? null
+  if (typeof updates.status === "string") {
+    const nextStatus = normalizeStatusValue(updates.status)
+    if (!isStatusProgressionAllowed(previousStatus, nextStatus)) {
+      console.warn("Status progression prevented", {
+        jobId: id,
+        userId,
+        previousStatus,
+        attemptedStatus: nextStatus,
+      })
+      return { response: NextResponse.json({ error: "Status cannot move backwards in the pipeline" }, { status: 400 }) }
+    }
+
+    updates.status = nextStatus
+  }
+
+  return { previousStatus }
+}
+
+async function recordStatusChange(options: {
+  supabase: SupabaseClient
+  id: string
+  userId: string
+  previousStatus: string | null
+  status: string
+  updatedAt: string | null
+}) {
+  const { supabase, id, userId, previousStatus, status, updatedAt } = options
+  const previousNormalized = parseStatus(previousStatus).value
+  const nextNormalized = parseStatus(status).value
+
+  if (nextNormalized === "Applied" && previousNormalized !== "Applied") {
+    const { error: deleteError } = await supabase
+      .from("job_application_status_history")
+      .delete()
+      .eq("job_application_id", id)
+      .eq("user_id", userId)
+
+    if (deleteError) {
+      console.error("Failed to clear status history during reset", { jobId: id, userId, deleteError })
+    }
+
+    const { error: interviewDeleteError } = await supabase
+      .from("interviews")
+      .delete()
+      .eq("job_application_id", id)
+      .eq("user_id", userId)
+
+    if (interviewDeleteError) {
+      console.error("Failed to clear interviews during reset", { jobId: id, userId, interviewDeleteError })
+    }
+    return
+  }
+
+  const { error: historyError } = await supabase.from("job_application_status_history").insert({
+    job_application_id: id,
+    user_id: userId,
+    status,
+    changed_at: updatedAt ?? new Date().toISOString(),
+  })
+
+  if (historyError) {
+    console.error("Failed to record status history change", { jobId: id, userId, newStatus: status, historyError })
+  }
 }
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -126,94 +267,22 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     userId = user.id
-    const rawBody = await request.text()
-
-    if (rawBody.length > MAX_BODY_CHARS || Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
-      return NextResponse.json({ error: "Payload too large" }, { status: 413 })
+    const parsedUpdates = await parseJobApplicationUpdates(request)
+    if ("response" in parsedUpdates) {
+      return parsedUpdates.response
     }
 
-    let parsedBody: unknown
+    sanitizedUpdates = parsedUpdates.updates
 
-    try {
-      parsedBody = JSON.parse(rawBody)
-    } catch (error) {
-      console.error("Job application update JSON parse failed", error)
-      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
-    }
-
-    const validation = UpdateJobApplicationSchema.safeParse(parsedBody)
-
-    if (!validation.success) {
-      console.error("Job application update validation failed", validation.error)
-      return NextResponse.json({ error: "Invalid input" }, { status: 400 })
-    }
-
-    const body: Partial<UpdateJobApplicationData> = validation.data
-    const updates: Partial<UpdateJobApplicationData> = { ...body }
-    delete (updates as { id?: string }).id
-    delete (updates as { user_id?: string }).user_id
-    delete (updates as { resume_match_score?: number | null }).resume_match_score
-    delete (updates as { resume_match_summary?: string | null }).resume_match_summary
-
-    const nullableFields: (keyof UpdateJobApplicationData)[] = [
-      "location",
-      "salary_range",
-      "job_url",
-      "contact_person",
-      "contact_email",
-      "notes",
-      "job_description",
-      "qualifications",
-      "job_responsibilities",
-    ]
-
-    sanitizedUpdates = { ...updates }
-    const mutableUpdates = sanitizedUpdates as Record<string, string | null | undefined>
-    for (const field of nullableFields) {
-      if (field in mutableUpdates) {
-        mutableUpdates[field as string] = truncateString(
-          toNullableString(mutableUpdates[field as string]),
-          MAX_LONG_TEXT_LENGTH,
-        )
-      }
-    }
-
-    const statusInPayload = Object.prototype.hasOwnProperty.call(sanitizedUpdates, "status")
+    const statusInPayload = Object.hasOwn(sanitizedUpdates, "status")
     let previousStatus: string | null = null
 
     if (statusInPayload) {
-      const { data: existing, error: existingError } = await supabase
-        .from("job_applications")
-        .select("status")
-        .eq("id", id)
-        .eq("user_id", user.id)
-        .single()
-
-      if (existingError) {
-        if (existingError.code === "PGRST116") {
-          return NextResponse.json({ error: "Job application not found" }, { status: 404 })
-        }
-
-        console.error("Failed to load current status before update", existingError)
-        return NextResponse.json({ error: existingError.message }, { status: 500 })
+      const statusValidation = await validateStatusUpdate(supabase, id, user.id, sanitizedUpdates)
+      if ("response" in statusValidation) {
+        return statusValidation.response
       }
-
-      previousStatus = existing?.status ?? null
-
-      if (typeof sanitizedUpdates.status === "string") {
-        const nextStatus = normalizeStatusValue(sanitizedUpdates.status)
-        if (!isStatusProgressionAllowed(previousStatus, nextStatus)) {
-          console.warn("Status progression prevented", {
-            jobId: id,
-            userId,
-            previousStatus,
-            attemptedStatus: nextStatus,
-          })
-          return NextResponse.json({ error: "Status cannot move backwards in the pipeline" }, { status: 400 })
-        }
-
-        sanitizedUpdates.status = nextStatus
-      }
+      previousStatus = statusValidation.previousStatus
     }
 
     const { data, error } = await supabase
@@ -235,54 +304,14 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
     }
 
     if (statusInPayload && data?.status && previousStatus !== data.status) {
-      const previousNormalized = parseStatus(previousStatus).value
-      const nextNormalized = parseStatus(data.status).value
-
-      if (nextNormalized === "Applied" && previousNormalized !== "Applied") {
-        const { error: deleteError } = await supabase
-          .from("job_application_status_history")
-          .delete()
-          .eq("job_application_id", id)
-          .eq("user_id", user.id)
-
-        if (deleteError) {
-          console.error("Failed to clear status history during reset", {
-            jobId: id,
-            userId,
-            deleteError,
-          })
-        }
-
-        const { error: interviewDeleteError } = await supabase
-          .from("interviews")
-          .delete()
-          .eq("job_application_id", id)
-          .eq("user_id", user.id)
-
-        if (interviewDeleteError) {
-          console.error("Failed to clear interviews during reset", {
-            jobId: id,
-            userId,
-            interviewDeleteError,
-          })
-        }
-      } else {
-        const { error: historyError } = await supabase.from("job_application_status_history").insert({
-          job_application_id: id,
-          user_id: user.id,
-          status: data.status,
-          changed_at: data.updated_at ?? new Date().toISOString(),
-        })
-
-        if (historyError) {
-          console.error("Failed to record status history change", {
-            jobId: id,
-            userId,
-            newStatus: data.status,
-            historyError,
-          })
-        }
-      }
+      await recordStatusChange({
+        supabase,
+        id,
+        userId: user.id,
+        previousStatus,
+        status: data.status,
+        updatedAt: data.updated_at,
+      })
     }
 
     return NextResponse.json({ data })

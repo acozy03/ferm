@@ -30,7 +30,7 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
   canvas.style.filter = "drop-shadow(0 0 12px color-mix(in oklch, var(--primary) 25%, transparent))"
   canvas.setAttribute("aria-hidden", "true")
 
-  container.appendChild(canvas)
+  container.append(canvas)
 
   const analyser = audioContext.createAnalyser()
   analyser.fftSize = 256
@@ -145,12 +145,10 @@ export const createAudioVisualizer = async (container: HTMLElement): Promise<Aud
         analyser.connect(silentOutput)
         silentOutput.connect(audioContext.destination)
       } else {
-        let elementSource: MediaElementAudioSourceNode
-        if (mediaElementSource && currentSource === source) {
-          elementSource = mediaElementSource
-        } else {
-          elementSource = audioContext.createMediaElementSource(source)
-        }
+        const elementSource =
+          mediaElementSource && currentSource === source
+            ? mediaElementSource
+            : audioContext.createMediaElementSource(source)
         mediaElementSource = elementSource
         sourceNode = elementSource
         outputNode = audioContext.destination

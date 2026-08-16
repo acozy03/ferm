@@ -52,6 +52,112 @@ function truncateString(value: string | null | undefined, maxLength: number) {
   return value.length > maxLength ? value.slice(0, maxLength) : value
 }
 
+type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
+
+function sanitizeBulkUpdates(updates: BulkUpdateJobApplicationsData["updates"]) {
+  const sanitizedUpdates: Partial<CreateJobApplicationData> = { ...updates }
+  const nullableFields: (keyof CreateJobApplicationData)[] = [
+    "location",
+    "salary_range",
+    "job_url",
+    "contact_person",
+    "contact_email",
+    "notes",
+    "job_description",
+    "qualifications",
+    "job_responsibilities",
+  ]
+  const mutableUpdates = sanitizedUpdates as Record<string, string | null | undefined>
+
+  for (const field of nullableFields) {
+    if (field in mutableUpdates) {
+      mutableUpdates[field as string] = truncateString(
+        toNullableString(mutableUpdates[field as string]),
+        MAX_LONG_TEXT_LENGTH,
+      )
+    }
+  }
+
+  delete (sanitizedUpdates as { user_id?: string }).user_id
+  delete (sanitizedUpdates as { resume_match_score?: number | null }).resume_match_score
+  delete (sanitizedUpdates as { resume_match_summary?: string | null }).resume_match_summary
+  return sanitizedUpdates
+}
+
+async function validateBulkStatusUpdate(options: {
+  supabase: SupabaseClient
+  ids: string[]
+  userId: string
+  updates: Partial<CreateJobApplicationData>
+}) {
+  const { supabase, ids, userId, updates } = options
+  const { data: existingStatuses, error: existingError } = await supabase
+    .from("job_applications")
+    .select("id, status")
+    .in("id", ids)
+    .eq("user_id", userId)
+
+  if (existingError) {
+    return { response: NextResponse.json({ error: existingError.message }, { status: 500 }) }
+  }
+
+  const previousStatuses = Object.fromEntries((existingStatuses ?? []).map((record) => [record.id, record.status]))
+  if (typeof updates.status === "string") {
+    const nextStatus = normalizeStatusValue(updates.status)
+    const hasRegression = (existingStatuses ?? []).some((record) =>
+      record?.status ? !isStatusProgressionAllowed(record.status, nextStatus) : false,
+    )
+
+    if (hasRegression) {
+      return {
+        response: NextResponse.json(
+          { error: "At least one application cannot move backwards in the pipeline" },
+          { status: 400 },
+        ),
+      }
+    }
+
+    updates.status = nextStatus
+  }
+
+  return { previousStatuses }
+}
+
+async function updateBulkStatusHistory(options: {
+  supabase: SupabaseClient
+  userId: string
+  previousStatuses: Record<string, string>
+  record: { id: string; status: string; updated_at?: string | null }
+}) {
+  const { supabase, userId, previousStatuses, record } = options
+  const previousNormalized = parseStatus(previousStatuses[record.id]).value
+  const nextNormalized = parseStatus(record.status).value
+
+  if (nextNormalized === "Applied" && previousNormalized !== "Applied") {
+    const { error: deleteError } = await supabase
+      .from("job_application_status_history")
+      .delete()
+      .eq("job_application_id", record.id)
+      .eq("user_id", userId)
+
+    if (deleteError) {
+      console.error("Failed to clear status history during bulk reset", deleteError, { recordId: record.id })
+    }
+    return
+  }
+
+  const { error: historyError } = await supabase.from("job_application_status_history").insert({
+    job_application_id: record.id,
+    user_id: userId,
+    status: record.status,
+    changed_at: record.updated_at ?? new Date().toISOString(),
+  })
+
+  if (historyError) {
+    console.error("Failed to record status history for bulk update", historyError, { recordId: record.id })
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const csrfError = requireCookieCsrf(request)
@@ -101,62 +207,22 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "No application IDs provided" }, { status: 400 })
     }
 
-    const sanitizedUpdates: Partial<CreateJobApplicationData> = { ...updates }
-    const nullableFields: (keyof CreateJobApplicationData)[] = [
-      "location",
-      "salary_range",
-      "job_url",
-      "contact_person",
-      "contact_email",
-      "notes",
-      "job_description",
-      "qualifications",
-      "job_responsibilities",
-    ]
-    const mutableUpdates = sanitizedUpdates as Record<string, string | null | undefined>
-    for (const field of nullableFields) {
-      if (field in mutableUpdates) {
-        mutableUpdates[field as string] = truncateString(
-          toNullableString(mutableUpdates[field as string]),
-          MAX_LONG_TEXT_LENGTH,
-        )
-      }
-    }
-    delete (sanitizedUpdates as { user_id?: string }).user_id
-    delete (sanitizedUpdates as { resume_match_score?: number | null }).resume_match_score
-    delete (sanitizedUpdates as { resume_match_summary?: string | null }).resume_match_summary
+    const sanitizedUpdates = sanitizeBulkUpdates(updates)
 
-    const statusInPayload = Object.prototype.hasOwnProperty.call(sanitizedUpdates, "status")
+    const statusInPayload = Object.hasOwn(sanitizedUpdates, "status")
     let previousStatuses: Record<string, string> = {}
 
     if (statusInPayload) {
-      const { data: existingStatuses, error: existingError } = await supabase
-        .from("job_applications")
-        .select("id, status")
-        .in("id", ids)
-        .eq("user_id", user.id)
-
-      if (existingError) {
-        return NextResponse.json({ error: existingError.message }, { status: 500 })
+      const statusValidation = await validateBulkStatusUpdate({
+        supabase,
+        ids,
+        userId: user.id,
+        updates: sanitizedUpdates,
+      })
+      if ("response" in statusValidation) {
+        return statusValidation.response
       }
-
-      previousStatuses = Object.fromEntries((existingStatuses ?? []).map((record) => [record.id, record.status]))
-
-      if (typeof sanitizedUpdates.status === "string") {
-        const nextStatus = normalizeStatusValue(sanitizedUpdates.status)
-        const hasRegression = (existingStatuses ?? []).some((record) =>
-          record?.status ? !isStatusProgressionAllowed(record.status, nextStatus) : false,
-        )
-
-        if (hasRegression) {
-          return NextResponse.json(
-            { error: "At least one application cannot move backwards in the pipeline" },
-            { status: 400 },
-          )
-        }
-
-        sanitizedUpdates.status = nextStatus
-      }
+      previousStatuses = statusValidation.previousStatuses
     }
 
     const { data, error } = await supabase
@@ -171,40 +237,14 @@ export async function PUT(request: NextRequest) {
     }
 
     if (statusInPayload) {
-      for (const record of data ?? []) {
-        if (!record?.id || !record?.status) continue
-        if (previousStatuses[record.id] === record.status) continue
-
-        const previousNormalized = parseStatus(previousStatuses[record.id]).value
-        const nextNormalized = parseStatus(record.status).value
-
-        if (nextNormalized === "Applied" && previousNormalized !== "Applied") {
-          const { error: deleteError } = await supabase
-            .from("job_application_status_history")
-            .delete()
-            .eq("job_application_id", record.id)
-            .eq("user_id", user.id)
-
-          if (deleteError) {
-            console.error("Failed to clear status history during bulk reset", deleteError, {
-              recordId: record.id,
-            })
-          }
-
-          continue
-        }
-
-        const { error: historyError } = await supabase.from("job_application_status_history").insert({
-          job_application_id: record.id,
-          user_id: user.id,
-          status: record.status,
-          changed_at: record.updated_at ?? new Date().toISOString(),
-        })
-
-        if (historyError) {
-          console.error("Failed to record status history for bulk update", historyError, { recordId: record.id })
-        }
-      }
+      const changedRecords = (data ?? []).filter((record): record is typeof record & { id: string; status: string } =>
+        Boolean(record?.id && record?.status && previousStatuses[record.id] !== record.status),
+      )
+      await Promise.all(
+        changedRecords.map((record) =>
+          updateBulkStatusHistory({ supabase, userId: user.id, previousStatuses, record }),
+        ),
+      )
     }
 
     return NextResponse.json({

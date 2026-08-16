@@ -48,6 +48,8 @@ const reminderThemes: Record<ReminderStatus, ReminderTheme> = {
   },
 }
 
+const REMINDER_SKELETONS = ["first", "second", "third"]
+
 export function UpcomingReminders() {
   const { followUps, isLoading: isLoadingFollowUps, error } = useApplicationFollowUps()
   const {
@@ -132,8 +134,8 @@ export function UpcomingReminders() {
           <div className="space-y-4">
             {isLoading ? (
               <div className="space-y-3">
-                {[...Array(3)].map((_, index) => (
-                  <div key={index} className="rounded-lg border bg-muted/20 p-4">
+                {REMINDER_SKELETONS.map((skeleton) => (
+                  <div key={skeleton} className="rounded-lg border bg-muted/20 p-4">
                     <div className="space-y-2">
                       <Skeleton className="h-4 w-32" />
                       <Skeleton className="h-3 w-40" />
@@ -175,7 +177,7 @@ export function UpcomingReminders() {
                       <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                         <div className="flex items-center gap-2">
                           <span className={cn("whitespace-nowrap", theme.time)}>
-                            {dateFormatter.format(reminder.nextReminder)} at {"9:00 AM EST"}
+                            {dateFormatter.format(reminder.nextReminder)} at 9:00 AM EST
                           </span>
                         </div>
                       </div>

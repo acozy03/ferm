@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 import { z } from "zod"
 
 import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
 import { enforceRateLimit } from "@/lib/api/rate-limit"
 import { resolveOpenAIKeys, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
+import { type createServerSupabaseClient } from "@/lib/supabase/server"
 import { buildPrepContext } from "./context"
 
 const DAILY_LIMIT = 20
@@ -25,6 +26,82 @@ const BodySchema = z.object({
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+
+function selectPrepApiKey(options: { userKey: string | null; sharedKey: string | null; usedToday: number }) {
+  const { userKey, sharedKey, usedToday } = options
+
+  if (sharedKey && usedToday < DAILY_LIMIT) {
+    return { apiKey: sharedKey, isUserProvided: false, isSharedKey: true }
+  }
+
+  if (userKey) {
+    return { apiKey: userKey, isUserProvided: true, isSharedKey: false }
+  }
+
+  return {
+    response: new NextResponse(JSON.stringify({ error: "Daily prep limit reached." }), {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
+        "X-Usage-Limit": String(DAILY_LIMIT),
+        "X-Usage-Remaining": "0",
+      },
+    }),
+  }
+}
+
+type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
+
+async function resolvePrepApiKey(request: NextRequest, supabase: SupabaseClient, userId: string) {
+  const { userKey, sharedKey } = await resolveOpenAIKeys({ request, supabase, userId })
+  if (!userKey && !sharedKey) {
+    const response = NextResponse.json(
+      { error: "The service is not configured with an OpenAI API key." },
+      { status: 500 },
+    )
+    response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
+    return { response }
+  }
+
+  const today = new Date().toISOString().split("T")[0]
+  const { data: usageRow, error: usageError } = await supabase
+    .from("llm_usage")
+    .select("prep_messages_count")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .maybeSingle()
+
+  if (usageError && usageError.code !== "PGRST116") {
+    return { response: NextResponse.json({ error: "Unable to check usage." }, { status: 500 }) }
+  }
+
+  const usedToday = usageRow?.prep_messages_count ?? 0
+  return { ...selectPrepApiKey({ userKey, sharedKey, usedToday }), usedToday }
+}
+
+function createPrepResponse(
+  stream: ReadableStream<Uint8Array>,
+  projectedRemaining: number | null,
+  isUserProvided: boolean,
+) {
+  const responseHeaders: Record<string, string> = {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
+  }
+
+  if (projectedRemaining !== null) {
+    responseHeaders["X-Usage-Limit"] = String(DAILY_LIMIT)
+    responseHeaders["X-Usage-Remaining"] = String(projectedRemaining)
+  } else if (isUserProvided) {
+    responseHeaders["X-Usage-Limit"] = "personal"
+    responseHeaders["X-Usage-Remaining"] = "unlimited"
+  }
+
+  return new NextResponse(stream, { status: 200, headers: responseHeaders })
+}
 
 export async function POST(request: NextRequest) {
   let payload: z.infer<typeof BodySchema>
@@ -56,61 +133,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { userKey, sharedKey } = await resolveOpenAIKeys({
-      request,
-      supabase: auth.supabase,
-      userId: auth.userId,
-    })
-
-    if (!userKey && !sharedKey) {
-      const response = NextResponse.json(
-        { error: "The service is not configured with an OpenAI API key." },
-        { status: 500 },
-      )
-      response.headers.set("Vary", `Authorization, ${USER_OPENAI_KEY_HEADER}`)
-      return response
+    const keySelection = await resolvePrepApiKey(request, auth.supabase, auth.userId)
+    if ("response" in keySelection) {
+      return keySelection.response
     }
 
-    const today = new Date().toISOString().split("T")[0]
-    const { data: usageRow, error: usageError } = await auth.supabase
-      .from("llm_usage")
-      .select("prep_messages_count")
-      .eq("user_id", auth.userId)
-      .eq("date", today)
-      .maybeSingle()
-
-    if (usageError && usageError.code !== "PGRST116") {
-      return NextResponse.json({ error: "Unable to check usage." }, { status: 500 })
-    }
-
-    const usedToday = usageRow?.prep_messages_count ?? 0
-    let apiKey = userKey ?? sharedKey ?? ""
-    let isUserProvided = false
-    let isSharedKey = false
-
-    if (sharedKey) {
-      if (usedToday < DAILY_LIMIT) {
-        apiKey = sharedKey
-        isSharedKey = true
-      } else if (userKey) {
-        apiKey = userKey
-        isUserProvided = true
-      } else {
-        return new NextResponse(JSON.stringify({ error: "Daily prep limit reached." }), {
-          status: 429,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "no-store",
-            Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
-            "X-Usage-Limit": String(DAILY_LIMIT),
-            "X-Usage-Remaining": "0",
-          },
-        })
-      }
-    } else if (userKey) {
-      apiKey = userKey
-      isUserProvided = true
-    }
+    const { apiKey, isUserProvided, isSharedKey, usedToday } = keySelection
 
     const openai = new OpenAI({ apiKey })
 
@@ -129,7 +157,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Chat not found." }, { status: 404 })
     }
 
-    const latestUserMessage = [...payload.messages].reverse().find((message) => message.role === "user")
+    const latestUserMessage = payload.messages.toReversed().find((message) => message.role === "user")
     if (!latestUserMessage) {
       return NextResponse.json({ error: "A user prompt is required." }, { status: 400 })
     }
@@ -175,6 +203,7 @@ export async function POST(request: NextRequest) {
     if (!assistantMessageId) {
       return NextResponse.json({ error: "Unable to track assistant message." }, { status: 500 })
     }
+    const trackedAssistantMessageId = assistantMessageId
 
     const context = await buildPrepContext({
       supabase: auth.supabase,
@@ -209,15 +238,13 @@ export async function POST(request: NextRequest) {
               accumulated += content
               controller.enqueue(encoder.encode(content))
 
-              if (assistantMessageId) {
-                const { error: updateError } = await auth.supabase
-                  .from("prep_messages")
-                  .update({ content: accumulated })
-                  .eq("id", assistantMessageId)
+              const { error: updateError } = await auth.supabase
+                .from("prep_messages")
+                .update({ content: accumulated })
+                .eq("id", trackedAssistantMessageId)
 
-                if (updateError) {
-                  console.error("Failed to update streaming message", updateError)
-                }
+              if (updateError) {
+                console.error("Failed to update streaming message", updateError)
               }
             }
           }
@@ -227,15 +254,13 @@ export async function POST(request: NextRequest) {
           const fallback = "The assistant ran into an issue responding."
           controller.enqueue(encoder.encode(fallback))
 
-          if (assistantMessageId) {
-            const { error: updateError } = await auth.supabase
-              .from("prep_messages")
-              .update({ content: fallback })
-              .eq("id", assistantMessageId)
+          const { error: updateError } = await auth.supabase
+            .from("prep_messages")
+            .update({ content: fallback })
+            .eq("id", trackedAssistantMessageId)
 
-            if (updateError) {
-              console.error("Failed to persist fallback message", updateError)
-            }
+          if (updateError) {
+            console.error("Failed to persist fallback message", updateError)
           }
         } finally {
           if (completedSuccessfully && isSharedKey) {
@@ -249,24 +274,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const responseHeaders: Record<string, string> = {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Vary: `Authorization, ${USER_OPENAI_KEY_HEADER}`,
-    }
-
-    if (projectedRemaining !== null) {
-      responseHeaders["X-Usage-Limit"] = String(DAILY_LIMIT)
-      responseHeaders["X-Usage-Remaining"] = String(projectedRemaining)
-    } else if (isUserProvided) {
-      responseHeaders["X-Usage-Limit"] = "personal"
-      responseHeaders["X-Usage-Remaining"] = "unlimited"
-    }
-
-    return new NextResponse(stream, {
-      status: 200,
-      headers: responseHeaders,
-    })
+    return createPrepResponse(stream, projectedRemaining, isUserProvided)
   } catch (error) {
     console.error("Prep request failed", error)
     return NextResponse.json({ error: "Unable to generate a response right now." }, { status: 500 })

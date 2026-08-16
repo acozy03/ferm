@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import Groq from "groq-sdk"
 import { z } from "zod"
 
@@ -71,6 +71,52 @@ async function synthesizeCartesiaSpeech(text: string) {
   return { audioBase64: audioBuffer.toString("base64"), audioMimeType: "audio/mpeg" }
 }
 
+async function parseVoiceInput(request: NextRequest) {
+  const contentLength = Number(request.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_MULTIPART_BYTES) {
+    return { response: NextResponse.json({ error: "Voice request is too large." }, { status: 413 }) }
+  }
+
+  let formData: FormData
+  try {
+    formData = await request.formData()
+  } catch {
+    return { response: NextResponse.json({ error: "Invalid voice request." }, { status: 400 }) }
+  }
+
+  const audioEntry = formData.get("audio")
+  if (!(audioEntry instanceof File)) {
+    return { response: NextResponse.json({ error: "Audio file is required." }, { status: 400 }) }
+  }
+
+  if (!SUPPORTED_AUDIO_TYPES.has(audioEntry.type) || audioEntry.size === 0 || audioEntry.size > MAX_AUDIO_BYTES) {
+    return {
+      response: NextResponse.json({ error: "Audio must be a WAV file no larger than 10 MB." }, { status: 400 }),
+    }
+  }
+
+  const rawApplicationId = formData.get("applicationId")
+  const parsedRequest = VoiceRequestSchema.safeParse({
+    chatId: formData.get("chatId"),
+    applicationId: typeof rawApplicationId === "string" && rawApplicationId.length > 0 ? rawApplicationId : null,
+    voiceReplies: formData.get("voiceReplies") !== "false",
+  })
+
+  if (!parsedRequest.success) {
+    return { response: NextResponse.json({ error: "Invalid voice request." }, { status: 400 }) }
+  }
+
+  if (!process.env.GROQ_API_KEY) {
+    return { response: NextResponse.json({ error: "Groq voice processing is not configured." }, { status: 500 }) }
+  }
+
+  if (parsedRequest.data.voiceReplies && (!process.env.CARTESIA_API_KEY || !process.env.CARTESIA_VOICE_ID)) {
+    return { response: NextResponse.json({ error: "Cartesia voice replies are not configured." }, { status: 500 }) }
+  }
+
+  return { audioEntry, ...parsedRequest.data }
+}
+
 export async function POST(request: NextRequest) {
   const csrfError = requireCookieCsrf(request)
   if (csrfError) {
@@ -82,47 +128,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: auth.error.message }, { status: auth.error.status })
   }
 
-  const contentLength = Number(request.headers.get("content-length"))
-  if (Number.isFinite(contentLength) && contentLength > MAX_MULTIPART_BYTES) {
-    return NextResponse.json({ error: "Voice request is too large." }, { status: 413 })
+  const voiceInput = await parseVoiceInput(request)
+  if ("response" in voiceInput) {
+    return voiceInput.response
   }
-
-  let formData: FormData
-  try {
-    formData = await request.formData()
-  } catch {
-    return NextResponse.json({ error: "Invalid voice request." }, { status: 400 })
-  }
-
-  const audioEntry = formData.get("audio")
-  if (!(audioEntry instanceof File)) {
-    return NextResponse.json({ error: "Audio file is required." }, { status: 400 })
-  }
-
-  if (!SUPPORTED_AUDIO_TYPES.has(audioEntry.type) || audioEntry.size === 0 || audioEntry.size > MAX_AUDIO_BYTES) {
-    return NextResponse.json({ error: "Audio must be a WAV file no larger than 10 MB." }, { status: 400 })
-  }
-
-  const rawApplicationId = formData.get("applicationId")
-  const parsedRequest = VoiceRequestSchema.safeParse({
-    chatId: formData.get("chatId"),
-    applicationId: typeof rawApplicationId === "string" && rawApplicationId.length > 0 ? rawApplicationId : null,
-    voiceReplies: formData.get("voiceReplies") !== "false",
-  })
-
-  if (!parsedRequest.success) {
-    return NextResponse.json({ error: "Invalid voice request." }, { status: 400 })
-  }
-
-  const { applicationId, chatId, voiceReplies } = parsedRequest.data
-
-  if (!process.env.GROQ_API_KEY) {
-    return NextResponse.json({ error: "Groq voice processing is not configured." }, { status: 500 })
-  }
-
-  if (voiceReplies && (!process.env.CARTESIA_API_KEY || !process.env.CARTESIA_VOICE_ID)) {
-    return NextResponse.json({ error: "Cartesia voice replies are not configured." }, { status: 500 })
-  }
+  const { applicationId, audioEntry, chatId, voiceReplies } = voiceInput
 
   const { data: chat, error: chatError } = await auth.supabase
     .from("prep_chats")
@@ -160,7 +170,7 @@ export async function POST(request: NextRequest) {
   }
 
   const messageHistory = (historyRows ?? [])
-    .reverse()
+    .toReversed()
     .filter(
       (message): message is { role: "user" | "assistant"; content: string } =>
         (message.role === "user" || message.role === "assistant") && message.content.trim().length > 0,

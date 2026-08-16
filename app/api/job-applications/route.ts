@@ -13,28 +13,30 @@ import { resolveOpenAIApiKey, USER_OPENAI_KEY_HEADER } from "@/lib/ai/keys"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean)
+const allowedOrigins = new Set(
+  (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+)
 
 const baseCorsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 }
 
 function getCorsHeaders(origin: string | null) {
-  const headers: Record<string, string> = {
+  const corsHeaders: Record<string, string> = {
     ...baseCorsHeaders,
     "Access-Control-Allow-Headers": "content-type",
   }
 
-  if (origin && allowedOrigins.includes(origin)) {
-    headers["Access-Control-Allow-Origin"] = origin
-    headers["Access-Control-Allow-Headers"] = "authorization, content-type"
-    headers["Vary"] = "Origin"
+  if (origin && allowedOrigins.has(origin)) {
+    corsHeaders["Access-Control-Allow-Origin"] = origin
+    corsHeaders["Access-Control-Allow-Headers"] = "authorization, content-type"
+    corsHeaders["Vary"] = "Origin"
   }
 
-  return headers
+  return corsHeaders
 }
 
 function addVaryHeader(response: NextResponse, value: string) {
@@ -51,7 +53,9 @@ function addVaryHeader(response: NextResponse, value: string) {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean)
-    .forEach((entry) => values.add(entry))
+    .forEach((entry) => {
+      values.add(entry)
+    })
   response.headers.set("Vary", Array.from(values).join(", "))
 }
 
@@ -292,7 +296,7 @@ export async function GET(request: NextRequest) {
     if (company_name) query = query.ilike("company_name", `%${company_name}%`)
 
     if (search) {
-      const sanitizedSearch = search.replace(/,/g, "\\,")
+      const sanitizedSearch = search.replace(/,/g, String.raw`\,`)
       query = query.or(
         [
           `company_name.ilike.%${sanitizedSearch}%`,
@@ -391,7 +395,9 @@ export async function POST(request: NextRequest) {
 
     if ("error" in keyResolution) {
       const response = keyResolution.error
-      Object.entries(corsHeaders).forEach(([header, value]) => response.headers.set(header, value))
+      Object.entries(corsHeaders).forEach(([header, value]) => {
+        response.headers.set(header, value)
+      })
       addVaryHeader(response, `Authorization, ${USER_OPENAI_KEY_HEADER}`)
       return response
     }
@@ -437,9 +443,7 @@ export async function POST(request: NextRequest) {
       resume_match_summary: null as string | null,
     }
 
-    if (insertData.status) {
-      insertData.status = normalizeStatusValue(insertData.status)
-    }
+    insertData.status &&= normalizeStatusValue(insertData.status)
 
     const { data, error } = await supabase.from("job_applications").insert([insertData]).select().single()
 
@@ -514,8 +518,8 @@ export async function POST(request: NextRequest) {
           if (updateError) {
             console.error("Resume match scoring: failed to update job application", updateError)
           }
-        } catch (error) {
-          console.error("Resume match scoring: failed to generate score", error)
+        } catch (scoringError) {
+          console.error("Resume match scoring: failed to generate score", scoringError)
         }
       })()
     }

@@ -4,21 +4,23 @@ import { TrendingUp, Clock, CheckCircle, XCircle } from "lucide-react"
 import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats"
 import { AnimatedNumber } from "@/components/animated-number"
 
+const STAT_SKELETONS = ["applications", "interviews", "offers", "response-rate"]
+
 export function StatsOverview() {
   const { stats, isLoading, error } = useDashboardStats()
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i}>
+        {STAT_SKELETONS.map((skeleton) => (
+          <Card key={skeleton}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="h-4 w-20 bg-muted animate-pulse rounded" />
-              <div className="h-4 w-4 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-20 bg-muted animate-pulse rounded-sm" />
+              <div className="h-4 w-4 bg-muted animate-pulse rounded-sm" />
             </CardHeader>
             <CardContent>
-              <div className="h-8 w-12 bg-muted animate-pulse rounded mb-2" />
-              <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+              <div className="h-8 w-12 bg-muted animate-pulse rounded-sm mb-2" />
+              <div className="h-3 w-24 bg-muted animate-pulse rounded-sm" />
             </CardContent>
           </Card>
         ))}

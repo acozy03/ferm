@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 const SANKEY_BASE_NODE = "Applications Submitted"
 const SANKEY_BASE_COLOR = "#0EA5E9"
 const ACTIVITY_LEVEL_CLASSES = ["bg-muted/60", "bg-sky-200/70", "bg-sky-300/80", "bg-sky-400/80", "bg-sky-500"]
+const FALLBACK_FONT_FAMILY = "var(--font-sans), system-ui, sans-serif"
 type SankeyNodeWithCount = {
   name: string
   color: string
@@ -90,6 +91,39 @@ const CustomSankeyNode = ({ x, y, width, height, payload: sankeyNode }: SankeyNo
   )
 }
 
+function findStylesheetFontFamily(container: HTMLElement) {
+  for (const sheet of Array.from(document.styleSheets)) {
+    let rules: CSSRuleList
+
+    try {
+      rules = sheet.cssRules
+    } catch {
+      continue
+    }
+
+    for (const rule of Array.from(rules)) {
+      if (!(rule instanceof CSSStyleRule)) continue
+
+      const fontFamily = rule.style.getPropertyValue("font-family").trim()
+      if (!fontFamily) continue
+
+      const matchesContainer = String(rule.selectorText)
+        .split(",")
+        .map((selector) => selector.trim())
+        .filter(Boolean)
+        .some((selector) => container.matches(selector))
+
+      if (matchesContainer) return fontFamily
+    }
+  }
+
+  return null
+}
+
+function resolveFontFamily(container: HTMLElement) {
+  return getComputedStyle(container).fontFamily || findStylesheetFontFamily(container) || FALLBACK_FONT_FAMILY
+}
+
 export default function AnalyticsPage() {
   const sankeyContainerRef = useRef<HTMLDivElement>(null)
   const sankeyLegendRef = useRef<HTMLDivElement>(null)
@@ -133,9 +167,7 @@ export default function AnalyticsPage() {
       const baseSequence = historyStatuses.length > 0 ? historyStatuses : [latestStatus]
       const dedupedSequence = baseSequence.filter((status, index, array) => index === 0 || status !== array[index - 1])
       const statusSequence =
-        dedupedSequence[dedupedSequence.length - 1] === latestStatus
-          ? dedupedSequence
-          : [...dedupedSequence, latestStatus]
+        dedupedSequence.at(-1) === latestStatus ? dedupedSequence : [...dedupedSequence, latestStatus]
 
       const metadataSequence = statusSequence.map((status) => parseStatus(status))
       const pathMetadata = [
@@ -143,7 +175,9 @@ export default function AnalyticsPage() {
         ...metadataSequence.map((meta) => ({ label: meta.label, color: meta.chartColor, order: meta.order })),
       ]
 
-      pathMetadata.forEach(({ label, color, order }) => incrementNode(label, color, order))
+      pathMetadata.forEach(({ label, color, order }) => {
+        incrementNode(label, color, order)
+      })
 
       for (let index = 0; index < pathMetadata.length - 1; index += 1) {
         const source = pathMetadata[index].label
@@ -194,10 +228,7 @@ export default function AnalyticsPage() {
     if (!sankeyData.nodes.length) return 320
 
     const baseNode = sankeyData.nodes.find((node) => node.name === SANKEY_BASE_NODE)
-    const largestNode = sankeyData.nodes.reduce(
-      (max, node) => (node.count > max ? node.count : max),
-      baseNode?.count ?? 0,
-    )
+    const largestNode = sankeyData.nodes.reduce((max, node) => Math.max(node.count, max), baseNode?.count ?? 0)
 
     const totalFlow = baseNode?.count ?? largestNode
     const minHeight = 407
@@ -214,57 +245,8 @@ export default function AnalyticsPage() {
     let exportWrapper: HTMLDivElement | null = null
 
     try {
-      const fallbackFontFamily = "var(--font-sans), system-ui, sans-serif"
-      const resolvedFontFamily = (() => {
-        const container = sankeyContainerRef.current
-        if (!container) return fallbackFontFamily
-
-        const computedFontFamily = getComputedStyle(container).fontFamily
-        console.debug("[sankey export] computed font family", computedFontFamily)
-        if (computedFontFamily) {
-          return computedFontFamily
-        }
-
-        for (const sheet of Array.from(document.styleSheets)) {
-          let rules: CSSRuleList | undefined
-
-          try {
-            rules = sheet.cssRules
-          } catch {
-            continue
-          }
-
-          if (!rules) continue
-
-          for (const rule of Array.from(rules)) {
-            if (!(rule instanceof CSSStyleRule)) continue
-
-            const fontValue = rule.style.getPropertyValue("font-family")
-            if (!fontValue) continue
-
-            const selectors = String(rule.selectorText)
-              .split(",")
-              .map((selector) => selector.trim())
-              .filter(Boolean)
-
-            if (selectors.some((selector) => container.matches(selector))) {
-              const trimmedFontValue = fontValue.trim()
-              if (trimmedFontValue) {
-                console.debug("[sankey export] matched font family rule", {
-                  selectorText: rule.selectorText,
-                  fontFamily: trimmedFontValue,
-                })
-                return trimmedFontValue
-              }
-            }
-          }
-        }
-
-        return fallbackFontFamily
-      })()
-      console.debug("[sankey export] resolved font family", resolvedFontFamily)
-
       const exportRoot = sankeyContainerRef.current
+      const resolvedFontFamily = resolveFontFamily(exportRoot)
       exportWrapper = document.createElement("div")
       exportWrapper.style.position = "fixed"
       exportWrapper.style.left = "-9999px"
@@ -274,8 +256,8 @@ export default function AnalyticsPage() {
       exportWrapper.style.zIndex = "-1"
 
       const localClonedRoot = exportRoot.cloneNode(true) as HTMLElement
-      exportWrapper.appendChild(localClonedRoot)
-      document.body.appendChild(exportWrapper)
+      exportWrapper.append(localClonedRoot)
+      document.body.append(exportWrapper)
 
       const clonedLegend = localClonedRoot.querySelector("[data-sankey-legend]")
       if (clonedLegend instanceof HTMLElement) {
@@ -298,10 +280,7 @@ export default function AnalyticsPage() {
           appliedFontElements.set(element, "")
         }
       })
-      console.debug("[sankey export] applied font family to elements", exportElements.length)
-
       const backgroundColor = getComputedStyle(document.body).backgroundColor || "#0f1729"
-      console.debug("[sankey export] background color", backgroundColor)
       const dataUrl = await toPng(localClonedRoot, {
         cacheBust: true,
         backgroundColor,
@@ -375,15 +354,14 @@ export default function AnalyticsPage() {
     }
 
     const days: { date: string; count: number; applications: (typeof applications)[number][] }[] = []
-    const cursor = new Date(start)
-    while (cursor <= end) {
+    for (let cursor = new Date(start); ; cursor.setDate(cursor.getDate() + 1)) {
       const dateKey = cursor.toISOString().split("T")[0]
       const activity = countsByDate.get(dateKey)
       days.push({ date: dateKey, count: activity?.count ?? 0, applications: activity?.applications ?? [] })
-      cursor.setDate(cursor.getDate() + 1)
+      if (cursor >= end) break
     }
 
-    const maxDailyCount = days.reduce((max, day) => (day.count > max ? day.count : max), 0)
+    const maxDailyCount = days.reduce((max, day) => Math.max(day.count, max), 0)
     const levelForCount = (count: number) => {
       if (count === 0 || maxDailyCount === 0) return 0
       const scaled = Math.ceil((count / maxDailyCount) * 4)
@@ -393,9 +371,7 @@ export default function AnalyticsPage() {
     const weeks: { date: string; count: number; level: number; applications: (typeof applications)[number][] }[][] = []
     days.forEach((day, index) => {
       const weekIndex = Math.floor(index / 7)
-      if (!weeks[weekIndex]) {
-        weeks[weekIndex] = []
-      }
+      weeks[weekIndex] ||= []
       weeks[weekIndex].push({ ...day, level: levelForCount(day.count) })
     })
 
@@ -403,20 +379,20 @@ export default function AnalyticsPage() {
   }, [applications])
 
   const monthLabels = useMemo(() => {
-    return applicationActivity.weeks.map((week, index) => {
+    return applicationActivity.weeks.flatMap((week, index) => {
       const firstDay = week[0]
-      if (!firstDay) return ""
+      if (!firstDay) return []
       const date = new Date(firstDay.date)
-      if (Number.isNaN(date.getTime())) return ""
+      if (Number.isNaN(date.getTime())) return [{ date: firstDay.date, label: "" }]
       if (date.getDate() <= 7 || index === 0) {
-        return date.toLocaleString(undefined, { month: "short" })
+        return [{ date: firstDay.date, label: date.toLocaleString(undefined, { month: "short" }) }]
       }
       const previousWeek = applicationActivity.weeks[index - 1]
       const previousMonth = previousWeek ? new Date(previousWeek[0].date).getMonth() : null
       if (previousMonth !== date.getMonth()) {
-        return date.toLocaleString(undefined, { month: "short" })
+        return [{ date: firstDay.date, label: date.toLocaleString(undefined, { month: "short" }) }]
       }
-      return ""
+      return [{ date: firstDay.date, label: "" }]
     })
   }, [applicationActivity.weeks])
 
@@ -452,7 +428,7 @@ export default function AnalyticsPage() {
     }
 
     const container = sankeyLegendRef.current
-    if (!container) return
+    if (!container) return undefined
 
     updateLegendScroll()
     container.addEventListener("scroll", updateLegendScroll)
@@ -600,9 +576,9 @@ export default function AnalyticsPage() {
                           <div className="w-10" aria-hidden />
                           <div className="flex-1">
                             <div className="grid gap-1 text-[10px] text-muted-foreground" style={activityGridColumns}>
-                              {monthLabels.map((label, index) => (
-                                <span key={`month-${index}`} className="text-center">
-                                  {label}
+                              {monthLabels.map((month) => (
+                                <span key={month.date} className="text-center">
+                                  {month.label}
                                 </span>
                               ))}
                             </div>
@@ -617,9 +593,9 @@ export default function AnalyticsPage() {
                           <div className="flex-1">
                             <TooltipProvider delayDuration={100}>
                               <div className="grid gap-1" style={activityGridColumns}>
-                                {applicationActivity.weeks.map((week, weekIndex) => (
-                                  <div key={`week-${weekIndex}`} className="flex flex-col gap-1">
-                                    {week.map((day, dayIndex) => {
+                                {applicationActivity.weeks.map((week) => (
+                                  <div key={week[0].date} className="flex flex-col gap-1">
+                                    {week.map((day) => {
                                       const formattedDate = new Date(day.date).toLocaleDateString(undefined, {
                                         month: "short",
                                         day: "numeric",
@@ -627,7 +603,7 @@ export default function AnalyticsPage() {
                                       })
                                       const tooltipLabel = `${formattedDate}: ${day.count} application${day.count === 1 ? "" : "s"}`
                                       return (
-                                        <Tooltip key={`day-${day.date}-${dayIndex}`}>
+                                        <Tooltip key={day.date}>
                                           <TooltipTrigger asChild>
                                             <button
                                               type="button"
@@ -639,7 +615,7 @@ export default function AnalyticsPage() {
                                               onClick={() =>
                                                 setSelectedDay({ date: day.date, applications: day.applications })
                                               }
-                                            ></button>
+                                            />
                                           </TooltipTrigger>
                                           <TooltipContent side="top" align="center" className="text-xs">
                                             <p className="font-medium">{formattedDate}</p>
@@ -662,9 +638,9 @@ export default function AnalyticsPage() {
                       <div className="flex items-center gap-2">
                         <span>Less</span>
                         <div className="flex items-center gap-1">
-                          {ACTIVITY_LEVEL_CLASSES.map((levelClass, index) => (
+                          {ACTIVITY_LEVEL_CLASSES.map((levelClass) => (
                             <div
-                              key={`legend-${index}`}
+                              key={levelClass}
                               className={cn("h-3 w-3 rounded-sm border border-background/30", levelClass)}
                               aria-hidden
                             />

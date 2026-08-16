@@ -47,6 +47,7 @@ const ALLOWED_JOB_BOARD_HOSTS = new Set([
 ])
 
 const DISABLE_JOB_BOARD_ALLOWLIST = process.env.JOB_BOARD_ALLOWLIST === "false"
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
 
 function getConfiguredJobBoardHosts() {
   const configured = new Set(ALLOWED_JOB_BOARD_HOSTS)
@@ -65,25 +66,29 @@ function getConfiguredJobBoardHosts() {
   return configured
 }
 
+function hasPrivateIpv4Prefix(first: number, second: number) {
+  if (first === 10 || first === 127 || first === 0 || first >= 224) return true
+  if (first === 172 && second >= 16 && second <= 31) return true
+  if (first === 192 && second === 168) return true
+  if (first === 169 && second === 254) return true
+  return first === 100 && second >= 64 && second <= 127
+}
+
+function hasReservedIpv4Prefix(first: number, second: number, third: number) {
+  if (first === 192 && second === 0 && (third === 0 || third === 2)) return true
+  if (first === 198 && (second === 18 || second === 19)) return true
+  if (first === 198 && second === 51 && third === 100) return true
+  return first === 203 && second === 0 && third === 113
+}
+
 function isPrivateIpv4(ip: string) {
   const parts = ip.split(".").map((segment) => Number.parseInt(segment, 10))
   if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
     return false
   }
-  if (parts[0] === 10) return true
-  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true
-  if (parts[0] === 192 && parts[1] === 168) return true
-  if (parts[0] === 127) return true
-  if (parts[0] === 169 && parts[1] === 254) return true
-  if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true
-  if (parts[0] === 0) return true
-  if (parts[0] === 192 && parts[1] === 0 && parts[2] === 0) return true
-  if (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) return true
-  if (parts[0] === 198 && (parts[1] === 18 || parts[1] === 19)) return true
-  if (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) return true
-  if (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) return true
-  if (parts[0] >= 224) return true
-  return false
+
+  const [first, second, third] = parts
+  return hasPrivateIpv4Prefix(first, second) || hasReservedIpv4Prefix(first, second, third)
 }
 
 function isPrivateIpv6(ip: string) {
@@ -204,7 +209,7 @@ function htmlToPlainText(html: string) {
     .replace(/<[^>]+>/g, " ")
 
   return sanitized
-    .replace(/\u00a0/g, " ")
+    .replace(/\u00A0/g, " ")
     .replace(/\r/g, "\n")
     .replace(/[\t ]{2,}/g, " ")
     .replace(/ ?\n ?/g, "\n")
@@ -231,6 +236,171 @@ function parseHeaderNumber(value: string | null) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function unsafeUrlResponse(error: unknown) {
+  const reason = error instanceof Error ? error.message : ""
+  if (reason === "not-allowlisted") {
+    return NextResponse.json(
+      {
+        error:
+          "Job board host is not allowlisted. Configure JOB_BOARD_ALLOWLIST_HOSTS or set JOB_BOARD_ALLOWLIST=false to disable the allowlist.",
+      },
+      { status: 400 },
+    )
+  }
+  if (reason === "dns-failed") {
+    return NextResponse.json({ error: "Unable to resolve hostname" }, { status: 400 })
+  }
+  if (reason === "unsupported-protocol") {
+    return NextResponse.json({ error: "Only http/https URLs are supported" }, { status: 400 })
+  }
+  return NextResponse.json({ error: "Blocked URL" }, { status: 400 })
+}
+
+async function fetchSafeJobUrl(url: URL, signal: AbortSignal, redirectCount = 0): Promise<Response> {
+  await assertUrlIsSafe(url)
+  const response = await fetch(url, {
+    signal,
+    redirect: "manual",
+    headers: {
+      "User-Agent": "ferm-job-loader/1.0 (+https://ferm.dev)",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+  })
+
+  if (!REDIRECT_STATUSES.has(response.status)) {
+    return response
+  }
+
+  const location = response.headers.get("location")
+  if (!location) {
+    throw new Error("redirect-without-location")
+  }
+  if (redirectCount >= MAX_REDIRECTS) {
+    throw new Error("too-many-redirects")
+  }
+
+  return fetchSafeJobUrl(new URL(location, url), signal, redirectCount + 1)
+}
+
+async function extractJobText(response: Response) {
+  if (!response.ok) {
+    return {
+      response: NextResponse.json({ error: `Unable to fetch job posting (${response.status})` }, { status: 502 }),
+    }
+  }
+
+  const contentType = response.headers.get("content-type") || ""
+  if (!contentType.includes("text")) {
+    return { response: NextResponse.json({ error: "URL did not return readable text content" }, { status: 400 }) }
+  }
+
+  const numericLength = parseHeaderNumber(response.headers.get("content-length"))
+  if (numericLength && numericLength > MAX_HTML_BYTES) {
+    return { response: NextResponse.json({ error: "Job posting is too large to process" }, { status: 413 }) }
+  }
+
+  let rawHtml: string
+  try {
+    rawHtml = await response.text()
+  } catch {
+    return { response: NextResponse.json({ error: "Failed to read job posting" }, { status: 500 }) }
+  }
+
+  if (rawHtml.length > MAX_HTML_BYTES) {
+    rawHtml = rawHtml.slice(0, MAX_HTML_BYTES)
+  }
+
+  const plainText = htmlToPlainText(rawHtml)
+  if (plainText.length < MIN_TEXT_LENGTH) {
+    return {
+      response: NextResponse.json(
+        { error: "The page does not contain enough readable text to analyze" },
+        { status: 422 },
+      ),
+    }
+  }
+
+  const truncated = plainText.length > MAX_TEXT_LENGTH
+  const truncatedText = truncated ? plainText.slice(0, MAX_TEXT_LENGTH) : plainText
+  return { guardedText: guardrailWrap(truncatedText, truncated) }
+}
+
+async function forwardToParser(options: {
+  guardedText: string
+  jobUrl: string
+  token: string
+  configuredHost: string
+}) {
+  const { guardedText, jobUrl, token, configuredHost } = options
+  const parseUrl = new URL("/api/parse-job", CONFIGURED_SITE_URL)
+  if (parseUrl.host.toLowerCase() !== configuredHost) {
+    return NextResponse.json({ error: "Configured site host mismatch" }, { status: 500 })
+  }
+
+  let parseResponse: Response
+  try {
+    parseResponse = await fetch(parseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ raw_text: guardedText, job_url: jobUrl }),
+    })
+  } catch {
+    return NextResponse.json({ error: "Failed to analyze job posting" }, { status: 500 })
+  }
+
+  const responseText = await parseResponse.text()
+  let responseJson: unknown
+  try {
+    responseJson = JSON.parse(responseText)
+  } catch {
+    return NextResponse.json({ error: "Parser returned invalid response" }, { status: 500 })
+  }
+
+  const nextResponse = NextResponse.json(responseJson, { status: parseResponse.status })
+  nextResponse.headers.set("Cache-Control", "no-store")
+  nextResponse.headers.set("Vary", "Authorization")
+
+  const usageLimit = parseResponse.headers.get("X-Usage-Limit")
+  if (usageLimit) {
+    nextResponse.headers.set("X-Usage-Limit", usageLimit)
+  }
+
+  const usageRemaining = parseResponse.headers.get("X-Usage-Remaining")
+  if (usageRemaining) {
+    nextResponse.headers.set("X-Usage-Remaining", usageRemaining)
+  }
+
+  return nextResponse
+}
+
+async function parseScrapeRequest(request: NextRequest) {
+  let bodyUnknown: unknown
+  try {
+    bodyUnknown = await request.json()
+  } catch {
+    return { response: NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
+  }
+
+  const parsedBody = RequestBodySchema.safeParse(bodyUnknown)
+  if (!parsedBody.success) {
+    return {
+      response: NextResponse.json(
+        { error: "Invalid input data", details: parsedBody.error.flatten() },
+        { status: 400 },
+      ),
+    }
+  }
+
+  try {
+    return { jobUrl: parsedBody.data.job_url, parsedUrl: new URL(parsedBody.data.job_url) }
+  } catch {
+    return { response: NextResponse.json({ error: "Invalid job_url" }, { status: 400 }) }
+  }
+}
+
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
@@ -254,9 +424,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing token" }, { status: 401 })
   }
 
-  const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.json({ error: "Supabase configuration missing" }, { status: 500 })
+  }
+
+  const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
     headers: {
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      apikey: supabaseAnonKey,
       Authorization: `Bearer ${token}`,
     },
     cache: "no-store",
@@ -266,47 +442,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  let bodyUnknown: unknown
-  try {
-    bodyUnknown = await request.json()
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+  const parsedRequest = await parseScrapeRequest(request)
+  if ("response" in parsedRequest) {
+    return parsedRequest.response
   }
-
-  const parsedBody = RequestBodySchema.safeParse(bodyUnknown)
-  if (!parsedBody.success) {
-    return NextResponse.json({ error: "Invalid input data", details: parsedBody.error.flatten() }, { status: 400 })
-  }
-
-  const { job_url: jobUrl } = parsedBody.data
-
-  let parsedUrl: URL
-  try {
-    parsedUrl = new URL(jobUrl)
-  } catch {
-    return NextResponse.json({ error: "Invalid job_url" }, { status: 400 })
-  }
+  const { jobUrl, parsedUrl } = parsedRequest
 
   try {
     await assertUrlIsSafe(parsedUrl)
   } catch (error) {
-    const reason = (error as Error).message
-    if (reason === "not-allowlisted") {
-      return NextResponse.json(
-        {
-          error:
-            "Job board host is not allowlisted. Configure JOB_BOARD_ALLOWLIST_HOSTS or set JOB_BOARD_ALLOWLIST=false to disable the allowlist.",
-        },
-        { status: 400 },
-      )
-    }
-    if (reason === "dns-failed") {
-      return NextResponse.json({ error: "Unable to resolve hostname" }, { status: 400 })
-    }
-    if (reason === "unsupported-protocol") {
-      return NextResponse.json({ error: "Only http/https URLs are supported" }, { status: 400 })
-    }
-    return NextResponse.json({ error: "Blocked URL" }, { status: 400 })
+    return unsafeUrlResponse(error)
   }
 
   const controller = new AbortController()
@@ -314,127 +459,26 @@ export async function POST(request: NextRequest) {
 
   let response: Response
   try {
-    let currentUrl = parsedUrl
-    let redirectCount = 0
-
-    while (true) {
-      await assertUrlIsSafe(currentUrl)
-      response = await fetch(currentUrl, {
-        signal: controller.signal,
-        redirect: "manual",
-        headers: {
-          "User-Agent": "ferm-job-loader/1.0 (+https://ferm.dev)",
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        },
-      })
-
-      if ([301, 302, 303, 307, 308].includes(response.status)) {
-        const location = response.headers.get("location")
-        if (!location) {
-          throw new Error("redirect-without-location")
-        }
-        redirectCount += 1
-        if (redirectCount > MAX_REDIRECTS) {
-          throw new Error("too-many-redirects")
-        }
-        const nextUrl = new URL(location, currentUrl)
-        currentUrl = nextUrl
-        continue
-      }
-
-      break
-    }
+    response = await fetchSafeJobUrl(parsedUrl, controller.signal)
   } catch (error) {
-    clearTimeout(timeout)
-    if ((error as Error).name === "AbortError") {
+    if (error instanceof Error && error.name === "AbortError") {
       return NextResponse.json({ error: "Timed out fetching job posting" }, { status: 504 })
     }
-    if ((error as Error).message === "too-many-redirects") {
+    if (error instanceof Error && error.message === "too-many-redirects") {
       return NextResponse.json({ error: "Too many redirects" }, { status: 400 })
     }
-    if ((error as Error).message === "redirect-without-location") {
+    if (error instanceof Error && error.message === "redirect-without-location") {
       return NextResponse.json({ error: "Redirect missing location header" }, { status: 400 })
     }
     return NextResponse.json({ error: "Failed to fetch job posting" }, { status: 502 })
+  } finally {
+    clearTimeout(timeout)
   }
 
-  clearTimeout(timeout)
-
-  if (!response.ok) {
-    return NextResponse.json({ error: `Unable to fetch job posting (${response.status})` }, { status: 502 })
+  const extracted = await extractJobText(response)
+  if ("response" in extracted) {
+    return extracted.response
   }
 
-  const contentType = response.headers.get("content-type") || ""
-  if (!contentType.includes("text")) {
-    return NextResponse.json({ error: "URL did not return readable text content" }, { status: 400 })
-  }
-
-  const contentLength = response.headers.get("content-length")
-  const numericLength = parseHeaderNumber(contentLength)
-  if (numericLength && numericLength > MAX_HTML_BYTES) {
-    return NextResponse.json({ error: "Job posting is too large to process" }, { status: 413 })
-  }
-
-  let rawHtml: string
-  try {
-    rawHtml = await response.text()
-  } catch {
-    return NextResponse.json({ error: "Failed to read job posting" }, { status: 500 })
-  }
-
-  if (rawHtml.length > MAX_HTML_BYTES) {
-    rawHtml = rawHtml.slice(0, MAX_HTML_BYTES)
-  }
-
-  const plainText = htmlToPlainText(rawHtml)
-  if (plainText.length < MIN_TEXT_LENGTH) {
-    return NextResponse.json({ error: "The page does not contain enough readable text to analyze" }, { status: 422 })
-  }
-
-  const truncated = plainText.length > MAX_TEXT_LENGTH
-  const truncatedText = truncated ? plainText.slice(0, MAX_TEXT_LENGTH) : plainText
-  const guardedText = guardrailWrap(truncatedText, truncated)
-
-  const parseUrl = new URL("/api/parse-job", CONFIGURED_SITE_URL)
-  if (parseUrl.host.toLowerCase() !== configuredHost) {
-    return NextResponse.json({ error: "Configured site host mismatch" }, { status: 500 })
-  }
-  let parseResponse: Response
-  try {
-    parseResponse = await fetch(parseUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ raw_text: guardedText, job_url: jobUrl }),
-    })
-  } catch {
-    return NextResponse.json({ error: "Failed to analyze job posting" }, { status: 500 })
-  }
-
-  const responseText = await parseResponse.text()
-
-  let responseJson: unknown
-  try {
-    responseJson = JSON.parse(responseText)
-  } catch {
-    return NextResponse.json({ error: "Parser returned invalid response" }, { status: 500 })
-  }
-
-  const nextResponse = NextResponse.json(responseJson, { status: parseResponse.status })
-  nextResponse.headers.set("Cache-Control", "no-store")
-  nextResponse.headers.set("Vary", "Authorization")
-
-  const usageLimit = parseResponse.headers.get("X-Usage-Limit")
-  if (usageLimit) {
-    nextResponse.headers.set("X-Usage-Limit", usageLimit)
-  }
-
-  const usageRemaining = parseResponse.headers.get("X-Usage-Remaining")
-  if (usageRemaining) {
-    nextResponse.headers.set("X-Usage-Remaining", usageRemaining)
-  }
-
-  return nextResponse
+  return forwardToParser({ guardedText: extracted.guardedText, jobUrl, token, configuredHost })
 }

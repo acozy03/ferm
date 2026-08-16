@@ -22,9 +22,15 @@ export async function GET() {
       return withRequestId(NextResponse.json({ error: "Missing token" }, { status: 401 }))
     }
 
-    const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return withRequestId(NextResponse.json({ error: "Supabase configuration missing" }, { status: 500 }))
+    }
+
+    const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        apikey: supabaseAnonKey,
         Authorization: `Bearer ${token}`,
       },
       cache: "no-store",
@@ -41,7 +47,7 @@ export async function GET() {
       return withRequestId(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
     }
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: { Authorization: `Bearer ${token}` },
       },

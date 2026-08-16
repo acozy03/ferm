@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { getAuthedClient, requireCookieCsrf } from "@/lib/api/auth"
@@ -139,7 +139,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Invalid payload." }, { status: 400 })
   }
 
-  if (!payload.content && typeof payload.metadata === "undefined") {
+  if (!payload.content && payload.metadata === undefined) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 })
   }
 

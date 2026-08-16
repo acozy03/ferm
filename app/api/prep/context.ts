@@ -1,5 +1,5 @@
 import { getLatestResumeText } from "@/lib/resume/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { type createServerSupabaseClient } from "@/lib/supabase/server"
 
 const MAX_SECTION_LENGTH = 1800
 const MAX_INTERVIEW_HISTORY = 5

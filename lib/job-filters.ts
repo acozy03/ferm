@@ -1,15 +1,20 @@
 import type { EmploymentType, JobApplicationFilters, Priority } from "@/lib/types/database"
 import type { ReadonlyURLSearchParams } from "next/navigation"
 
-const PRIORITIES: readonly Priority[] = ["Low", "Medium", "High"]
-const EMPLOYMENT_TYPES: readonly EmploymentType[] = ["Full-time", "Part-time", "Contract", "Internship"]
+const PRIORITIES = new Set<string>(["Low", "Medium", "High"] satisfies Priority[])
+const EMPLOYMENT_TYPES = new Set<string>([
+  "Full-time",
+  "Part-time",
+  "Contract",
+  "Internship",
+] satisfies EmploymentType[])
 
 function isPriority(value: string): value is Priority {
-  return PRIORITIES.some((priority) => priority === value)
+  return PRIORITIES.has(value)
 }
 
 function isEmploymentType(value: string): value is EmploymentType {
-  return EMPLOYMENT_TYPES.some((employmentType) => employmentType === value)
+  return EMPLOYMENT_TYPES.has(value)
 }
 
 const FILTER_PARAM_KEYS: Array<keyof JobApplicationFilters> = [
@@ -48,7 +53,9 @@ export function createSearchParamsWithFilters(
 ): URLSearchParams {
   const params = new URLSearchParams(baseParams.toString())
 
-  FILTER_PARAM_KEYS.forEach((key) => params.delete(key as string))
+  FILTER_PARAM_KEYS.forEach((key) => {
+    params.delete(key as string)
+  })
 
   if (filters.status?.length) {
     params.set("status", filters.status.join(","))

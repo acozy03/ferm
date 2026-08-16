@@ -88,6 +88,125 @@ function formatFileSize(bytes?: number) {
   return `${mb.toFixed(2)} MB`
 }
 
+async function refreshResumeText(path: string): Promise<string | null> {
+  try {
+    const response = await apiFetch("/api/resume/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    })
+
+    if (response.ok) return null
+
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null
+    return payload?.error ?? `Unexpected error (status ${response.status})`
+  } catch (requestError) {
+    return requestError instanceof Error
+      ? requestError.message
+      : "We couldn't store the parsed resume text. Please try again later."
+  }
+}
+
+function ResumeStatusContent({
+  isLoading,
+  isAuthenticated,
+  resume,
+  isRemoving,
+  isBusy,
+  onRemove,
+}: {
+  isLoading: boolean
+  isAuthenticated: boolean
+  resume: ResumeInfo | null
+  isRemoving: boolean
+  isBusy: boolean
+  onRemove: () => void
+}) {
+  if (isLoading) {
+    return (
+      <div className="h-174.5 space-y-3">
+        <Skeleton className="h-90 w-full" />
+        <Skeleton className="h-45 w-full" />
+        <Skeleton className="h-35 w-full" />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Alert>
+        <FileText className="h-4 w-4" />
+        <AlertTitle>Sign in to manage your resume</AlertTitle>
+        <AlertDescription>
+          <span className="block">Resume uploads require an authenticated account.</span>
+          <Link href="/landing" className="font-medium text-primary underline underline-offset-4">
+            Go to the sign-in page
+          </Link>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (!resume) {
+    return (
+      <div className="space-y-2">
+        <p className="font-medium">No resume uploaded yet</p>
+        <p className="text-sm text-muted-foreground">
+          Upload your resume to keep it handy for applications and interviews.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-medium text-base">{resume.name}</p>
+          <p className="text-sm text-muted-foreground">
+            {resume.updatedAt
+              ? `Last updated ${formatDistanceToNow(new Date(resume.updatedAt), { addSuffix: true })}`
+              : "Last updated information unavailable"}
+            {resume.size ? ` • ${formatFileSize(resume.size)}` : null}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <a href={resume.signedUrl} target="_blank" rel="noopener noreferrer">
+              <Download /> Download resume
+            </a>
+          </Button>
+          <Button type="button" variant="destructive" className="gap-2" onClick={onRemove} disabled={isBusy}>
+            {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            <Trash /> Remove resume
+          </Button>
+        </div>
+      </div>
+
+      {resume.name.toLowerCase().endsWith(".pdf") ? (
+        <div className="overflow-hidden rounded-md border bg-muted/20">
+          <iframe
+            key={resume.signedUrl}
+            src={`${resume.signedUrl}#toolbar=0&navpanes=0`}
+            title="Resume preview"
+            className="w-full"
+            style={{ height: PDF_PREVIEW_HEIGHT }}
+            loading="lazy"
+          />
+        </div>
+      ) : (
+        <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">Preview unavailable</p>
+          <p>
+            Resume previews are currently limited to PDF files. Download the file above to view or upload a PDF to see
+            it inline.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ResumePage() {
   const { supabase, user, isLoading: isAuthLoading } = useSupabase()
   const [resume, setResume] = useState<ResumeInfo | null>(null)
@@ -250,23 +369,7 @@ export default function ResumePage() {
           throw uploadError
         }
 
-        let syncErrorMessage: string | null = null
-
-        try {
-          const response = await apiFetch("/api/resume/refresh", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path }),
-          })
-
-          if (!response.ok) {
-            const payload = (await response.json().catch(() => null)) as { error?: string } | null
-            syncErrorMessage = payload?.error ?? `Unexpected error (status ${response.status})`
-          }
-        } catch (error) {
-          syncErrorMessage =
-            error instanceof Error ? error.message : "We couldn't store the parsed resume text. Please try again later."
-        }
+        const syncErrorMessage = await refreshResumeText(path)
 
         await fetchResume()
 
@@ -338,9 +441,11 @@ export default function ResumePage() {
           const payload = (await response.json().catch(() => null)) as { error?: string } | null
           syncErrorMessage = payload?.error ?? `Unexpected error (status ${response.status})`
         }
-      } catch (error) {
+      } catch (storageSyncError) {
         syncErrorMessage =
-          error instanceof Error ? error.message : "We couldn't remove the stored resume text. Please try again later."
+          storageSyncError instanceof Error
+            ? storageSyncError.message
+            : "We couldn't remove the stored resume text. Please try again later."
       }
 
       toast({ title: "Resume removed", description: "Your resume has been deleted." })
@@ -388,83 +493,14 @@ export default function ResumePage() {
                   </Alert>
                 )}
 
-                {isAuthLoading || isFetching ? (
-                  <div className="h-174.5 space-y-3">
-                    <Skeleton className="h-90 w-full" />
-                    <Skeleton className="h-45 w-full" />
-                    <Skeleton className="h-35 w-full" />
-                  </div>
-                ) : !user ? (
-                  <Alert>
-                    <FileText className="h-4 w-4" />
-                    <AlertTitle>Sign in to manage your resume</AlertTitle>
-                    <AlertDescription>
-                      <span className="block">Resume uploads require an authenticated account.</span>
-                      <Link href="/landing" className="font-medium text-primary underline underline-offset-4">
-                        Go to the sign-in page
-                      </Link>
-                    </AlertDescription>
-                  </Alert>
-                ) : resume ? (
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium text-base">{resume.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {resume.updatedAt
-                            ? `Last updated ${formatDistanceToNow(new Date(resume.updatedAt), { addSuffix: true })}`
-                            : "Last updated information unavailable"}
-                          {resume.size ? ` • ${formatFileSize(resume.size)}` : null}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button asChild variant="outline">
-                          <a href={resume.signedUrl} target="_blank" rel="noopener noreferrer">
-                            <Download /> Download resume
-                          </a>
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          className="gap-2"
-                          onClick={() => setIsRemoveDialogOpen(true)}
-                          disabled={isUploading || isRemoving}
-                        >
-                          {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                          <Trash /> Remove resume
-                        </Button>
-                      </div>
-                    </div>
-
-                    {resume.name.toLowerCase().endsWith(".pdf") ? (
-                      <div className="overflow-hidden rounded-md border bg-muted/20">
-                        <iframe
-                          key={resume.signedUrl}
-                          src={`${resume.signedUrl}#toolbar=0&navpanes=0`}
-                          title="Resume preview"
-                          className="w-full"
-                          style={{ height: PDF_PREVIEW_HEIGHT }}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (
-                      <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-                        <p className="font-medium text-foreground">Preview unavailable</p>
-                        <p>
-                          Resume previews are currently limited to PDF files. Download the file above to view or upload
-                          a PDF to see it inline.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="font-medium">No resume uploaded yet</p>
-                    <p className="text-sm text-muted-foreground">
-                      Upload your resume to keep it handy for applications and interviews.
-                    </p>
-                  </div>
-                )}
+                <ResumeStatusContent
+                  isLoading={isAuthLoading || isFetching}
+                  isAuthenticated={Boolean(user)}
+                  resume={resume}
+                  isRemoving={isRemoving}
+                  isBusy={isUploading || isRemoving}
+                  onRemove={() => setIsRemoveDialogOpen(true)}
+                />
               </CardContent>
               <CardFooter className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground text-pretty">{acceptedTypesDescription}</p>

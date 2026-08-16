@@ -7,28 +7,30 @@ const DAILY_LIMIT = 20
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean)
+const allowedOrigins = new Set(
+  (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+)
 
 const baseCorsHeaders = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 }
 
 function getCorsHeaders(origin: string | null) {
-  const headers: Record<string, string> = {
+  const corsHeaders: Record<string, string> = {
     ...baseCorsHeaders,
     "Access-Control-Allow-Headers": "content-type",
   }
 
-  if (origin && allowedOrigins.includes(origin)) {
-    headers["Access-Control-Allow-Origin"] = origin
-    headers["Access-Control-Allow-Headers"] = "authorization, content-type"
-    headers["Vary"] = "Origin"
+  if (origin && allowedOrigins.has(origin)) {
+    corsHeaders["Access-Control-Allow-Origin"] = origin
+    corsHeaders["Access-Control-Allow-Headers"] = "authorization, content-type"
+    corsHeaders["Vary"] = "Origin"
   }
 
-  return headers
+  return corsHeaders
 }
 
 export async function OPTIONS() {
@@ -53,10 +55,18 @@ export async function GET() {
       return withRequestId(NextResponse.json({ error: "Missing token" }, { status: 401, headers: corsHeaders }))
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return withRequestId(
+        NextResponse.json({ error: "Supabase configuration missing" }, { status: 500, headers: corsHeaders }),
+      )
+    }
+
     // 1) Validate token with Supabase Auth
-    const userResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
+    const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        apikey: supabaseAnonKey,
         Authorization: `Bearer ${token}`,
       },
       cache: "no-store",
@@ -74,7 +84,7 @@ export async function GET() {
     }
 
     // 2) Create a Supabase client bound to THIS token so RLS works
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: { Authorization: `Bearer ${token}` },
       },

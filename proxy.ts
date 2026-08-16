@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
+import { getSupabaseConfig } from "@/lib/supabase/config"
+
 const PUBLIC_ROUTES = ["/landing", "/auth/callback", "/privacy"]
 const CSRF_COOKIE_NAME = "csrf-token"
 const CSRF_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 12
@@ -17,25 +19,28 @@ export async function proxy(req: NextRequest) {
 
   let authHeaders: Record<string, string> = {}
   let res = NextResponse.next({ request: req })
+  const { url, anonKey } = getSupabaseConfig()
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll()
-        },
-        setAll(cookiesToSet, headers) {
-          authHeaders = headers
-          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
-          res = NextResponse.next({ request: req })
-          cookiesToSet.forEach(({ name, value, options }) => res.cookies.set(name, value, options))
-          Object.entries(headers).forEach(([key, value]) => res.headers.set(key, value))
-        },
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll()
+      },
+      setAll(cookiesToSet, headers) {
+        authHeaders = headers
+        cookiesToSet.forEach(({ name, value }) => {
+          req.cookies.set(name, value)
+        })
+        res = NextResponse.next({ request: req })
+        cookiesToSet.forEach(({ name, value, options }) => {
+          res.cookies.set(name, value, options)
+        })
+        Object.entries(headers).forEach(([key, value]) => {
+          res.headers.set(key, value)
+        })
       },
     },
-  )
+  })
 
   // Touch session (may set/refresh cookies on `res`)
   const { data, error } = await supabase.auth.getClaims()
@@ -46,15 +51,17 @@ export async function proxy(req: NextRequest) {
       res.cookies.delete(CSRF_COOKIE_NAME)
     }
     // Build redirect and carry over cookies set on `res`
-    const url = req.nextUrl.clone()
-    url.pathname = "/landing"
-    if (pathname !== "/") url.searchParams.set("redirectedFrom", pathname)
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = "/landing"
+    if (pathname !== "/") redirectUrl.searchParams.set("redirectedFrom", pathname)
 
-    const redirect = NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(redirectUrl)
     for (const c of res.cookies.getAll()) {
       redirect.cookies.set(c)
     }
-    Object.entries(authHeaders).forEach(([key, value]) => redirect.headers.set(key, value))
+    Object.entries(authHeaders).forEach(([key, value]) => {
+      redirect.headers.set(key, value)
+    })
     return redirect
   }
 

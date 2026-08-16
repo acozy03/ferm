@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto"
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto"
 
 export const USER_OPENAI_KEY_HEADER = "x-user-openai-key"
 const PROVIDER = "openai"

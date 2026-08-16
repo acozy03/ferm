@@ -8,7 +8,7 @@ type UseAnimatedNumberOptions = {
   startAtZero?: boolean
 }
 
-const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
 
 export function useAnimatedNumber(targetValue: number | null | undefined, options?: UseAnimatedNumberOptions) {
   const { duration = 800, easing = easeOutCubic, startAtZero = true } = options ?? {}
@@ -37,7 +37,7 @@ export function useAnimatedNumber(targetValue: number | null | undefined, option
       setDisplayValue(0)
       previousValueRef.current = 0
       hasAnimatedRef.current = false
-      return
+      return undefined
     }
 
     const from = !hasAnimatedRef.current && startAtZero ? 0 : previousValueRef.current

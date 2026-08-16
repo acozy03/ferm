@@ -124,7 +124,7 @@ export function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
               id="contact-details"
               value={details}
               onChange={(event) => setDetails(event.target.value)}
-              placeholder={`Please describe your experience or share your ideas`}
+              placeholder="Please describe your experience or share your ideas"
               className="min-h-[140px]"
               required
             />
