@@ -47,8 +47,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Typecheck
+      - name: Typecheck with TypeScript 7
         run: pnpm typecheck
+
+      - name: Check TypeScript 6 tooling compatibility
+        run: pnpm typecheck:compat
 
       - name: Build
         run: pnpm build
